@@ -2,6 +2,7 @@ import React from "react";
 import styles from "./Login.module.css";
 import { FaDumbbell } from "react-icons/fa";
 import { GiShuttlecock } from "react-icons/gi";
+import { FaFlag } from "react-icons/fa6"; // Flag icon for logo
 
 function Login() {
   return (
@@ -18,9 +19,12 @@ function Login() {
         <FaDumbbell className={styles.icon} style={{ top: "60%", right: "5%" }} />
       </div>
 
-      {/* Center box */}
+      {/* Center card */}
       <div className={styles.card}>
-        <div className={styles.logo}>🏓 Courtly</div>
+        <div className={styles.logo}>
+          <FaFlag className={styles.logoIcon} />
+          <span className={styles.logoText}>Courtly</span>
+        </div>
         <p className={styles.subtitle}>Please select your role to proceed</p>
         <h2 className={styles.title}>Welcome to Courtly</h2>
 
