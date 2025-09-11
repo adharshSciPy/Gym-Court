@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./mongoDB/mongodb.js";
+import courtRoutes from "./routes/courtRoute.js"
 import adminRouter from "./routes/adminRoute.js";
 import receptionistRouter from "./routes/receptionistRoute.js";
 
@@ -15,6 +16,7 @@ app.use(express.json()); // for parsing JSON bodies
 app.use(cors());
 
 // Routes
+app.use("/Court", courtRoutes)
 app.get("/", (req, res) => {
     res.send("API is running...");
 });
