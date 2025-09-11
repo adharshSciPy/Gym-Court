@@ -1,10 +1,12 @@
 import express from 'express'
-import courtController from "../controller/courtController.js";
+import { createCourt, getCourt, editCourt, deleteCourt } from '../controller/courtController.js'
 
-const router = express.Router()
+const courtRouter = express.Router()
+courtRouter.route("/createCourt").post(createCourt)
+courtRouter.route("/fetchCourts").get(getCourt)
+courtRouter.route("/editCourt/:id").put(editCourt)
+courtRouter.route("/deleteCourt/:id").delete(deleteCourt)
 
-router.post("/createCourt", courtController.createCourt)
 
-
-export default router
+export default courtRouter
 

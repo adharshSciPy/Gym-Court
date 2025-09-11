@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./mongoDB/mongodb.js";
+import courtRoutes from "./routes/courtRoute.js"
 
 dotenv.config();
 connectDB();
@@ -13,9 +14,7 @@ app.use(express.json()); // for parsing JSON bodies
 app.use(cors());
 
 // Routes
-app.get("/", (req, res) => {
-    res.send("API is running...");
-});
+app.use("/Court", courtRoutes)
 
 
 // Server listen
