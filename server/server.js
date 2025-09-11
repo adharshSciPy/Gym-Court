@@ -5,6 +5,7 @@ import connectDB from "./mongoDB/mongodb.js";
 import courtRoutes from "./routes/courtRoute.js"
 import adminRouter from "./routes/adminRoute.js";
 import receptionistRouter from "./routes/receptionistRoute.js";
+import slotRouter from "./routes/slotRoute.js";
 
 dotenv.config();
 connectDB();
@@ -16,12 +17,11 @@ app.use(express.json()); // for parsing JSON bodies
 app.use(cors());
 
 // Routes
-app.use("/Court", courtRoutes)
-app.get("/", (req, res) => {
-    res.send("API is running...");
-});
-app.use('/api/v1/admin',adminRouter)
-app.use('/api/v1/receptionist',receptionistRouter)
+app.use("/api/v1/Court", courtRoutes)
+
+app.use('/api/v1/admin', adminRouter)
+app.use('/api/v1/receptionist', receptionistRouter)
+app.use('/api/v1/slot', slotRouter)
 
 
 // Server listen
