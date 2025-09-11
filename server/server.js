@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./mongoDB/mongodb.js";
 import courtRoutes from "./routes/courtRoute.js"
+import adminRouter from "./routes/adminRoute.js";
+import receptionistRouter from "./routes/receptionistRoute.js";
 
 dotenv.config();
 connectDB();
@@ -15,6 +17,11 @@ app.use(cors());
 
 // Routes
 app.use("/Court", courtRoutes)
+app.get("/", (req, res) => {
+    res.send("API is running...");
+});
+app.use('/api/v1/admin',adminRouter)
+app.use('/api/v1/receptionist',receptionistRouter)
 
 
 // Server listen
