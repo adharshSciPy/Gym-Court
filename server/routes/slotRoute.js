@@ -3,8 +3,8 @@ import { bookSlot, cancelBooking, getAvailableSlots } from "../controller/slotCo
 
 const slotRouter = express.Router();
 
-slotRouter.post("/slots/book/:id", bookSlot);
-slotRouter.post("/slots/cancel/:id", cancelBooking);
-slotRouter.get("/slots/available/:courtId", getAvailableSlots);
+slotRouter.post("/book", bookSlot);
+slotRouter.post("/cancel/:id", cancelBooking);
+slotRouter.get("/available/:courtId", getAvailableSlots);
 
 export default slotRouter;

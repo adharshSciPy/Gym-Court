@@ -3,8 +3,11 @@ import styles from "./Login.module.css";
 import { FaDumbbell } from "react-icons/fa";
 import { GiShuttlecock } from "react-icons/gi";
 import { FaFlag } from "react-icons/fa6"; // Flag icon for logo
+import { useNavigate } from "react-router-dom";
 
 function Login() {
+  const navigate = useNavigate()
+
   return (
     <div className={styles.container}>
       {/* Floating icons */}
@@ -28,13 +31,10 @@ function Login() {
         <p className={styles.subtitle}>Please select your role to proceed</p>
         <h2 className={styles.title}>Welcome to Courtly</h2>
 
-        <button className={styles.roleBtn}>Admin</button>
-        <button className={styles.roleBtn}>Reception</button>
+        <button className={styles.roleBtn} onClick={()=>{navigate('/Adminlogin')}}>Admin</button>
+        <button className={styles.roleBtn} onClick={()=>{navigate('/ReceptionLogin')}}>Reception</button>
 
-        <div className={styles.actionBtns}>
-          <button className={styles.signupBtn}>Sign Up</button>
-          <button className={styles.loginBtn}>Login</button>
-        </div>
+        
       </div>
     </div>
   );
