@@ -8,6 +8,10 @@ const courtSchema = new Schema({
         type: String,
         default: "grass"
     },
+    totalSlots: {
+        type: Number,
+        required: true
+    },
     createdAt: {
         type: Date,
         default: Date.now
