@@ -7,6 +7,7 @@ const formatTime = (date) => {
   return d.toISOString().substring(11, 16); 
 };
 
+
 const bookSlot = async (req, res) => {
   try {
     const {
@@ -36,8 +37,9 @@ const bookSlot = async (req, res) => {
     if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long" });
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const startT = new Date(startTime);
-    const endT = new Date(endTime);
+const startT = new Date(startTime);
+const endT = new Date(endTime);
+
 
     if (isNaN(start) || isNaN(end)) return res.status(400).json({ message: "Invalid start or end date" });
     if (isNaN(startT) || isNaN(endT)) return res.status(400).json({ message: "Invalid start or end time" });
@@ -96,11 +98,13 @@ if (overlap) {
     }
     const createdSlots = await Slot.insertMany(slotsToCreate);
 
-    const populatedSlots = await Slot.find({
-      _id: { $in: createdSlots.map((s) => s._id) },
-    })
-      .populate("userId")
-      .populate("courtId");
+   const populatedSlots = await Slot.find({
+  _id: { $in: createdSlots.map((s) => s._id) },
+  courtId: courtId, 
+})
+.populate("userId")
+.populate("courtId");
+
 
     return res.status(201).json({
       message: "Slots booked successfully",
@@ -110,6 +114,110 @@ if (overlap) {
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
+const bookedSlots = async (req, res) => {
+  const { id } = req.params;
+  const { date } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ message: "Court ID is required" });
+  }
+
+  try {
+    let query = { courtId: id, isBooked: true };
+
+    // Get start/end of day in IST
+    const getISTDayRange = (inputDate) => {
+      let target = inputDate ? new Date(inputDate) : new Date();
+
+      // Convert to IST by formatting + reparsing
+      const istString = target.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+      const istDate = new Date(istString);
+
+      const start = new Date(istDate);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(istDate);
+      end.setHours(23, 59, 59, 999);
+
+      return { start, end };
+    };
+
+    const { start, end } = getISTDayRange(date);
+
+    // ✅ Use startDate instead of startTime
+    query.startDate = { $gte: start, $lte: end };
+
+    const slots = await Slot.find(query)
+      .populate("userId", "firstName lastName phoneNumber")
+      .populate("courtId", "courtName surface")
+      .sort({ startDate: 1 });
+
+    if (!slots.length) {
+      return res.status(200).json({
+        message: date
+          ? `No bookings found for ${new Date(date).toLocaleDateString("en-IN", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              timeZone: "Asia/Kolkata",
+            })}`
+          : "No bookings found for today",
+        count: 0,
+        data: [],
+      });
+    }
+
+    const formatted = slots.map((slot) => {
+      const startIST = new Date(slot.startTime).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      });
+      const endIST = new Date(slot.endTime).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      });
+
+      return {
+        court: slot.courtId?.courtName || "Unknown Court",
+        bookedBy: `${slot.userId?.firstName || ""} ${slot.userId?.lastName || ""}`.trim(),
+        phoneNumber: slot.userId?.phoneNumber || "",
+        date: new Date(slot.startDate).toLocaleDateString("en-IN", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "Asia/Kolkata",
+        }),
+        time: `${startIST} - ${endIST}`,
+        notes: slot.notes || "",
+      };
+    });
+
+    return res.status(200).json({
+      message: date
+        ? `Bookings for ${new Date(date).toLocaleDateString("en-IN", {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "Asia/Kolkata",
+          })}`
+        : "Today's booked slots",
+      count: formatted.length,
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("Error fetching booked slots:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
 
 const cancelBooking = async (req, res) => {
   try {
@@ -160,4 +268,4 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
-export { bookSlot, cancelBooking, getAvailableSlots };
+export { bookSlot, cancelBooking, getAvailableSlots,bookedSlots};
