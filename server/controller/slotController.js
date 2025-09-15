@@ -284,6 +284,91 @@ const cancelBooking = async (req, res) => {
       .json({ message: "Error cancelling booking", error: error.message });
   }
 };
+const renewSlot = async (req, res) => {
+  try {
+    const { slotId } = req.params;
+    const { startDate, endDate, startTime, endTime } = req.body;
+
+    if (!slotId) return res.status(400).json({ message: "Slot ID is required" });
+    if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
+    if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
+
+    const originalSlot = await Slot.findById(slotId).populate("userId").populate("courtId");
+    if (!originalSlot) return res.status(404).json({ message: "Original slot not found" });
+
+    const courtId = originalSlot.courtId._id;
+    const userId = originalSlot.userId._id;
+    const notes = originalSlot.notes;
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start > end) return res.status(400).json({ message: "Start date must be before end date" });
+
+    const maxRangeDays = 365;
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (diffDays > maxRangeDays) return res.status(400).json({ message: `Booking cannot exceed ${maxRangeDays} days` });
+
+    // --- Prepare slots to create ---
+    const slotsToCreate = [];
+    let currentDate = new Date(start);
+
+    while (currentDate <= end) {
+      const [startH, startM, startS] = startTime.split(":").map(Number);
+      const [endH, endM, endS] = endTime.split(":").map(Number);
+
+      const slotStart = new Date(currentDate);
+      slotStart.setHours(startH, startM, startS, 0);
+
+      const slotEnd = new Date(currentDate);
+      slotEnd.setHours(endH, endM, endS, 0);
+
+      if (slotStart >= slotEnd) return res.status(400).json({ message: "Start time must be before end time" });
+
+      // Check overlap for this date
+      const overlap = await Slot.findOne({
+        courtId,
+        isBooked: true,
+        startDate: currentDate,
+        $or: [
+          { startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } },
+        ],
+      });
+
+      if (overlap) {
+        return res.status(400).json({
+          message: `Overlap found on ${overlap.startDate.toDateString()} for this court`,
+          time: `${formatTime(overlap.startTime)} - ${formatTime(overlap.endTime)}`,
+        });
+      }
+
+      slotsToCreate.push({
+        courtId,
+        startDate: new Date(currentDate),
+        endDate: new Date(currentDate),
+        startTime: slotStart,
+        endTime: slotEnd,
+        isBooked: true,
+        userId,
+        notes,
+      });
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    const createdSlots = await Slot.insertMany(slotsToCreate);
+    const populatedSlots = await Slot.find({ _id: { $in: createdSlots.map(s => s._id) } })
+      .populate("userId")
+      .populate("courtId");
+
+    return res.status(201).json({
+      message: "Slots renewed successfully",
+      data: populatedSlots,
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Unexpected error", error: err.message });
+  }
+};
 
 
 const getAvailableSlots = async (req, res) => {
@@ -304,4 +389,4 @@ const getAvailableSlots = async (req, res) => {
   }
 };
 
-export { bookSlot, cancelBooking, getAvailableSlots, bookedSlots };
+export { bookSlot, cancelBooking, getAvailableSlots, bookedSlots,renewSlot };
