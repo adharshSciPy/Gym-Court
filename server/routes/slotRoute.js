@@ -5,7 +5,7 @@ const slotRouter = express.Router();
 
 slotRouter.post("/book", bookSlot);
 slotRouter.get("/booked/:id", bookedSlots);//{id:courtId}
-slotRouter.post("/cancel/:id", cancelBooking);
+slotRouter.post("/cancel/:id", cancelBooking);//{id:slotId}
 slotRouter.get("/available/:courtId", getAvailableSlots);
 
 export default slotRouter;
