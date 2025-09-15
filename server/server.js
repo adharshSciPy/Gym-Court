@@ -7,6 +7,7 @@ import adminRouter from "./routes/adminRoute.js";
 import receptionistRouter from "./routes/receptionistRoute.js";
 import slotRouter from "./routes/slotRoute.js";
 import trainerRoute from "./routes/trainerRoute.js";
+import userRouter from "./routes/userRoute.js";
 
 dotenv.config();
 connectDB();
@@ -24,6 +25,8 @@ app.use('/api/v1/admin', adminRouter)
 app.use('/api/v1/receptionist', receptionistRouter)
 app.use('/api/v1/slot', slotRouter)
 app.use('/api/v1/trainer', trainerRoute)
+app.use('/api/v1/user', userRouter)
+
 
 // Server listen
 const PORT = process.env.PORT || 8000;
