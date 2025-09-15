@@ -60,12 +60,12 @@ const bookSlot = async (req, res) => {
       await user.save();
     }
 
-    // --- Slot Creation with Time Handling ---
+    // --- Slot Creation ---
     const slotsToCreate = [];
     let currentDate = new Date(start);
+    const isMultiDay = start.getTime() !== end.getTime(); // Flag multi-day bookings
 
     while (currentDate <= end) {
-      // Combine date + time
       const [startH, startM, startS] = startTime.split(":").map(Number);
       const [endH, endM, endS] = endTime.split(":").map(Number);
 
@@ -84,16 +84,16 @@ const bookSlot = async (req, res) => {
         courtId,
         isBooked: true,
         startDate: currentDate,
-        $or: [
-          { startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } },
-        ],
+        $or: [{ startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } }],
       }).populate("userId");
 
       if (overlap) {
         return res.status(400).json({
           message: `Overlap found on ${overlap.startDate.toDateString()} for this court`,
           time: `${formatTime(overlap.startTime)} - ${formatTime(overlap.endTime)}`,
-          bookedBy: overlap.userId ? `${overlap.userId.firstName || ""} ${overlap.userId.lastName || ""}`.trim() : "Unknown",
+          bookedBy: overlap.userId
+            ? `${overlap.userId.firstName || ""} ${overlap.userId.lastName || ""}`.trim()
+            : "Unknown",
         });
       }
 
@@ -104,6 +104,7 @@ const bookSlot = async (req, res) => {
         startTime: slotStart,
         endTime: slotEnd,
         isBooked: true,
+        isMultiDay,
         userId: user._id,
         notes,
       });
@@ -120,11 +121,11 @@ const bookSlot = async (req, res) => {
       message: "Slots booked successfully",
       data: populatedSlots,
     });
-
   } catch (err) {
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
+
 
 const bookedSlots = async (req, res) => {
   const { id } = req.params;

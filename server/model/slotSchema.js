@@ -8,7 +8,7 @@ const slotSchema = new Schema({
 
   startTime: { type: String, required: true },
   endTime: { type: String, required: true },   
-
+ isMultiDay: { type: Boolean, default: false },
   isBooked: { type: Boolean, default: false },
   userId: { type: Schema.Types.ObjectId, ref: "User" },
   notes: { type: String },
