@@ -14,8 +14,8 @@ const bookSlot = async (req, res) => {
       courtId,
       startDate,
       endDate,
-      startTime,
-      endTime,
+      startTime, // expected as "HH:mm"
+      endTime,   // expected as "HH:mm"
       phoneNumber,
       firstName,
       lastName,
@@ -24,20 +24,12 @@ const bookSlot = async (req, res) => {
       notes,
     } = req.body;
 
-    // --- Validations ---
+    // --- Common Validations ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
     if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
     if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
     if (!phoneNumber) return res.status(400).json({ message: "Phone number is required" });
     if (!/^[0-9]{10}$/.test(phoneNumber)) return res.status(400).json({ message: "Phone number must be 10 digits" });
-    if (!firstName) return res.status(400).json({ message: "First name is required for new users" });
-    if (firstName && firstName.length > 50) return res.status(400).json({ message: "First name too long" });
-    if (!lastName) return res.status(400).json({ message: "Last name is required for new users" });
-
-    if (lastName && lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
-    if (!address) return res.status(400).json({ message: "Address is required for new users" });
-
-    if (address && address.length > 200) return res.status(400).json({ message: "Address too long" });
     if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long" });
 
     const start = new Date(startDate);
@@ -52,12 +44,27 @@ const bookSlot = async (req, res) => {
 
     const court = await Court.findById(courtId);
     if (!court) return res.status(404).json({ message: "Court not found" });
-    
+
+    // --- User Handling ---
     let user = await User.findOne({ phoneNumber });
 
     if (!user) {
+      // ✅ Extra validation only for new users
+      if (!firstName) return res.status(400).json({ message: "First name is required for new users" });
+      if (firstName.length > 50) return res.status(400).json({ message: "First name too long" });
+
+      if (!lastName) return res.status(400).json({ message: "Last name is required for new users" });
+      if (lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
+
+      if (!whatsAppNumber) return res.status(400).json({ message: "WhatsApp number is required for new users" });
+      if (!/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
+
+      if (!address) return res.status(400).json({ message: "Address is required for new users" });
+      if (address.length > 200) return res.status(400).json({ message: "Address too long" });
+
       user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
     } else {
+      // ✅ Update if provided (optional for existing users)
       user.firstName = firstName || user.firstName;
       user.lastName = lastName || user.lastName;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
@@ -66,59 +73,56 @@ const bookSlot = async (req, res) => {
     }
 
     // --- Parse start/end times ---
-    const [startH, startM, startS] = startTime.split(":").map(Number);
-    const [endH, endM, endS] = endTime.split(":").map(Number);
+    const [startH, startM = 0] = startTime.split(":").map(Number);
+    const [endH, endM = 0] = endTime.split(":").map(Number);
 
     if (startH === undefined || endH === undefined)
       return res.status(400).json({ message: "Invalid time format" });
 
-    // --- Check overlap for entire date range in one query ---
-   const overlapSlots = await Slot.find({
-  courtId,
-  isBooked: true,
-  startDate: { $lte: end },
-  endDate: { $gte: start },
-  $expr: {
-    $and: [
-      { $lt: ["$startTime", endTime] }, // existing.start < requested.end
-      { $gt: ["$endTime", startTime] }, // existing.end > requested.start
-    ],
-  },
-}).populate("userId");
-
-
-    if (overlapSlots.length) {
-      return res.status(400).json({
-        message: `Overlap found with existing bookings`,
-        details: overlapSlots.map((s) => ({
-          dateRange: `${s.startDate.toDateString()} - ${s.endDate.toDateString()}`,
-          time: `${s.startTime} - ${s.endTime}`,
-          bookedBy: s.userId ? `${s.userId.firstName || ""} ${s.userId.lastName || ""}`.trim() : "Unknown",
-        })),
-      });
-    }
-
-    // --- Prepare slots to insert ---
+    // --- Prepare slots ---
     const slotsToCreate = [];
     let currentDate = new Date(start);
 
     while (currentDate <= end) {
       const slotStart = new Date(currentDate);
-      slotStart.setHours(startH, startM, startS, 0);
+      slotStart.setHours(startH, startM, 0, 0);
 
       const slotEnd = new Date(currentDate);
-      slotEnd.setHours(endH, endM, endS, 0);
+      slotEnd.setHours(endH, endM, 0, 0);
 
       if (slotStart >= slotEnd) {
         return res.status(400).json({ message: "Start time must be before end time" });
+      }
+
+      // --- Check overlap for this day ---
+      const overlap = await Slot.findOne({
+        courtId,
+        isBooked: true,
+        $or: [
+          {
+            startTime: { $lt: slotEnd },
+            endTime: { $gt: slotStart },
+          },
+        ],
+      }).populate("userId");
+
+      if (overlap) {
+        return res.status(400).json({
+          message: "Overlap found with existing booking",
+          details: {
+            date: overlap.startDate.toDateString(),
+            time: `${overlap.startTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })} - ${overlap.endTime.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}`,
+            bookedBy: overlap.userId ? `${overlap.userId.firstName || ""} ${overlap.userId.lastName || ""}`.trim() : "Unknown",
+          },
+        });
       }
 
       slotsToCreate.push({
         courtId,
         startDate: new Date(currentDate),
         endDate: new Date(currentDate),
-        startTime: startTime,
-        endTime: endTime,
+        startTime: slotStart, // ✅ store Date
+        endTime: slotEnd,     // ✅ store Date
         isBooked: true,
         isMultiDay: start.getTime() !== end.getTime(),
         userId: user._id,
@@ -127,6 +131,7 @@ const bookSlot = async (req, res) => {
 
       currentDate.setDate(currentDate.getDate() + 1);
     }
+
     const createdSlots = await Slot.insertMany(slotsToCreate);
 
     // --- Aggregate for populated response ---
@@ -172,9 +177,12 @@ const bookSlot = async (req, res) => {
       data: populatedSlots,
     });
   } catch (err) {
+    console.error("Error in bookSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
+
+
 
 
 const bookedSlots = async (req, res) => {

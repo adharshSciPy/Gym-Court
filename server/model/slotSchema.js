@@ -6,8 +6,8 @@ const slotSchema = new Schema({
   startDate: { type: Date, required: true },  
   endDate: { type: Date, required: true },   
 
-  startTime: { type: String, required: true },
-  endTime: { type: String, required: true },   
+  startTime: { type: Date, required: true },
+  endTime: { type: Date, required: true },   
  isMultiDay: { type: Boolean, default: false },
   isBooked: { type: Boolean, default: false },
   userId: { type: Schema.Types.ObjectId, ref: "User" },
