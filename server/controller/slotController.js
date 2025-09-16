@@ -403,21 +403,41 @@ const renewSlot = async (req, res) => {
       gstNumber,
       modeOfPayment,
       notes,
-    } = req.body;
+    } = req.body || {}; // <-- default empty object to avoid crash
 
+    // Validate courtId
+    if (!courtId) {
+      return res.status(400).json({ message: "Court ID is required" });
+    }
+    if (!mongoose.isValidObjectId(courtId)) {
+      return res.status(400).json({ message: "Invalid Court ID format" });
+    }
+
+    const court = await Court.findById(courtId);
+    if (!court) {
+      return res.status(404).json({ message: `Court not found for ID: ${courtId}` });
+    }
     // --- Validation ---
     if (!bookingId) return res.status(400).json({ message: "Booking ID is required" });
-    if (!courtId) return res.status(400).json({ message: "Court ID is required" });
-    if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
+    if (!mongoose.isValidObjectId(bookingId)) {
+      return res.status(400).json({ message: "Invalid Booking ID format" });
+    }
 
+    if (!courtId) return res.status(400).json({ message: "Court ID is required" });
+    if (!mongoose.isValidObjectId(courtId)) {
+      return res.status(400).json({ message: "Invalid Court ID format" });
+    }
+
+    if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (isNaN(start) || isNaN(end)) return res.status(400).json({ message: "Invalid dates" });
     if (start > end) return res.status(400).json({ message: "Start date must be before end date" });
 
+    if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
     const [startH, startM = 0] = startTime.split(":").map(Number);
     const [endH, endM = 0] = endTime.split(":").map(Number);
-    if (isNaN(startH) || isNaN(endH)) return res.status(400).json({ message: "Invalid time format" });
+    if (isNaN(startH) || isNaN(endH)) return res.status(400).json({ message: "Invalid time format, expected HH:mm" });
 
     if (amount == null || isNaN(amount) || amount < 0) {
       return res.status(400).json({ message: "Amount must be a positive number" });
@@ -444,8 +464,8 @@ const renewSlot = async (req, res) => {
     const userId = originalBooking.userId._id;
 
     // --- Check court exists ---
-    const court = await Court.findById(courtId);
-    if (!court) return res.status(404).json({ message: "Court not found" });
+    // const court = await Court.findById(courtId);
+    // if (!court) return res.status(404).json({ message: "Court not found" });
 
     // --- Prepare slots ---
     const slotsToCreate = [];
@@ -497,6 +517,13 @@ const renewSlot = async (req, res) => {
     // --- Save slots ---
     const createdSlots = await Slot.insertMany(slotsToCreate);
 
+    // --- Fix start/end mutation issue ---
+    const bookingStartTime = new Date(start);
+    bookingStartTime.setHours(startH, startM, 0, 0);
+
+    const bookingEndTime = new Date(end);
+    bookingEndTime.setHours(endH, endM, 0, 0);
+
     // --- Create new booking ---
     const newBooking = await Booking.create({
       courtId,
@@ -504,8 +531,8 @@ const renewSlot = async (req, res) => {
       slotIds: createdSlots.map((s) => s._id),
       startDate: start,
       endDate: end,
-      startTime: new Date(start.setHours(startH, startM, 0, 0)),
-      endTime: new Date(end.setHours(endH, endM, 0, 0)),
+      startTime: bookingStartTime,
+      endTime: bookingEndTime,
       isMultiDay: start.toDateString() !== end.toDateString(),
       notes,
       amount,
@@ -513,8 +540,8 @@ const renewSlot = async (req, res) => {
       gst,
       gstNumber,
       modeOfPayment,
-      isRenewal: true, // mark this as renewal
-      parentBooking: bookingId, // link to original
+      isRenewal: true,
+      parentBooking: bookingId,
     });
 
     // --- Create billing record ---
