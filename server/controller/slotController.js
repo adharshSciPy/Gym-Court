@@ -188,12 +188,42 @@ const bookSlot = async (req, res) => {
 
       notes,
     });
+    const formatTime = (date) =>
+      new Date(date).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      });
 
+    const formatDate = (date) =>
+      new Date(date).toLocaleDateString("en-IN", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      });
+
+    const formattedBooking = {
+      ...booking.toObject(),
+      startDate: formatDate(booking.startDate),
+      endDate: formatDate(booking.endDate),
+      startTime: formatTime(booking.startTime),
+      endTime: formatTime(booking.endTime),
+    };
+
+    const formattedSlots = populatedSlots.map((slot) => ({
+      ...slot,
+      startDate: formatDate(slot.startDate),
+      endDate: formatDate(slot.endDate),
+      startTime: formatTime(slot.startTime),
+      endTime: formatTime(slot.endTime),
+    }));
     return res.status(201).json({
       message: "Slots booked successfully",
-      booking,
-      data: populatedSlots,
-
+      booking: formattedBooking,
+      data: formattedSlots,
     });
   } catch (err) {
     console.error("Error in bookSlot:", err);
