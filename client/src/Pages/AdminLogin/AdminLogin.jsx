@@ -1,71 +1,77 @@
 import React, { useState } from "react";
 import styles from "./AdminLogin.module.css";
-import { FaDumbbell } from "react-icons/fa";
-import { GiShuttlecock } from "react-icons/gi";
 import { FaFlag } from "react-icons/fa6";
-import axios from "axios"
+import axios from "axios";
 import baseUrl from "../../baseUrl";
+import { useNavigate } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 function AdminLogin() {
-  const [form,setForm]=useState({
-    email:"",
-    password:""
-  })
-  const handleChange=(e)=>{
+  const navigate = useNavigate();
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const [form, setForm] = useState({
+    adminEmail: "",
+    password: "",
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
     setForm({
       ...form,
-      [e.target.name]:e.target.value
-    })
-  }
-  const adminLogin=async()=>{
+      [name]: value,
+    });
+
+    if (name === "adminEmail") {
+      if (!value) {
+        setEmailError("Email is required.");
+      } else if (!emailRegex.test(value)) {
+        setEmailError("Please enter a valid email address.");
+      } else {
+        setEmailError("");
+      }
+    }
+
+    if (name === "password") {
+      if (!value) {
+        setPasswordError("Password is required.");
+      } else if (value.length < 6) {
+        setPasswordError("Password must be at least 6 characters.");
+      } else if (!/[A-Z]/.test(value)) {
+        setPasswordError(
+          "Password must contain at least one uppercase letter."
+        );
+      } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+        setPasswordError(
+          "Password must contain at least one special character."
+        );
+      } else {
+        setPasswordError("");
+      }
+    }
+  };
+
+  const adminLogin = async () => {
     try {
-      const res =await axios.post(`${baseUrl}/api/v1/admin/login`,form)
-      console.log(res);
-      
+      const res = await axios.post(`${baseUrl}/api/v1/admin/login`, form);
+      if (res.status === 200) {
+        navigate("/Admindashboard");
+      }
     } catch (error) {
       console.log(error);
-      
     }
-  }
+  };
+
+  // ✅ Disabled if fields are empty or invalid
+  const isDisabled =
+    !form.adminEmail || !form.password || emailError || passwordError;
+
   return (
     <div className={styles.container}>
-      {/* Floating icons */}
-      <div className={styles.icons}>
-        <GiShuttlecock
-          className={styles.icon}
-          style={{ top: "10%", left: "5%" }}
-        />
-        <FaDumbbell
-          className={styles.icon}
-          style={{ top: "15%", left: "20%" }}
-        />
-        <GiShuttlecock
-          className={styles.icon}
-          style={{ top: "30%", left: "10%" }}
-        />
-        <FaDumbbell
-          className={styles.icon}
-          style={{ top: "40%", right: "20%" }}
-        />
-        <GiShuttlecock
-          className={styles.icon}
-          style={{ bottom: "20%", left: "15%" }}
-        />
-        <FaDumbbell
-          className={styles.icon}
-          style={{ bottom: "10%", right: "10%" }}
-        />
-        <GiShuttlecock
-          className={styles.icon}
-          style={{ bottom: "5%", left: "5%" }}
-        />
-        <FaDumbbell
-          className={styles.icon}
-          style={{ top: "60%", right: "5%" }}
-        />
-      </div>
-
-      {/* Center card */}
       <div className={styles.card}>
         <div className={styles.logo}>
           <FaFlag className={styles.logoIcon} />
@@ -75,9 +81,55 @@ function AdminLogin() {
         <h2 className={styles.title}>Welcome to Courtly</h2>
 
         <div className={styles.inputDatas}>
-          <input type="text" name="email" placeholder="Email" required value={form.email} onChange={handleChange}/>
-          <input type="password" placeholder="Password" name="password" required value={form.password} onChange={handleChange} />
-          <button onClick={adminLogin}>Login</button>
+          <div className={styles.inputContainer}>
+            <input
+              type="email"
+              name="adminEmail"
+              placeholder="Email"
+              required
+              value={form.adminEmail}
+              onChange={handleChange}
+            />
+            {emailError && (
+              <p className={styles.errorText}>
+                {emailError}
+              </p>
+            )}
+          </div>
+
+          <div className={styles.inputContainer}>
+            <div className={styles.inputWrapper}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                name="password"
+                required
+                value={form.password}
+                onChange={handleChange}
+                className={styles.passwordInput}
+              />
+
+              <span
+                onClick={() => setShowPassword(!showPassword)}
+                className={styles.eyeIcon}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
+
+            {passwordError && (
+              <p className={styles.errorText}>
+                {passwordError}
+              </p>
+            )}
+          </div>
+
+          <button
+            onClick={adminLogin}
+            disabled={isDisabled}
+          >
+            Login
+          </button>
         </div>
       </div>
     </div>
