@@ -1,23 +1,39 @@
 import { User } from "../model/userSchema.js";
 const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find();
+    const { phoneNumber, page = 1, limit = 10 } = req.query;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    let query = {};
+
+    if (phoneNumber) {
+      query.phoneNumber = { $regex: phoneNumber, $options: "i" };
+    }
+
+    const [users, total] = await Promise.all([
+      User.find(query).skip(skip).limit(parseInt(limit)).lean(),
+      User.countDocuments(query),
+    ]);
 
     if (!users || users.length === 0) {
-      return res.status(404).json({ message: "No users found" });
+      return res.status(404).json({ success: false, message: "No users found" });
     }
 
     return res.status(200).json({
-        success:true,
-        count:users.length,
+      success: true,
+      count: users.length,
+      totalUsers: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page),
       message: "Users retrieved successfully",
       data: users,
     });
   } catch (error) {
     console.error("Error fetching users:", error);
-    return res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
+
 const updateUser = async (req, res) => {
   try {
     const { id } = req.params;

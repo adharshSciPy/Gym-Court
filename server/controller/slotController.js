@@ -30,8 +30,13 @@ const bookSlot = async (req, res) => {
     if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
     if (!phoneNumber) return res.status(400).json({ message: "Phone number is required" });
     if (!/^[0-9]{10}$/.test(phoneNumber)) return res.status(400).json({ message: "Phone number must be 10 digits" });
+    if (!firstName) return res.status(400).json({ message: "First name is required for new users" });
     if (firstName && firstName.length > 50) return res.status(400).json({ message: "First name too long" });
+    if (!lastName) return res.status(400).json({ message: "Last name is required for new users" });
+
     if (lastName && lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
+    if (!address) return res.status(400).json({ message: "Address is required for new users" });
+
     if (address && address.length > 200) return res.status(400).json({ message: "Address too long" });
     if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long" });
 
@@ -47,9 +52,9 @@ const bookSlot = async (req, res) => {
 
     const court = await Court.findById(courtId);
     if (!court) return res.status(404).json({ message: "Court not found" });
-
-    // --- User Handling ---
+    
     let user = await User.findOne({ phoneNumber });
+
     if (!user) {
       user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
     } else {
@@ -60,15 +65,44 @@ const bookSlot = async (req, res) => {
       await user.save();
     }
 
-    // --- Slot Creation ---
+    // --- Parse start/end times ---
+    const [startH, startM, startS] = startTime.split(":").map(Number);
+    const [endH, endM, endS] = endTime.split(":").map(Number);
+
+    if (startH === undefined || endH === undefined)
+      return res.status(400).json({ message: "Invalid time format" });
+
+    // --- Check overlap for entire date range in one query ---
+   const overlapSlots = await Slot.find({
+  courtId,
+  isBooked: true,
+  startDate: { $lte: end },
+  endDate: { $gte: start },
+  $expr: {
+    $and: [
+      { $lt: ["$startTime", endTime] }, // existing.start < requested.end
+      { $gt: ["$endTime", startTime] }, // existing.end > requested.start
+    ],
+  },
+}).populate("userId");
+
+
+    if (overlapSlots.length) {
+      return res.status(400).json({
+        message: `Overlap found with existing bookings`,
+        details: overlapSlots.map((s) => ({
+          dateRange: `${s.startDate.toDateString()} - ${s.endDate.toDateString()}`,
+          time: `${s.startTime} - ${s.endTime}`,
+          bookedBy: s.userId ? `${s.userId.firstName || ""} ${s.userId.lastName || ""}`.trim() : "Unknown",
+        })),
+      });
+    }
+
+    // --- Prepare slots to insert ---
     const slotsToCreate = [];
     let currentDate = new Date(start);
-    const isMultiDay = start.getTime() !== end.getTime(); // Flag multi-day bookings
 
     while (currentDate <= end) {
-      const [startH, startM, startS] = startTime.split(":").map(Number);
-      const [endH, endM, endS] = endTime.split(":").map(Number);
-
       const slotStart = new Date(currentDate);
       slotStart.setHours(startH, startM, startS, 0);
 
@@ -79,43 +113,59 @@ const bookSlot = async (req, res) => {
         return res.status(400).json({ message: "Start time must be before end time" });
       }
 
-      // Check overlap for this date
-      const overlap = await Slot.findOne({
-        courtId,
-        isBooked: true,
-        startDate: currentDate,
-        $or: [{ startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } }],
-      }).populate("userId");
-
-      if (overlap) {
-        return res.status(400).json({
-          message: `Overlap found on ${overlap.startDate.toDateString()} for this court`,
-          time: `${formatTime(overlap.startTime)} - ${formatTime(overlap.endTime)}`,
-          bookedBy: overlap.userId
-            ? `${overlap.userId.firstName || ""} ${overlap.userId.lastName || ""}`.trim()
-            : "Unknown",
-        });
-      }
-
       slotsToCreate.push({
         courtId,
         startDate: new Date(currentDate),
         endDate: new Date(currentDate),
-        startTime: slotStart,
-        endTime: slotEnd,
+        startTime: startTime,
+        endTime: endTime,
         isBooked: true,
-        isMultiDay,
+        isMultiDay: start.getTime() !== end.getTime(),
         userId: user._id,
         notes,
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
     }
-
     const createdSlots = await Slot.insertMany(slotsToCreate);
-    const populatedSlots = await Slot.find({ _id: { $in: createdSlots.map(s => s._id) } })
-      .populate("userId")
-      .populate("courtId");
+
+    // --- Aggregate for populated response ---
+    const populatedSlots = await Slot.aggregate([
+      { $match: { _id: { $in: createdSlots.map((s) => s._id) } } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "courts",
+          localField: "courtId",
+          foreignField: "_id",
+          as: "court",
+        },
+      },
+      { $unwind: { path: "$court", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          slotId: "$_id",
+          courtName: "$court.courtName",
+          startDate: 1,
+          endDate: 1,
+          startTime: 1,
+          endTime: 1,
+          userFirstName: "$user.firstName",
+          userLastName: "$user.lastName",
+          phoneNumber: "$user.phoneNumber",
+          notes: 1,
+          isMultiDay: 1,
+        },
+      },
+    ]);
 
     return res.status(201).json({
       message: "Slots booked successfully",
