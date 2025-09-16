@@ -14,6 +14,15 @@ const bookingSchema = new Schema({
 
   isMultiDay: { type: Boolean, default: false },
   notes: { type: String, maxlength: 300 },
+    isGst: { type: Boolean, default: false },   
+  gst: { type: Number, default: 0 },        
+  gstNumber: { type: String },                
+  amount: { type: Number, required: true },  
+  modeOfPayment: {
+    type: String,
+    enum: ["card", "upi", "cash"],
+    required: true,
+  },
 
   status: {
     type: String,
