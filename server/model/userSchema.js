@@ -12,13 +12,13 @@ lastName:{
     trim:true
 },
 phoneNumber:{
-type:String,
+type:Number,
  required: true,
       unique: true,
       match: /^[0-9]{10}$/,
 },
 whatsAppNumber:{
-    type:String,
+    type:Number,
      required: true,
       match: /^[0-9]{10}$/,
 },

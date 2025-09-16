@@ -1,44 +1,56 @@
-// BookingForm.js
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import styles from "./AdminDashboard.module.css";
-import Tabs from './Tabs'; // Import Tabs component
+import Tabs from "./Tabs";
+import MemberTable from "./MemberTable";
+import PaymentHistory from "./PaymentHistory";
+import baseUrl from "../../baseUrl";
+import axios from "axios";
 
-const BookingForm = ({ selectedCourt, onBack }) => {
-  const [activeTab, setActiveTab] = useState('details');
+const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
+  const [activeTab, setActiveTab] = useState("details");
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    phoneNumber: '',
-    whatsappNumber: '',
-    address: '',
-    bookingDate: '',
-    startTime: '',
-    endTime: '',
-    billing: 'Hourly',
-    paymentType: 'Cash',
-    rate: ''
+    firstName: "",
+    lastName: "",
+    phoneNumber: 0,
+    whatsAppNumber: 0,
+    address: "",
+    startDate: "",
+    endDate: "",
+    startTime: "",
+    endTime: "",
+    amount: 0,
+    isGst: false, 
+    gst: 0,
+    gstNumber: "",
+    modeOfPayment: "cash",
+    courtId:selectedCourtNumber
   });
 
   const tabs = [
-    { id: 'members', label: 'Members' },
-    { id: 'details', label: 'Book Now' },
-    { id: 'booking-overview', label: 'Booking Overview' },
-    { id: 'payment-history', label: 'Payment History' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'bills', label: 'Bills' }
+    { id: "members", label: "Members" },
+    { id: "details", label: "Book Now" },
+    { id: "booking-overview", label: "Booking Overview" },
+    { id: "payment-history", label: "Payment History" },
   ];
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: field === "isGst" ? value === "yes" : value,
     }));
   };
 
-  const handleSubmit = () => {
-    console.log('Form submitted:', { ...formData, court: selectedCourt });
-    alert(`Booking for ${selectedCourt} submitted successfully!`);
-    onBack();
+  const handleSubmit = async() => {
+      console.log(formData);
+    try {
+        const res=await axios.post(`${baseUrl}/api/v1/slot/book`,formData)
+        console.log(res);
+        
+    } catch (error) {
+        console.log(error);
+        
+    }
+    // onBack();
   };
 
   return (
@@ -58,7 +70,7 @@ const BookingForm = ({ selectedCourt, onBack }) => {
 
         <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
 
-        {activeTab === 'details' && (
+        {activeTab === "details" && (
           <div className={styles.formContent}>
             <div className={styles.detailsHeader}>
               <h2>Details</h2>
@@ -73,14 +85,18 @@ const BookingForm = ({ selectedCourt, onBack }) => {
                     type="text"
                     placeholder="First Name"
                     value={formData.firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("firstName", e.target.value)
+                    }
                     className={styles.formInput}
                   />
                   <input
                     type="text"
                     placeholder="Last Name"
                     value={formData.lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("lastName", e.target.value)
+                    }
                     className={styles.formInput}
                   />
                 </div>
@@ -91,21 +107,27 @@ const BookingForm = ({ selectedCourt, onBack }) => {
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Enter Phone Number</label>
                   <input
-                    type="tel"
+                    type="number"
                     placeholder="Eg: +91XXXXXXXXX"
                     value={formData.phoneNumber}
-                    onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("phoneNumber", e.target.value)
+                    }
                     className={styles.formInput}
                   />
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label className={styles.formLabel}>Enter WhatsApp Number</label>
+                  <label className={styles.formLabel}>
+                    Enter WhatsApp Number
+                  </label>
                   <input
-                    type="tel"
+                    type="number"
                     placeholder="Eg: +91XXXXXXXXX"
-                    value={formData.whatsappNumber}
-                    onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
+                    value={formData.whatsAppNumber}
+                    onChange={(e) =>
+                      handleInputChange("whatsAppNumber", e.target.value)
+                    }
                     className={styles.formInput}
                   />
                 </div>
@@ -117,7 +139,7 @@ const BookingForm = ({ selectedCourt, onBack }) => {
                 <textarea
                   placeholder="Home / Office"
                   value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  onChange={(e) => handleInputChange("address", e.target.value)}
                   rows={3}
                   className={styles.textareaInput}
                 />
@@ -125,26 +147,44 @@ const BookingForm = ({ selectedCourt, onBack }) => {
 
               {/* Booking Details */}
               <div className={styles.formGroup}>
-                <label className={styles.formLabel}>Enter Booking Details</label>
+                <label className={styles.formLabel}>
+                  Enter Booking Details
+                </label>
                 <div className={styles.bookingInputs}>
                   <input
                     type="date"
-                    value={formData.bookingDate}
-                    onChange={(e) => handleInputChange('bookingDate', e.target.value)}
+                    value={formData.startDate}
+                    onChange={(e) =>
+                      handleInputChange("startDate", e.target.value)
+                    }
                     className={styles.formInput}
+                    placeholder="Start Date"
+                  />
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) =>
+                      handleInputChange("endDate", e.target.value)
+                    }
+                    className={styles.formInput}
+                    placeholder="End Date"
                   />
                   <input
                     type="time"
                     placeholder="Start Time"
                     value={formData.startTime}
-                    onChange={(e) => handleInputChange('startTime', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("startTime", e.target.value)
+                    }
                     className={styles.formInput}
                   />
                   <input
                     type="time"
                     placeholder="End Time"
                     value={formData.endTime}
-                    onChange={(e) => handleInputChange('endTime', e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("endTime", e.target.value)
+                    }
                     className={styles.formInput}
                   />
                 </div>
@@ -154,43 +194,78 @@ const BookingForm = ({ selectedCourt, onBack }) => {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Billing</label>
                 <div className={styles.billingInputs}>
-                  <select
-                    value={formData.billing}
-                    onChange={(e) => handleInputChange('billing', e.target.value)}
-                    className={styles.formInput}
-                  >
-                    <option>Hourly</option>
-                    <option>Daily</option>
-                    <option>Monthly</option>
-                  </select>
+                  {/* Amount field - always shown */}
                   <input
-                    type="text"
-                    placeholder="High amount for Booking"
-                    value={formData.rate}
-                    onChange={(e) => handleInputChange('rate', e.target.value)}
+                    type="number"
+                    placeholder="Amount"
+                    value={formData.amount}
+                    onChange={(e) => handleInputChange("amount", e.target.value)}
                     className={styles.formInput}
                   />
+
+                  {/* GST Applicable dropdown */}
                   <select
-                    value={formData.paymentType}
-                    onChange={(e) => handleInputChange('paymentType', e.target.value)}
+                    value={formData.isGst ? "yes" : "no"}
+                    onChange={(e) =>
+                      handleInputChange("isGst", e.target.value)
+                    }
                     className={styles.formInput}
                   >
-                    <option>Cash</option>
-                    <option>Card</option>
-                    <option>UPI</option>
+                    <option value="no">GST: No</option>
+                    <option value="yes">GST: Yes</option>
                   </select>
+
+                  {/* Conditionally show GST fields */}
+                  {formData.isGst && (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="GST Amount"
+                        value={formData.gst}
+                        onChange={(e) =>
+                          handleInputChange("gst", e.target.value)
+                        }
+                        className={styles.formInput}
+                      />
+                      <input
+                        type="text"
+                        placeholder="GST Number"
+                        value={formData.gstNumber}
+                        onChange={(e) =>
+                          handleInputChange("gstNumber", e.target.value)
+                        }
+                        className={styles.formInput}
+                      />
+                    </>
+                  )}
+
+                  {/* Payment Type dropdown */}
+                  <select
+                    value={formData.modeOfPayment}
+                    onChange={(e) =>
+                      handleInputChange("modeOfPayment", e.target.value)
+                    }
+                    className={styles.formInput}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="upi">UPI</option>
+                  </select>
+                </div>
+              </div>
+              <div className={styles.formGroup}>
+                <div className={styles.buttonContainer}>
+                  <button className={styles.button} onClick={handleSubmit}>
+                    Submit
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {activeTab !== 'details' && (
-          <div className={styles.tabContent}>
-            <h3>{tabs.find(t => t.id === activeTab)?.label}</h3>
-            <p>Content for {tabs.find(t => t.id === activeTab)?.label} will be displayed here.</p>
-          </div>
-        )}
+        {activeTab === "members" && <MemberTable />}
+        {activeTab === "payment-history" && <PaymentHistory />}
       </div>
     </div>
   );

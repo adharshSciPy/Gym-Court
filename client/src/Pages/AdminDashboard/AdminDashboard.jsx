@@ -1,29 +1,27 @@
 // AdminDashboard.js
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './AdminDashboard.module.css';
 import BookingForm from './BookingForm';
+import axios from "axios"
+import baseUrl from "../../baseUrl"
 
 function AdminDashboard() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedCourt, setSelectedCourt] = useState(null);
+  const [selectedCourtNumber,setSelectedCourtNumber]=useState(null)
+  const [courts,setCourts]=useState([])
 
-  const courts = [
-    { id: 1, name: 'Court 1' },
-    { id: 2, name: 'Court 2' },
-    { id: 3, name: 'Court 3' },
-    { id: 4, name: 'Court 4' }
-  ];
-
+ 
   const stats = [
     { label: 'Total Members', value: '250' },
-    { label: 'Inactive Members', value: '180' },
-    { label: 'Booking Details', value: '35' },
-    { label: 'Payment History', value: '30' }
+    { label: 'Booking Details', value: '35' }
   ];
 
   const handleBookNow = (court) => {
-    setSelectedCourt(court.name);
+    setSelectedCourt(court.courtName);
     setShowBookingForm(true);
+    setSelectedCourtNumber(court._id)
+    
   };
 
   const handleBackToDashboard = () => {
@@ -31,10 +29,25 @@ function AdminDashboard() {
     setSelectedCourt(null);
   };
 
-  if (showBookingForm) {
-    return <BookingForm selectedCourt={selectedCourt} onBack={handleBackToDashboard} />;
+  
+useEffect(()=>{
+  getCourts()
+},[])
+const getCourts=async () => {
+  try {
+    const response=await axios.get(`${baseUrl}/api/v1/Court/fetchCourts`);
+    if(response.status===200){
+      setCourts(response.data.data)
+    }
+    
+  } catch (error) {
+    console.log(error);
+    
   }
-
+}
+if (showBookingForm) {
+    return <BookingForm selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber} onBack={handleBackToDashboard} />;
+  }
   return (
     <div className={styles.pageContainer}>
       <div className={styles.header}>
@@ -42,16 +55,16 @@ function AdminDashboard() {
       </div>
 
       <div className={styles.courtsGrid}>
-        {courts.map((court) => (
+        {courts.map((court,index) => (
           <div
-            key={court.id}
+            key={index}
             className={styles.courtCard}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)';
               e.currentTarget.style.boxShadow = 'none';
             }}
           >
-            <div className={styles.courtName}>{court.name}</div>
+            <div className={styles.courtName}>{court.courtName}</div>
             <button
               className={styles.bookButton}
               onMouseEnter={(e) => {

@@ -12,6 +12,7 @@ const slotSchema = new Schema({
   isBooked: { type: Boolean, default: false },
   userId: { type: Schema.Types.ObjectId, ref: "User" },
   notes: { type: String },
+  
 });
 
 const Slot = mongoose.model("Slot", slotSchema);
