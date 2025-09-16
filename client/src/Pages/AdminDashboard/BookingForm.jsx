@@ -50,7 +50,7 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
         console.log(error);
         
     }
-    // onBack();
+    onBack();
   };
 
   return (
