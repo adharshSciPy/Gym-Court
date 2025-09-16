@@ -31,7 +31,6 @@ const bookSlot = async (req, res) => {
       modeOfPayment,
     } = req.body;
 
-    // --- Common Validations ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
 
     if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
