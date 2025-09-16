@@ -1,6 +1,7 @@
 import Slot from "../model/slotSchema.js";
 import Court from "../model/courtSchema.js";
 import { User } from "../model/userSchema.js";
+import Booking from "../model/bookingSchema.js"
 import mongoose from "mongoose";
 const formatTime = (date) => {
   if (!date) return null;
@@ -14,8 +15,8 @@ const bookSlot = async (req, res) => {
       courtId,
       startDate,
       endDate,
-      startTime, // expected as "HH:mm"
-      endTime,   // expected as "HH:mm"
+      startTime, 
+      endTime,   
       phoneNumber,
       firstName,
       lastName,
@@ -49,7 +50,7 @@ const bookSlot = async (req, res) => {
     let user = await User.findOne({ phoneNumber });
 
     if (!user) {
-      // ✅ Extra validation only for new users
+    
       if (!firstName) return res.status(400).json({ message: "First name is required for new users" });
       if (firstName.length > 50) return res.status(400).json({ message: "First name too long" });
 
@@ -64,7 +65,7 @@ const bookSlot = async (req, res) => {
 
       user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
     } else {
-      // ✅ Update if provided (optional for existing users)
+  
       user.firstName = firstName || user.firstName;
       user.lastName = lastName || user.lastName;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
@@ -76,8 +77,9 @@ const bookSlot = async (req, res) => {
     const [startH, startM = 0] = startTime.split(":").map(Number);
     const [endH, endM = 0] = endTime.split(":").map(Number);
 
-    if (startH === undefined || endH === undefined)
-      return res.status(400).json({ message: "Invalid time format" });
+    if (isNaN(startH) || isNaN(endH)) {
+      return res.status(400).json({ message: "Invalid time format, expected HH:mm" });
+    }
 
     // --- Prepare slots ---
     const slotsToCreate = [];
@@ -121,8 +123,8 @@ const bookSlot = async (req, res) => {
         courtId,
         startDate: new Date(currentDate),
         endDate: new Date(currentDate),
-        startTime: slotStart, // ✅ store Date
-        endTime: slotEnd,     // ✅ store Date
+        startTime: slotStart, 
+        endTime: slotEnd,     
         isBooked: true,
         isMultiDay: start.getTime() !== end.getTime(),
         userId: user._id,
@@ -171,19 +173,33 @@ const bookSlot = async (req, res) => {
         },
       },
     ]);
+   
+
+    // Create master booking record
+ const booking = await Booking.create({
+      courtId,
+      userId: user._id,
+      slotIds: createdSlots.map(s => s._id),
+      startDate: start,
+      endDate: end,
+      startTime: new Date(start.setHours(startH, startM, 0, 0)),
+      endTime: new Date(end.setHours(endH, endM, 0, 0)),
+     isMultiDay: start.toDateString() !== end.toDateString(),
+
+      notes,
+    });
 
     return res.status(201).json({
       message: "Slots booked successfully",
+      booking,
       data: populatedSlots,
+
     });
   } catch (err) {
     console.error("Error in bookSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
-
-
-
 
 const bookedSlots = async (req, res) => {
   const { id } = req.params;
