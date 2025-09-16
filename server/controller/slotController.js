@@ -1,7 +1,9 @@
 import Slot from "../model/slotSchema.js";
 import Court from "../model/courtSchema.js";
 import { User } from "../model/userSchema.js";
+import Booking from "../model/bookingSchema.js"
 import mongoose from "mongoose";
+import Billing from "../model/billingSchema.js";
 const formatTime = (date) => {
   if (!date) return null;
   const d = new Date(date);
@@ -14,34 +16,61 @@ const bookSlot = async (req, res) => {
       courtId,
       startDate,
       endDate,
-      startTime, // expected as "HH:mm"
-      endTime,   // expected as "HH:mm"
+      startTime,
+      endTime,
       phoneNumber,
       firstName,
       lastName,
       whatsAppNumber,
       address,
       notes,
+      amount,
+      isGst,
+      gst,
+      gstNumber,
+      modeOfPayment,
     } = req.body;
 
     // --- Common Validations ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
-    if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
-    if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
-    if (!phoneNumber) return res.status(400).json({ message: "Phone number is required" });
-    if (!/^[0-9]{10}$/.test(phoneNumber)) return res.status(400).json({ message: "Phone number must be 10 digits" });
-    if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long" });
 
+    if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
     const start = new Date(startDate);
     const end = new Date(endDate);
-
     if (isNaN(start) || isNaN(end)) return res.status(400).json({ message: "Invalid start or end date" });
     if (start > end) return res.status(400).json({ message: "Start date must be before end date" });
-
     const maxRangeDays = 365;
     const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     if (diffDays > maxRangeDays) return res.status(400).json({ message: `Booking cannot exceed ${maxRangeDays} days` });
 
+    if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
+    const [startH, startM = 0] = startTime.split(":").map(Number);
+    const [endH, endM = 0] = endTime.split(":").map(Number);
+    if (isNaN(startH) || isNaN(endH)) return res.status(400).json({ message: "Invalid time format, expected HH:mm" });
+
+    if (!phoneNumber) return res.status(400).json({ message: "Phone number is required" });
+    if (!/^[0-9]{10}$/.test(phoneNumber)) return res.status(400).json({ message: "Phone number must be 10 digits" });
+
+    if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long (max 300 chars)" });
+
+    // --- Payment & Billing Validations ---
+    if (amount == null) return res.status(400).json({ message: "Amount is required" });
+    if (isNaN(amount) || amount < 0) return res.status(400).json({ message: "Amount must be a positive number" });
+
+    // if (typeof isGst !== "boolean") return res.status(400).json({ message: "isGst must be a boolean" });
+
+    if (isGst) {
+      if (gst == null || isNaN(gst) || gst < 0) return res.status(400).json({ message: "GST must be a valid non-negative number" });
+      if (!gstNumber || gstNumber.length > 20) return res.status(400).json({ message: "GST Number is required and max 20 chars" });
+    }
+
+    if (!modeOfPayment) return res.status(400).json({ message: "Payment mode is required" });
+    const validPayments = ["card", "upi", "cash"];
+    if (!validPayments.includes(modeOfPayment)) {
+      return res.status(400).json({ message: "Invalid payment mode, must be card, upi, or cash" });
+    }
+
+    // --- Court Exists ---
     const court = await Court.findById(courtId);
     if (!court) return res.status(404).json({ message: "Court not found" });
 
@@ -49,35 +78,26 @@ const bookSlot = async (req, res) => {
     let user = await User.findOne({ phoneNumber });
 
     if (!user) {
-      // ✅ Extra validation only for new users
-      if (!firstName) return res.status(400).json({ message: "First name is required for new users" });
-      if (firstName.length > 50) return res.status(400).json({ message: "First name too long" });
-
-      if (!lastName) return res.status(400).json({ message: "Last name is required for new users" });
-      if (lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
-
-      if (!whatsAppNumber) return res.status(400).json({ message: "WhatsApp number is required for new users" });
-      if (!/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
-
-      if (!address) return res.status(400).json({ message: "Address is required for new users" });
-      if (address.length > 200) return res.status(400).json({ message: "Address too long" });
+      // Validate new user fields
+      if (!firstName || firstName.length > 50) return res.status(400).json({ message: "First name is required (max 50 chars)" });
+      if (!lastName || lastName.length > 50) return res.status(400).json({ message: "Last name is required (max 50 chars)" });
+      if (!whatsAppNumber || !/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
+      if (!address || address.length > 200) return res.status(400).json({ message: "Address is required (max 200 chars)" });
 
       user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
     } else {
-      // ✅ Update if provided (optional for existing users)
+      // Update if provided
+      if (firstName && firstName.length > 50) return res.status(400).json({ message: "First name too long" });
+      if (lastName && lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
+      if (whatsAppNumber && !/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
+      if (address && address.length > 200) return res.status(400).json({ message: "Address too long" });
+
       user.firstName = firstName || user.firstName;
       user.lastName = lastName || user.lastName;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
       user.address = address || user.address;
       await user.save();
     }
-
-    // --- Parse start/end times ---
-    const [startH, startM = 0] = startTime.split(":").map(Number);
-    const [endH, endM = 0] = endTime.split(":").map(Number);
-
-    if (startH === undefined || endH === undefined)
-      return res.status(400).json({ message: "Invalid time format" });
 
     // --- Prepare slots ---
     const slotsToCreate = [];
@@ -94,15 +114,12 @@ const bookSlot = async (req, res) => {
         return res.status(400).json({ message: "Start time must be before end time" });
       }
 
-      // --- Check overlap for this day ---
+      // Check overlap
       const overlap = await Slot.findOne({
         courtId,
         isBooked: true,
         $or: [
-          {
-            startTime: { $lt: slotEnd },
-            endTime: { $gt: slotStart },
-          },
+          { startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } }
         ],
       }).populate("userId");
 
@@ -121,68 +138,91 @@ const bookSlot = async (req, res) => {
         courtId,
         startDate: new Date(currentDate),
         endDate: new Date(currentDate),
-        startTime: slotStart, // ✅ store Date
-        endTime: slotEnd,     // ✅ store Date
+        startTime: slotStart,
+        endTime: slotEnd,
         isBooked: true,
         isMultiDay: start.getTime() !== end.getTime(),
         userId: user._id,
         notes,
+        amount,
+        isGst,
+        gst,
+        gstNumber,
+        modeOfPayment,
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
+    // Save slots
     const createdSlots = await Slot.insertMany(slotsToCreate);
 
-    // --- Aggregate for populated response ---
-    const populatedSlots = await Slot.aggregate([
-      { $match: { _id: { $in: createdSlots.map((s) => s._id) } } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "courts",
-          localField: "courtId",
-          foreignField: "_id",
-          as: "court",
-        },
-      },
-      { $unwind: { path: "$court", preserveNullAndEmptyArrays: true } },
-      {
-        $project: {
-          slotId: "$_id",
-          courtName: "$court.courtName",
-          startDate: 1,
-          endDate: 1,
-          startTime: 1,
-          endTime: 1,
-          userFirstName: "$user.firstName",
-          userLastName: "$user.lastName",
-          phoneNumber: "$user.phoneNumber",
-          notes: 1,
-          isMultiDay: 1,
-        },
-      },
-    ]);
+    // Save booking
+    const booking = await Booking.create({
+      courtId,
+      userId: user._id,
+      slotIds: createdSlots.map((s) => s._id),
+      startDate: start,
+      endDate: end,
+      startTime: new Date(start.setHours(startH, startM, 0, 0)),
+      endTime: new Date(end.setHours(endH, endM, 0, 0)),
+      isMultiDay: start.toDateString() !== end.toDateString(),
+      notes,
+      amount,
+      isGst,
+      gst,
+      gstNumber,
+      modeOfPayment,
+    });
+
+    // Save billing
+    await Billing.create({
+      bookingId: booking._id,
+      userId: user._id,
+      courtId,
+      amount,
+      isGst,
+      gst,
+      gstNumber,
+      modeOfPayment,
+    });
+
+    // Format response
+    const formatTime = (date) =>
+      new Date(date).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      });
+
+    const formatDate = (date) =>
+      new Date(date).toLocaleDateString("en-IN", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "Asia/Kolkata",
+      });
+
+    const formattedBooking = {
+      ...booking.toObject(),
+      startDate: formatDate(booking.startDate),
+      endDate: formatDate(booking.endDate),
+      startTime: formatTime(booking.startTime),
+      endTime: formatTime(booking.endTime),
+    };
 
     return res.status(201).json({
       message: "Slots booked successfully",
-      data: populatedSlots,
+      booking: formattedBooking,
+      
     });
   } catch (err) {
     console.error("Error in bookSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
-
-
 
 
 const bookedSlots = async (req, res) => {
