@@ -5,7 +5,8 @@ import  SidebarSwitching  from './Pages/SidebarSwitching/SidebarSwitching.jsx'; 
 import ReceptionLogin from './Pages/ReceptionLogin/ReceptionLogin.jsx';
 import ReceptionDashboard from './Pages/ReceptionDashboard/ReceptionDashboard.jsx'
 import { useState } from 'react';
-
+import BookingManagement from './Pages/BookingPage/BookingPage.jsx';
+import ReportPage from './Pages/ReportPage/ReportPage.jsx';
 function App() {
   const [activeNav, setActiveNav] = useState('Dashboard');
   
@@ -21,8 +22,10 @@ function App() {
               setActiveNav={setActiveNav} 
             />
           }/>
+          <Route path='/booking' element={<BookingManagement/>}/>
           <Route path='/ReceptionLogin' element={<ReceptionLogin/>}/>
           <Route path='/Receptiondashboard' element={<ReceptionDashboard/>}/>
+          <Route path='/report' element={<ReportPage/>}/>
         </Routes>
       </BrowserRouter>
     </div>
