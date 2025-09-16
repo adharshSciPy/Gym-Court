@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import styles from "./AdminDashboard.module.css";
 import Tabs from './Tabs'; // Import Tabs component
+import MemberTable from './MemberTable';
+import PaymentHistory from './PaymentHistory';
 
 const BookingForm = ({ selectedCourt, onBack }) => {
   const [activeTab, setActiveTab] = useState('details');
@@ -14,9 +16,10 @@ const BookingForm = ({ selectedCourt, onBack }) => {
     bookingDate: '',
     startTime: '',
     endTime: '',
-    billing: 'Hourly',
-    paymentType: 'Cash',
-    rate: ''
+    gst: '',
+    paymentType: '',
+    rate: '',
+    gstNumber:""
   });
 
   const tabs = [
@@ -24,8 +27,8 @@ const BookingForm = ({ selectedCourt, onBack }) => {
     { id: 'details', label: 'Book Now' },
     { id: 'booking-overview', label: 'Booking Overview' },
     { id: 'payment-history', label: 'Payment History' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'bills', label: 'Bills' }
+    // { id: 'reports', label: 'Reports' },
+    // { id: 'bills', label: 'Bills' }
   ];
 
   const handleInputChange = (field, value) => {
@@ -154,20 +157,25 @@ const BookingForm = ({ selectedCourt, onBack }) => {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>Billing</label>
                 <div className={styles.billingInputs}>
-                  <select
-                    value={formData.billing}
-                    onChange={(e) => handleInputChange('billing', e.target.value)}
-                    className={styles.formInput}
-                  >
-                    <option>Hourly</option>
-                    <option>Daily</option>
-                    <option>Monthly</option>
-                  </select>
                   <input
                     type="text"
-                    placeholder="High amount for Booking"
+                    placeholder="Amount"
                     value={formData.rate}
                     onChange={(e) => handleInputChange('rate', e.target.value)}
+                    className={styles.formInput}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Gst"
+                    value={formData.rate}
+                    onChange={(e) => handleInputChange('gst', e.target.value)}
+                    className={styles.formInput}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Gst Number"
+                    value={formData.rate}
+                    onChange={(e) => handleInputChange('gstNumber', e.target.value)}
                     className={styles.formInput}
                   />
                   <select
@@ -181,15 +189,21 @@ const BookingForm = ({ selectedCourt, onBack }) => {
                   </select>
                 </div>
               </div>
+                <div className={styles.formGroup}>
+                    <div className={styles.buttonContainer}>
+                        <button className={styles.button}>Submit</button>
+                    </div>
+                </div>
+
             </div>
           </div>
         )}
 
-        {activeTab !== 'details' && (
-          <div className={styles.tabContent}>
-            <h3>{tabs.find(t => t.id === activeTab)?.label}</h3>
-            <p>Content for {tabs.find(t => t.id === activeTab)?.label} will be displayed here.</p>
-          </div>
+        {activeTab === 'members' && (
+          <MemberTable/>
+        )}
+        {activeTab === 'payment-history' && (
+          <PaymentHistory/>
         )}
       </div>
     </div>

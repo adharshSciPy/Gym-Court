@@ -385,3 +385,17 @@
   margin: 0;
 }
 
+.button{
+  padding: 10px 100px;
+  border: none;
+  background-color: #52946B;
+  color: white;
+  border-radius: 10px;
+}
+.buttonContainer{
+  display: flex;
+  align-items: center ;
+  justify-content: center;
+  margin-top: 30px;
+
+}

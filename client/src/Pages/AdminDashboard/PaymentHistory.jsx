@@ -1,8 +1,9 @@
+
 import React, { useState } from "react";
-import { Search, Trash2, MessageCircle, Eye } from "lucide-react";
+import { Search, MessageCircle, File, Eye } from "lucide-react";
 import styles from "./MemberTable.module.css";
 
-const MemberTable = () => {
+function PaymentHistory() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const members = [
@@ -128,7 +129,6 @@ const MemberTable = () => {
   const handleView = (memberName) => {
     alert(`View details for ${memberName}`);
   };
-
   return (
     <div className={styles.container}>
       <div className={styles.searchContainer}>
@@ -149,45 +149,29 @@ const MemberTable = () => {
           <thead>
             <tr className={styles.headerRow}>
               <th className={styles.th}>Name</th>
-              <th className={styles.th}>Phone Number</th>
-              <th className={styles.th}>WhatsApp Number</th>
               <th className={styles.th}>Booking Date</th>
               <th className={styles.th}>Ended Date</th>
-              <th className={styles.th}>Booking Slots</th>
-              <th className={styles.th}>Subscription </th>
-              <th className={styles.th}>Actions</th>
+              <th className={styles.th}>Payment Method</th>
+              <th className={styles.th}>Bills</th>
             </tr>
           </thead>
           <tbody>
             {filteredMembers.map((member, index) => (
               <tr key={index} className={styles.bodyRow}>
                 <td className={styles.td}>{member.name}</td>
-                <td className={styles.td}>{member.phone}</td>
-                <td className={styles.td}>{member.whatsapp}</td>
+                <td className={styles.td}>{member.bookingDate}</td>
                 <td className={styles.td}>{member.bookingDate}</td>
                 <td className={styles.td}>{member.endedDate}</td>
-                <td className={styles.td}>{member.bookingSlots}</td>
-                <td className={styles.td}>
-                  <span
-                    className={`${styles.status} ${
-                      member.status === "Active"
-                        ? styles.statusActive
-                        : styles.statusExpired
-                    }`}
-                  >
-                    {member.status}
-                  </span>
-                </td>
+                
                 <td className={styles.td}>
                   <div className={styles.actionButtons}>
-                    
                     {/* <button 
                       className={styles.actionButton}
                       onClick={() => handleEdit(member.name)}
                     >
                       <Edit size={16} />
                     </button> */}
-                    
+
                     <button
                       className={`${styles.actionButton} ${styles.whatsappButton}`}
                       onClick={() => handleWhatsApp(member.name)}
@@ -210,11 +194,9 @@ const MemberTable = () => {
                       className={`${styles.actionButton} ${styles.deleteButton}`}
                       onClick={() => handleDelete(member.name)}
                     >
-                      <Trash2 size={16} />
+                      <File size={16} />
                     </button>
-                    {member.status === "Expired" && (
-                      <button className={styles.renewButton}>Renew</button>
-                    )}
+                 
                   </div>
                 </td>
               </tr>
@@ -224,6 +206,6 @@ const MemberTable = () => {
       </div>
     </div>
   );
-};
+}
 
-export default MemberTable;
+export default PaymentHistory;
