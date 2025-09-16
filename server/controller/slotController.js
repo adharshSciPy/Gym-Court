@@ -389,7 +389,7 @@ const cancelBooking = async (req, res) => {
 };
 const renewSlot = async (req, res) => {
   try {
-    const { bookingId } = req.params;
+    const {id: bookingId } = req.params;
     const {
       courtId,
       startDate,
