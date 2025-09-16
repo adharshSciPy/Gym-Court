@@ -5,7 +5,7 @@ const userRole=process.env.USER_ROLE
 const userSchema=new Schema({
 firstName:{
     type:String,
-    trim:true
+    trim:true,
 },
 lastName:{
     type:String,
