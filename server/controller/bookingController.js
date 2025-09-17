@@ -199,16 +199,16 @@ const getLatestBookings = async (req, res) => {
 
 const getFullBookingHistory = async (req, res) => {
   try {
-    const { courtId, status, startDate, endDate, page = 1, limit = 10 } = req.query;
+    const { courtId, status, startDate, endDate, search, page = 1, limit = 10 } = req.query;
     const now = new Date();
-    const query = {};
+    const matchConditions = {};
 
     // --- Court filter ---
     if (courtId) {
       if (!mongoose.Types.ObjectId.isValid(courtId)) {
         return res.status(400).json({ message: "Invalid courtId" });
       }
-      query.courtId = courtId;
+      matchConditions.courtId = new mongoose.Types.ObjectId(courtId);
     }
 
     // --- Status filter ---
@@ -238,7 +238,7 @@ const getFullBookingHistory = async (req, res) => {
       }
 
       if (statusConditions.length) {
-        query.$or = statusConditions;
+        matchConditions.$or = statusConditions;
       }
     }
 
@@ -246,64 +246,150 @@ const getFullBookingHistory = async (req, res) => {
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-      query.endDate = { ...query.endDate, $gte: start }; // bookings ending after startDate
+      matchConditions.endDate = { ...matchConditions.endDate, $gte: start };
     }
 
     if (endDate) {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      query.startDate = { ...query.startDate, $lte: end }; // bookings starting before endDate
+      matchConditions.startDate = { ...matchConditions.startDate, $lte: end };
     }
 
-    // --- Pagination ---
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
 
-    // --- Fetch bookings & counts ---
-    const [bookings, totalCount, cancelledCount, bookedCount] = await Promise.all([
-      Booking.find(query)
-        .populate("userId", "firstName lastName phoneNumber whatsAppNumber email")
-        .populate("courtId", "courtName surface totalSlots")
-        .populate("slotIds", "date startTime endTime isBooked")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
+    // --- Aggregation pipeline ---
+    const pipeline = [
+      { $match: matchConditions },
 
-      Booking.countDocuments(query),
-      Booking.countDocuments({ ...query, status: "cancelled" }),
-      Booking.countDocuments({ ...query, status: { $ne: "cancelled" } }),
-    ]);
+      // Join user
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
 
-    // --- Formatting helpers ---
+      // Search filter
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      // Join court
+      {
+        $lookup: {
+          from: "courts",
+          localField: "courtId",
+          foreignField: "_id",
+          as: "court",
+        },
+      },
+      { $unwind: "$court" },
+
+      // Join slots
+      {
+        $lookup: {
+          from: "slots",
+          localField: "slotIds",
+          foreignField: "_id",
+          as: "slots",
+        },
+      },
+
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limitNum },
+    ];
+
+    const bookings = await Booking.aggregate(pipeline);
+
+    // --- Count for pagination ---
+    const countPipeline = [
+      { $match: matchConditions },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
+
+    const totalDocs = await Booking.aggregate(countPipeline);
+    const totalCount = totalDocs.length > 0 ? totalDocs[0].total : 0;
+
+    // --- Format date/time ---
     const formatTime = (date) =>
       date
-        ? new Date(date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
+        ? new Date(date).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Kolkata",
+          })
         : null;
 
     const formatDate = (date) =>
       date
-        ? new Date(date).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" })
+        ? new Date(date).toLocaleDateString("en-IN", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "Asia/Kolkata",
+          })
         : null;
 
     const formattedBookings = bookings.map((b) => ({
-      ...b.toObject(),
+      ...b,
       startDate: formatDate(b.startDate),
       endDate: formatDate(b.endDate),
       startTime: formatTime(b.startTime),
       endTime: formatTime(b.endTime),
-      slotIds: b.slotIds.map((s) => ({
-        ...s.toObject(),
+      slots: b.slots.map((s) => ({
+        ...s,
         startTime: formatTime(s.startTime),
         endTime: formatTime(s.endTime),
       })),
     }));
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Booking history fetched successfully",
       totalCount,
-      cancelledCount,
-      bookedCount,
-      page: parseInt(page),
-      totalPages: Math.ceil(totalCount / limit),
+      page: pageNum,
+      totalPages: Math.ceil(totalCount / limitNum),
       bookings: formattedBookings,
     });
   } catch (error) {
@@ -311,6 +397,7 @@ const getFullBookingHistory = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 
