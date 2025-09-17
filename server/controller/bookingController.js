@@ -1,20 +1,68 @@
 import Booking from "../model/bookingSchema.js";
+import Slot from "../model/slotSchema.js";
+import { User } from "../model/userSchema.js";
+import Court from "../model/courtSchema.js";
+import mongoose from "mongoose";
 const getLatestBookings = async (req, res) => {
   try {
-    const latestBookings = await Booking.aggregate([
+    const {
+      search,     
+      startDate,  
+      endDate,      
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+   
+    const matchConditions = {};
+
+   
+    if (startDate || endDate) {
+  matchConditions.startDate = {};
+
+  if (startDate) {
+    const startOfDay = new Date(startDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    matchConditions.startDate.$gte = startOfDay;
+  }
+
+  if (endDate) {
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    matchConditions.startDate.$lte = endOfDay;
+  }
+}
+    const pipeline = [
+      { $match: matchConditions },
+
       { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
       { $group: { _id: "$userId", latestBooking: { $first: "$$ROOT" } } },
 
-      // Join User
       {
         $lookup: {
           from: "users",
           localField: "latestBooking.userId",
           foreignField: "_id",
-          as: "user"
-        }
+          as: "user",
+        },
       },
       { $unwind: "$user" },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
 
       // Join Court
       {
@@ -22,8 +70,8 @@ const getLatestBookings = async (req, res) => {
           from: "courts",
           localField: "latestBooking.courtId",
           foreignField: "_id",
-          as: "court"
-        }
+          as: "court",
+        },
       },
       { $unwind: "$court" },
 
@@ -34,6 +82,7 @@ const getLatestBookings = async (req, res) => {
           firstName: "$user.firstName",
           lastName: "$user.lastName",
           phoneNumber: "$user.phoneNumber",
+          whatsAppNumber: "$user.whatsAppNumber",
           courtName: "$court.courtName",
           startDate: "$latestBooking.startDate",
           endDate: "$latestBooking.endDate",
@@ -47,12 +96,50 @@ const getLatestBookings = async (req, res) => {
           isGst: "$latestBooking.isGst",
           gst: "$latestBooking.gst",
           gstNumber: "$latestBooking.gstNumber",
-        }
-      }
-    ]);
+        },
+      },
+
+      // Pagination
+      { $skip: skip },
+      { $limit: limitNum },
+    ];
+
+    // Run pipeline
+    const latestBookings = await Booking.aggregate(pipeline);
+
+    // Total count for pagination
+    const totalCountPipeline = [
+      { $match: matchConditions },
+      { $group: { _id: "$userId", latestBooking: { $first: "$$ROOT" } } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "latestBooking.userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
+
+    const totalDocs = await Booking.aggregate(totalCountPipeline);
+    const total = totalDocs.length > 0 ? totalDocs[0].total : 0;
 
     // Format date & time properly
-    const formattedBookings = latestBookings.map(b => {
+    const formattedBookings = latestBookings.map((b) => {
       const startIST = b.startTime
         ? new Date(b.startTime).toLocaleTimeString("en-IN", {
             hour: "2-digit",
@@ -72,20 +159,7 @@ const getLatestBookings = async (req, res) => {
         : null;
 
       return {
-        bookingId: b.bookingId,
-        userId: b.userId,
-        firstName: b.firstName,
-        lastName: b.lastName,
-        phoneNumber: b.phoneNumber,
-        courtName: b.courtName,
-        notes: b.notes || "",
-        status: b.status || "confirmed",
-        isMultiDay: b.isMultiDay || false,
-        amount: b.amount,
-        modeOfPayment: b.modeOfPayment,
-        isGst: b.isGst,
-        gst: b.gst,
-        gstNumber: b.gstNumber,
+        ...b,
         startDate: b.startDate
           ? new Date(b.startDate).toLocaleDateString("en-IN", {
               weekday: "short",
@@ -110,8 +184,11 @@ const getLatestBookings = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "Latest booking for all users",
+      message: "Latest bookings fetched successfully",
       count: formattedBookings.length,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
       data: formattedBookings,
     });
   } catch (err) {
@@ -120,5 +197,165 @@ const getLatestBookings = async (req, res) => {
   }
 };
 
+const getFullBookingHistory = async (req, res) => {
+  try {
+    const {
+      courtId,
+      status, // e.g. "upcoming,active"
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-export{getLatestBookings}
+    const now = new Date();
+    const andConditions = [];
+
+    // --- Court filter ---
+    if (courtId) {
+      if (!mongoose.Types.ObjectId.isValid(courtId)) {
+        return res.status(400).json({ message: "Invalid courtId" });
+      }
+      andConditions.push({ courtId: new mongoose.Types.ObjectId(courtId) });
+    }
+
+    // --- Status filter ---
+    if (status && status !== "all") {
+      const statuses = status.split(",").map((s) => s.trim());
+      const statusConditions = [];
+
+      for (let s of statuses) {
+        switch (s) {
+          case "cancelled":
+            statusConditions.push({ status: "cancelled" });
+            break;
+          case "upcoming":
+            statusConditions.push({
+              startDate: { $gt: now },
+              status: { $ne: "cancelled" },
+            });
+            break;
+          case "active":
+            statusConditions.push({
+              startDate: { $lte: now },
+              endDate: { $gte: now },
+              status: { $ne: "cancelled" },
+            });
+            break;
+          case "expired":
+            statusConditions.push({
+              endDate: { $lt: now },
+              status: { $ne: "cancelled" },
+            });
+            break;
+        }
+      }
+
+      if (statusConditions.length) {
+        andConditions.push({ $or: statusConditions });
+      }
+    }
+
+    // --- Date filter (single or range) ---
+    if (startDate || endDate) {
+      const start = startDate ? new Date(startDate) : new Date("1970-01-01");
+      start.setHours(0, 0, 0, 0);
+
+      const end = endDate ? new Date(endDate) : new Date("2100-01-01");
+      end.setHours(23, 59, 59, 999);
+
+      // Include bookings that overlap the date/range
+      andConditions.push({
+        $or: [
+          { startDate: { $gte: start, $lte: end } },
+          { endDate: { $gte: start, $lte: end } },
+          { startDate: { $lte: start }, endDate: { $gte: end } },
+        ],
+      });
+    }
+
+    // --- Final query ---
+    const baseQuery = andConditions.length ? { $and: andConditions } : {};
+
+    // --- Pagination ---
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // --- Fetch bookings & counts ---
+    const [bookings, totalCount, cancelledCount, bookedCount] = await Promise.all([
+      Booking.find(baseQuery)
+        .populate("userId", "firstName lastName phoneNumber email")
+        .populate("courtId", "courtName surface totalSlots")
+        .populate("slotIds", "date startTime endTime isBooked")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+
+      // total count (all filtered bookings)
+      Booking.countDocuments(baseQuery),
+
+      // only cancelled
+      Booking.countDocuments({
+        $and: [...(andConditions || []), { status: "cancelled" }],
+      }),
+
+      // all except cancelled
+      Booking.countDocuments({
+        $and: [...(andConditions || []), { status: { $ne: "cancelled" } }],
+      }),
+    ]);
+
+    // --- Formatting helpers ---
+    const formatTime = (date) =>
+      date
+        ? new Date(date).toLocaleTimeString("en-IN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: "Asia/Kolkata",
+          })
+        : null;
+
+    const formatDate = (date) =>
+      date
+        ? new Date(date).toLocaleDateString("en-IN", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "Asia/Kolkata",
+          })
+        : null;
+
+    // --- Format bookings ---
+    const formattedBookings = bookings.map((b) => ({
+      ...b.toObject(),
+      startDate: formatDate(b.startDate),
+      endDate: formatDate(b.endDate),
+      startTime: formatTime(b.startTime),
+      endTime: formatTime(b.endTime),
+      slotIds: b.slotIds.map((s) => ({
+        ...s.toObject(),
+        startTime: formatTime(s.startTime),
+        endTime: formatTime(s.endTime),
+      })),
+    }));
+
+    // --- Response ---
+    res.status(200).json({
+      message: "Booking history fetched successfully",
+      totalCount,
+      cancelledCount,
+      bookedCount,
+      page: parseInt(page),
+      totalPages: Math.ceil(totalCount / limit),
+      bookings: formattedBookings,
+    });
+  } catch (error) {
+    console.error("Error fetching booking history:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+export{getLatestBookings,getFullBookingHistory}

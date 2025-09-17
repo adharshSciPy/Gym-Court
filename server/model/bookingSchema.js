@@ -26,7 +26,7 @@ const bookingSchema = new Schema({
 
   status: {
     type: String,
-    enum: ["upcoming", "active", "expired"],
+    enum: ["upcoming", "active", "expired","cancelled"],
     default: "upcoming",
   }
 }, { timestamps: true });
