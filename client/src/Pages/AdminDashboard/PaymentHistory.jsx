@@ -1,110 +1,14 @@
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, MessageCircle, File, Eye } from "lucide-react";
 import styles from "./MemberTable.module.css";
+import baseUrl from "../../baseUrl";
+import axios from "axios";
 
-function PaymentHistory() {
+function PaymentHistory({selectedCourtNumber}) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [billData,setBillData]=useState([])
 
-  const members = [
-    {
-      name: "Ethan Harper",
-      phone: "555-123-4567",
-      whatsapp: "555-987-6543",
-      bookingDate: "2024-07-15",
-      endedDate: "2024-08-15",
-      bookingSlots: "10:00 AM - 11:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Olivia Bennett",
-      phone: "555-234-5678",
-      whatsapp: "555-876-5432",
-      bookingDate: "2024-07-20",
-      endedDate: "2024-08-20",
-      bookingSlots: "09:00 AM - 10:00 AM",
-      status: "Active",
-    },
-    {
-      name: "Noah Carter",
-      phone: "555-345-6789",
-      whatsapp: "555-765-4321",
-      bookingDate: "2024-07-25",
-      endedDate: "2024-08-25",
-      bookingSlots: "08:00 AM - 09:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Ava Davis",
-      phone: "555-456-7890",
-      whatsapp: "555-654-3210",
-      bookingDate: "2024-07-30",
-      endedDate: "2024-08-30",
-      bookingSlots: "07:00 AM - 08:00 AM",
-      status: "Active",
-    },
-    {
-      name: "Liam Evans",
-      phone: "555-567-8901",
-      whatsapp: "555-543-2109",
-      bookingDate: "2024-08-05",
-      endedDate: "2024-09-05",
-      bookingSlots: "06:00 AM - 07:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Sophia Foster",
-      phone: "555-678-9012",
-      whatsapp: "555-432-1098",
-      bookingDate: "2024-08-10",
-      endedDate: "2024-09-10",
-      bookingSlots: "05:00 AM - 06:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Jackson Green",
-      phone: "555-789-0123",
-      whatsapp: "555-321-0987",
-      bookingDate: "2024-08-15",
-      endedDate: "2024-09-15",
-      bookingSlots: "04:00 AM - 05:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Isabella Hayes",
-      phone: "555-890-1234",
-      whatsapp: "555-210-9876",
-      bookingDate: "2024-08-20",
-      endedDate: "2024-09-20",
-      bookingSlots: "03:00 AM - 04:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Aiden Ingram",
-      phone: "555-901-2345",
-      whatsapp: "555-109-8765",
-      bookingDate: "2024-08-25",
-      endedDate: "2024-09-25",
-      bookingSlots: "02:00 AM - 03:00 AM",
-      status: "Expired",
-    },
-    {
-      name: "Mia Jenkins",
-      phone: "555-012-3456",
-      whatsapp: "555-098-7654",
-      bookingDate: "2024-08-30",
-      endedDate: "2024-09-30",
-      bookingSlots: "01:00 AM - 02:00 AM",
-      status: "Expired",
-    },
-  ];
-
-  const filteredMembers = members.filter(
-    (member) =>
-      member.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phone.includes(searchTerm) ||
-      member.whatsapp.includes(searchTerm)
-  );
 
 //   const handleRenew = (memberName) => {
 //     alert(`Renew subscription for ${memberName}`);
@@ -129,6 +33,20 @@ function PaymentHistory() {
   const handleView = (memberName) => {
     alert(`View details for ${memberName}`);
   };
+  useEffect(()=>{
+    const getPaymentHistory=async () => {
+    try {
+      const res=await axios.get(`${baseUrl}/api/v1/billings/court-payment-history/${selectedCourtNumber}`)
+      console.log(res);
+      setBillData(res.data.billings)
+      
+    } catch (error) {
+      console.log(error);
+      
+    }
+  }
+  getPaymentHistory()
+  },[selectedCourtNumber])
   return (
     <div className={styles.container}>
       <div className={styles.searchContainer}>
@@ -156,12 +74,12 @@ function PaymentHistory() {
             </tr>
           </thead>
           <tbody>
-            {filteredMembers.map((member, index) => (
+            {billData?.map((member, index) => (
               <tr key={index} className={styles.bodyRow}>
-                <td className={styles.td}>{member.name}</td>
-                <td className={styles.td}>{member.bookingDate}</td>
-                <td className={styles.td}>{member.bookingDate}</td>
-                <td className={styles.td}>{member.endedDate}</td>
+                <td className={styles.td}>{member.userId?.firstName || ""}</td>
+                <td className={styles.td}>{member.bookingId?.startDate || ""}</td>
+                <td className={styles.td}>{member.bookingId?.endDate || ""}</td>
+                <td className={styles.td}>{member.bookingId?.modeOfPayment || ""}</td>
                 
                 <td className={styles.td}>
                   <div className={styles.actionButtons}>

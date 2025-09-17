@@ -264,8 +264,8 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
           </div>
         )}
 
-        {activeTab === "members" && <MemberTable />}
-        {activeTab === "payment-history" && <PaymentHistory />}
+        {activeTab === "members" && <MemberTable selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber}/>}
+        {activeTab === "payment-history" && <PaymentHistory  selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber} />}
         {activeTab === "booking-overview" && <BookingOverView selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber}   />}
 
       </div>

@@ -104,7 +104,7 @@ function SettingsPage() {
   };
 
   // Disable button if any field is invalid or has errors
-  const isDisabled = 
+  const isDisabled =
     !formData.userName.trim() ||
     formData.userName.length < 4 ||
     !formData.receptionistEmail.trim() ||
@@ -117,61 +117,123 @@ function SettingsPage() {
   return (
     <div className={styles.container}>
       <h2 className={styles.heading}>Settings</h2>
-      <form className={styles.form} onSubmit={handleSubmit} noValidate>
-        <h3 className={styles.subheading}>Add Receptionist</h3>
+      <div className={styles.main}>
+        <div className={styles.addreceptionist}>
+          <form className={styles.form} onSubmit={handleSubmit} noValidate>
+            <h3 className={styles.subheading}>Add Receptionist</h3>
 
-        <div className={styles.spacer}>
-          <label>Name</label>
-          <input 
-            type="text"
-            name="userName"
-            value={formData.userName}
-            onChange={handleChange}
-            placeholder="Enter name"
-          />
-          {errors.userName && <span className={styles.error}>{errors.userName}</span>}
+            <div className={styles.spacer}>
+              <label>Name</label>
+              <input
+                type="text"
+                name="userName"
+                value={formData.userName}
+                onChange={handleChange}
+                placeholder="Enter name"
+              />
+              {errors.userName && <span className={styles.error}>{errors.userName}</span>}
+            </div>
+
+            <div className={styles.spacer}>
+              <label>Email</label>
+              <input
+                type="email"
+                name="receptionistEmail"
+                value={formData.receptionistEmail}
+                onChange={handleChange}
+                placeholder="Enter email"
+              />
+              {errors.receptionistEmail && <span className={styles.error}>{errors.receptionistEmail}</span>}
+            </div>
+
+            <div className={styles.spacer}>
+              <label>Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter password"
+              />
+              {errors.password && <span className={styles.error}>{errors.password}</span>}
+            </div>
+
+            <div className={styles.spacer}>
+              <label>Phone</label>
+              <input
+                type="tel"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="Enter phone number"
+              />
+              {errors.phoneNumber && <span className={styles.error}>{errors.phoneNumber}</span>}
+            </div>
+
+            <button className={styles.button} type="submit" disabled={isDisabled}>
+              Submit
+            </button>
+          </form>
         </div>
 
-        <div className={styles.spacer}>
-          <label>Email</label>
-          <input 
-            type="email"
-            name="receptionistEmail"
-            value={formData.receptionistEmail}
-            onChange={handleChange}
-            placeholder="Enter email"
-          />
-          {errors.receptionistEmail && <span className={styles.error}>{errors.receptionistEmail}</span>}
-        </div>
+        <div className={styles.addtrainer}>
+          <form className={styles.form} onSubmit={handleSubmit} noValidate>
+            <h3 className={styles.subheading}>Add Trainer</h3>
 
-        <div className={styles.spacer}>
-          <label>Password</label>
-          <input 
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Enter password"
-          />
-          {errors.password && <span className={styles.error}>{errors.password}</span>}
-        </div>
+            <div className={styles.spacer}>
+              <label>Name</label>
+              <input
+                type="text"
+                name="userName"
+                value={formData.userName}
+                onChange={handleChange}
+                placeholder="Enter name"
+              />
+              {errors.userName && <span className={styles.error}>{errors.userName}</span>}
+            </div>
 
-        <div className={styles.spacer}>
-          <label>Phone</label>
-          <input 
-            type="tel"
-            name="phoneNumber"
-            value={formData.phoneNumber}
-            onChange={handleChange}
-            placeholder="Enter phone number"
-          />
-          {errors.phoneNumber && <span className={styles.error}>{errors.phoneNumber}</span>}
-        </div>
+            <div className={styles.spacer}>
+              <label>Email</label>
+              <input
+                type="email"
+                name="receptionistEmail"
+                value={formData.receptionistEmail}
+                onChange={handleChange}
+                placeholder="Enter email"
+              />
+              {errors.receptionistEmail && <span className={styles.error}>{errors.receptionistEmail}</span>}
+            </div>
 
-        <button className={styles.button} type="submit" disabled={isDisabled}>
-          Submit
-        </button>
-      </form>
+            <div className={styles.spacer}>
+              <label>Password</label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter password"
+              />
+              {errors.password && <span className={styles.error}>{errors.password}</span>}
+            </div>
+
+            <div className={styles.spacer}>
+              <label>Phone</label>
+              <input
+                type="tel"
+                name="phoneNumber"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="Enter phone number"
+              />
+              {errors.phoneNumber && <span className={styles.error}>{errors.phoneNumber}</span>}
+            </div>
+
+            <button className={styles.button} type="submit" disabled={isDisabled}>
+              Submit
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
