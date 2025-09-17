@@ -38,7 +38,7 @@ const MemberTable = (selectedCourtNumber) => {
 
       // Add search parameter if it has a value
       if (search.trim()) {
-        params.search = parseInt(search); 
+        params.search = search; 
       }
       if (startDate) {
         params.startDate = startDate;
@@ -227,9 +227,9 @@ const handleEndDate=(e)=>{
             ) : (
               bookingHistory.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
-                  <td className={styles.td}>{member.userId?.firstName}</td>
-                  <td className={styles.td}>{member.userId?.phoneNumber}</td>
-                  <td className={styles.td}>{member.userId?.whatsAppNumber}</td>
+                  <td className={styles.td}>{member.user?.firstName}</td>
+                  <td className={styles.td}>{member.user?.phoneNumber}</td>
+                  <td className={styles.td}>{member.user?.whatsAppNumber}</td>
                   <td className={styles.td}>{member.startDate}</td>
                   <td className={styles.td}>{member.endDate}</td>
                   <td className={styles.td}>{`${member.startTime}-${member.endTime}`}</td>
