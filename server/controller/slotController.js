@@ -379,32 +379,53 @@ const bookSlot = async (req, res) => {
 
 const cancelBooking = async (req, res) => {
   try {
-    const { id } = req.params; // slotId
+    const { id } = req.params; // bookingId
 
-    const slot = await Slot.findById(id);
-
-    if (!slot) {
-      return res.status(404).json({ message: "Slot not found" });
+    // Find booking with slots
+    const booking = await Booking.findById(id).populate("slotIds");
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
 
-    if (!slot.isBooked) {
-      return res.status(400).json({ message: "Slot is not booked" });
+    if (["cancelled", "expired"].includes(booking.status)) {
+      return res.status(400).json({ message: `Booking is already ${booking.status}` });
     }
 
-    // Cancel booking
-    slot.isBooked = false;
-    slot.userId = null;   // remove the booked user
-    slot.notes = null;    // clear notes
+    // --- Cancellation cutoff check (e.g. 1 hour before start time) ---
+    const cutoffMinutes = 60; // change as needed
+    const now = new Date();
+    const bookingStart = new Date(booking.startDate + " " + booking.startTime); // adjust if you store times differently
 
-    await slot.save();
+    if (bookingStart - now <= cutoffMinutes * 60 * 1000) {
+      return res.status(400).json({
+        message: `Cancellations are not allowed within ${cutoffMinutes} minutes of start time`,
+      });
+    }
 
-    res.status(200).json({ message: "Booking cancelled successfully", data: slot });
+    // Mark booking as cancelled
+    booking.status = "cancelled";
+    await booking.save();
+
+    // Free all slots linked to this booking
+    await Slot.updateMany(
+      { _id: { $in: booking.slotIds } },
+      { $set: { isBooked: false, userId: null, notes: null } }
+    );
+
+    res.status(200).json({
+      message: "Booking cancelled successfully",
+      data: booking,
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error cancelling booking", error: error.message });
+    res.status(500).json({
+      message: "Error cancelling booking",
+      error: error.message,
+    });
   }
 };
+
+
+
 const renewSlot = async (req, res) => {
   try {
     const {id: bookingId } = req.params;

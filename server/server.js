@@ -10,6 +10,7 @@ import trainerRoute from "./routes/trainerRoute.js";
 import userRouter from "./routes/userRoute.js";
 import bookingRouter from "./routes/bookingRoute.js";
 import "./utils/bookingStatusCronJob.js"
+import billingRouter from "./routes/billingRoute.js";
 
 dotenv.config();
 connectDB();
@@ -29,6 +30,8 @@ app.use('/api/v1/slot', slotRouter)
 app.use('/api/v1/trainer', trainerRoute)
 app.use('/api/v1/user', userRouter)
 app.use('/api/v1/bookings',bookingRouter)
+app.use('/api/v1/billings',billingRouter)
+
 
 
 // Server listen
