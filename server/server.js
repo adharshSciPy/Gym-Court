@@ -8,7 +8,8 @@ import receptionistRouter from "./routes/receptionistRoute.js";
 import slotRouter from "./routes/slotRoute.js";
 import userRouter from "./routes/userRoute.js";
 import bookingRouter from "./routes/bookingRoute.js";
-import "./utils/bookingStatusCronJob.js"
+import "./utils/bookingStatusCronJob.js";
+import "./utils/gymSubscriptionCronJob.js";
 import billingRouter from "./routes/billingRoute.js";
 import gymRouter from "./routes/gymRoute.js";
 import trainerRouter from "./routes/trainerRoute.js"

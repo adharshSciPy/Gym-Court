@@ -58,7 +58,7 @@ const createGym = async (req, res) => {
   }
 };
 
-// Utility to validate 10-digit phone numbers
+
 const isValidPhone = (num) => /^[0-9]{10}$/.test(num);
 
 const registerToGym = async (req, res) => {
@@ -119,6 +119,27 @@ const registerToGym = async (req, res) => {
     const subscriptionEnd = new Date(subscriptionStart);
     subscriptionEnd.setMonth(subscriptionEnd.getMonth() + subscriptionMonths);
 
+    // --- Overlap validation ---
+    if (user && user.subscription) {
+      const { startDate: existingStart, endDate: existingEnd, status } = user.subscription;
+
+      if (status === "active") {
+        const existingStartDate = new Date(existingStart);
+        const existingEndDate = new Date(existingEnd);
+
+        const overlaps =
+          (subscriptionStart <= existingEndDate && subscriptionEnd >= existingStartDate);
+
+        if (overlaps) {
+          await session.abortTransaction();
+          session.endSession();
+          return res
+            .status(400)
+            .json({ message: "User already has an active subscription in this period" });
+        }
+      }
+    }
+
     if (!user) {
       // New user validations
       if (!name || name.length > 50) return res.status(400).json({ message: "Valid name is required" });
@@ -148,6 +169,11 @@ const registerToGym = async (req, res) => {
         { session }
       );
       user = user[0];
+
+      // 🔗 Add user to trainer's users array
+      trainer.users.push(user._id);
+      await trainer.save({ session });
+
     } else {
       // Existing user: update optional fields
       user.name = name || user.name;
@@ -166,6 +192,12 @@ const registerToGym = async (req, res) => {
       };
 
       await user.save({ session });
+
+      // 🔗 Ensure user is in trainer's users array
+      if (!trainer.users.includes(user._id)) {
+        trainer.users.push(user._id);
+        await trainer.save({ session });
+      }
     }
 
     // --- Save billing info ---
@@ -200,6 +232,8 @@ const registerToGym = async (req, res) => {
     res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
+
+
 
 
 export{createGym,registerToGym}

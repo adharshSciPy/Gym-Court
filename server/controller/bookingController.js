@@ -5,43 +5,37 @@ import Court from "../model/courtSchema.js";
 import mongoose from "mongoose";
 const getLatestBookings = async (req, res) => {
   try {
-    const {
-      search,     
-      startDate,  
-      endDate,      
-      page = 1,
-      limit = 10,
-    } = req.query;
+    const { search, startDate, endDate, page = 1, limit = 10 } = req.query;
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-   
     const matchConditions = {};
 
-   
+    // --- Date filter ---
     if (startDate || endDate) {
-  matchConditions.startDate = {};
+      const start = startDate ? new Date(startDate) : new Date("1970-01-01");
+      start.setHours(0, 0, 0, 0);
 
-  if (startDate) {
-    const startOfDay = new Date(startDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    matchConditions.startDate.$gte = startOfDay;
-  }
+      const end = endDate ? new Date(endDate) : new Date("2100-01-01");
+      end.setHours(23, 59, 59, 999);
 
-  if (endDate) {
-    const endOfDay = new Date(endDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    matchConditions.startDate.$lte = endOfDay;
-  }
-}
+      matchConditions.startDate = { $lte: end };
+      matchConditions.endDate = { $gte: start };
+    }
+
+    // --- Aggregation pipeline ---
     const pipeline = [
       { $match: matchConditions },
 
+      // Sort by newest first
       { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
-      { $group: { _id: "$userId", latestBooking: { $first: "$$ROOT" } } },
 
+      // Group by userId + courtId → latest booking per user per court
+      { $group: { _id: { userId: "$userId", courtId: "$courtId" }, latestBooking: { $first: "$$ROOT" } } },
+
+      // Lookup user
       {
         $lookup: {
           from: "users",
@@ -51,20 +45,8 @@ const getLatestBookings = async (req, res) => {
         },
       },
       { $unwind: "$user" },
-      ...(search
-        ? [
-            {
-              $match: {
-                $or: [
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
-                  { "user.firstName": { $regex: search, $options: "i" } },
-                ],
-              },
-            },
-          ]
-        : []),
 
-      // Join Court
+      // Lookup court
       {
         $lookup: {
           from: "courts",
@@ -75,6 +57,24 @@ const getLatestBookings = async (req, res) => {
       },
       { $unwind: "$court" },
 
+      // Search filter
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                  { "court.courtName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      // Project required fields
       {
         $project: {
           bookingId: "$latestBooking._id",
@@ -104,29 +104,30 @@ const getLatestBookings = async (req, res) => {
       { $limit: limitNum },
     ];
 
-    // Run pipeline
     const latestBookings = await Booking.aggregate(pipeline);
 
-    // Total count for pagination
-    const totalCountPipeline = [
+    // --- Total count for pagination ---
+    const countPipeline = [
       { $match: matchConditions },
-      { $group: { _id: "$userId", latestBooking: { $first: "$$ROOT" } } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "latestBooking.userId",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: "$user" },
+      { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
+      { $group: { _id: { userId: "$userId", courtId: "$courtId" } } },
       ...(search
         ? [
             {
+              $lookup: {
+                from: "users",
+                localField: "_id.userId",
+                foreignField: "_id",
+                as: "user",
+              },
+            },
+            { $unwind: "$user" },
+            {
               $match: {
                 $or: [
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
                   { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
                 ],
               },
             },
@@ -135,10 +136,10 @@ const getLatestBookings = async (req, res) => {
       { $count: "total" },
     ];
 
-    const totalDocs = await Booking.aggregate(totalCountPipeline);
+    const totalDocs = await Booking.aggregate(countPipeline);
     const total = totalDocs.length > 0 ? totalDocs[0].total : 0;
 
-    // Format date & time properly
+    // --- Format date & time ---
     const formattedBookings = latestBookings.map((b) => {
       const startIST = b.startTime
         ? new Date(b.startTime).toLocaleTimeString("en-IN", {
@@ -148,7 +149,6 @@ const getLatestBookings = async (req, res) => {
             timeZone: "Asia/Kolkata",
           })
         : null;
-
       const endIST = b.endTime
         ? new Date(b.endTime).toLocaleTimeString("en-IN", {
             hour: "2-digit",
@@ -196,6 +196,7 @@ const getLatestBookings = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 const getFullBookingHistory = async (req, res) => {
   try {
@@ -398,9 +399,7 @@ const getFullBookingHistory = async (req, res) => {
   }
 };
 
-
-
-
+export default getFullBookingHistory;
 
 
 

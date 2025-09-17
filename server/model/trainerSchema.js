@@ -37,12 +37,12 @@ const trainerSchema = new Schema(
       type: Number,
       default: trainerRole,
     },
-    // users: [
-    //   {
-    //     type: Schema.Types.ObjectId,
-    //     ref: "User", // users assigned under this trainer
-    //   },
-    // ],
+    users: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "GymUsers", 
+      },
+    ],
   },
   { timestamps: true }
 );
