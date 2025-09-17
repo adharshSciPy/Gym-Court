@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Login from './Pages/Login/Login.jsx';
 import AdminLogin from './Pages/AdminLogin/AdminLogin.jsx';
+import TrainerLogin from './Pages/Trainer/TrainerLogin.jsx';
 import  SidebarSwitching  from './Pages/SidebarSwitching/SidebarSwitching.jsx'; // Import the component
 import ReceptionLogin from './Pages/ReceptionLogin/ReceptionLogin.jsx';
 import ReceptionDashboard from './Pages/ReceptionDashboard/ReceptionDashboard.jsx'
@@ -16,6 +17,8 @@ function App() {
         <Routes>
           <Route path='/' element={<Login/>}/>
           <Route path='/Adminlogin' element={<AdminLogin/>}/>
+          <Route path='/Trainerlogin' element={<TrainerLogin/>}/>
+
           <Route path='/Admindashboard' element={
             <SidebarSwitching 
               activeNav={activeNav} 
