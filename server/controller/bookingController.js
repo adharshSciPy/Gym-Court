@@ -199,24 +199,16 @@ const getLatestBookings = async (req, res) => {
 
 const getFullBookingHistory = async (req, res) => {
   try {
-    const {
-      courtId,
-      status, // e.g. "upcoming,active"
-      startDate,
-      endDate,
-      page = 1,
-      limit = 10,
-    } = req.query;
-
+    const { courtId, status, startDate, endDate, search, page = 1, limit = 10 } = req.query;
     const now = new Date();
-    const andConditions = [];
+    const matchConditions = {};
 
     // --- Court filter ---
     if (courtId) {
       if (!mongoose.Types.ObjectId.isValid(courtId)) {
         return res.status(400).json({ message: "Invalid courtId" });
       }
-      andConditions.push({ courtId: new mongoose.Types.ObjectId(courtId) });
+      matchConditions.courtId = new mongoose.Types.ObjectId(courtId);
     }
 
     // --- Status filter ---
@@ -230,10 +222,7 @@ const getFullBookingHistory = async (req, res) => {
             statusConditions.push({ status: "cancelled" });
             break;
           case "upcoming":
-            statusConditions.push({
-              startDate: { $gt: now },
-              status: { $ne: "cancelled" },
-            });
+            statusConditions.push({ startDate: { $gt: now }, status: { $ne: "cancelled" } });
             break;
           case "active":
             statusConditions.push({
@@ -243,68 +232,125 @@ const getFullBookingHistory = async (req, res) => {
             });
             break;
           case "expired":
-            statusConditions.push({
-              endDate: { $lt: now },
-              status: { $ne: "cancelled" },
-            });
+            statusConditions.push({ endDate: { $lt: now }, status: { $ne: "cancelled" } });
             break;
         }
       }
 
       if (statusConditions.length) {
-        andConditions.push({ $or: statusConditions });
+        matchConditions.$or = statusConditions;
       }
     }
 
-    // --- Date filter (single or range) ---
-    if (startDate || endDate) {
-      const start = startDate ? new Date(startDate) : new Date("1970-01-01");
+    // --- Date filter ---
+    if (startDate) {
+      const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-
-      const end = endDate ? new Date(endDate) : new Date("2100-01-01");
-      end.setHours(23, 59, 59, 999);
-
-      // Include bookings that overlap the date/range
-      andConditions.push({
-        $or: [
-          { startDate: { $gte: start, $lte: end } },
-          { endDate: { $gte: start, $lte: end } },
-          { startDate: { $lte: start }, endDate: { $gte: end } },
-        ],
-      });
+      matchConditions.endDate = { ...matchConditions.endDate, $gte: start };
     }
 
-    // --- Final query ---
-    const baseQuery = andConditions.length ? { $and: andConditions } : {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      matchConditions.startDate = { ...matchConditions.startDate, $lte: end };
+    }
 
-    // --- Pagination ---
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
 
-    // --- Fetch bookings & counts ---
-    const [bookings, totalCount, cancelledCount, bookedCount] = await Promise.all([
-      Booking.find(baseQuery)
-        .populate("userId", "firstName lastName phoneNumber whatsAppNumber email")
-        .populate("courtId", "courtName surface totalSlots")
-        .populate("slotIds", "date startTime endTime isBooked")
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit)),
+    // --- Aggregation pipeline ---
+    const pipeline = [
+      { $match: matchConditions },
 
-      // total count (all filtered bookings)
-      Booking.countDocuments(baseQuery),
+      // Join user
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
 
-      // only cancelled
-      Booking.countDocuments({
-        $and: [...(andConditions || []), { status: "cancelled" }],
-      }),
+      // Search filter
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
 
-      // all except cancelled
-      Booking.countDocuments({
-        $and: [...(andConditions || []), { status: { $ne: "cancelled" } }],
-      }),
-    ]);
+      // Join court
+      {
+        $lookup: {
+          from: "courts",
+          localField: "courtId",
+          foreignField: "_id",
+          as: "court",
+        },
+      },
+      { $unwind: "$court" },
 
-    // --- Formatting helpers ---
+      // Join slots
+      {
+        $lookup: {
+          from: "slots",
+          localField: "slotIds",
+          foreignField: "_id",
+          as: "slots",
+        },
+      },
+
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limitNum },
+    ];
+
+    const bookings = await Booking.aggregate(pipeline);
+
+    // --- Count for pagination ---
+    const countPipeline = [
+      { $match: matchConditions },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
+
+    const totalDocs = await Booking.aggregate(countPipeline);
+    const totalCount = totalDocs.length > 0 ? totalDocs[0].total : 0;
+
+    // --- Format date/time ---
     const formatTime = (date) =>
       date
         ? new Date(date).toLocaleTimeString("en-IN", {
@@ -326,28 +372,24 @@ const getFullBookingHistory = async (req, res) => {
           })
         : null;
 
-    // --- Format bookings ---
     const formattedBookings = bookings.map((b) => ({
-      ...b.toObject(),
+      ...b,
       startDate: formatDate(b.startDate),
       endDate: formatDate(b.endDate),
       startTime: formatTime(b.startTime),
       endTime: formatTime(b.endTime),
-      slotIds: b.slotIds.map((s) => ({
-        ...s.toObject(),
+      slots: b.slots.map((s) => ({
+        ...s,
         startTime: formatTime(s.startTime),
         endTime: formatTime(s.endTime),
       })),
     }));
 
-    // --- Response ---
-    res.status(200).json({
+    return res.status(200).json({
       message: "Booking history fetched successfully",
       totalCount,
-      cancelledCount,
-      bookedCount,
-      page: parseInt(page),
-      totalPages: Math.ceil(totalCount / limit),
+      page: pageNum,
+      totalPages: Math.ceil(totalCount / limitNum),
       bookings: formattedBookings,
     });
   } catch (error) {
@@ -355,6 +397,10 @@ const getFullBookingHistory = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
+
 
 
 

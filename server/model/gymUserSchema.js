@@ -1,0 +1,22 @@
+import mongoose, { Schema } from "mongoose";
+
+const gymUsersSchema = new Schema(
+  {
+    name: { type: String, required: true, maxlength: 50 },
+    address: { type: String, required: true, maxlength: 200 },
+    phoneNumber: { type: String, required: true, unique: true, match: /^[0-9]{10}$/ },
+    whatsAppNumber: { type: String, required: true, match: /^[0-9]{10}$/ },
+    notes: { type: String, maxlength: 300 },
+    trainer: { type: Schema.Types.ObjectId, ref: "Trainer", required: true },
+    dietPdf: { type: String }, // store URL or path
+    subscription: {
+      startDate: { type: Date, required: true },
+      endDate: { type: Date, required: true },
+      months: { type: Number, min: 1, max: 12, required: true },
+       status: { type: String, enum: ["active", "expired"], default: "active" },
+    },
+  },
+  { timestamps: true }
+);
+
+export const GymUsers = mongoose.model("GymUsers", gymUsersSchema);
