@@ -283,7 +283,7 @@ const getFullBookingHistory = async (req, res) => {
     // --- Fetch bookings & counts ---
     const [bookings, totalCount, cancelledCount, bookedCount] = await Promise.all([
       Booking.find(baseQuery)
-        .populate("userId", "firstName lastName phoneNumber email")
+        .populate("userId", "firstName lastName phoneNumber whatsAppNumber email")
         .populate("courtId", "courtName surface totalSlots")
         .populate("slotIds", "date startTime endTime isBooked")
         .sort({ createdAt: -1 })
