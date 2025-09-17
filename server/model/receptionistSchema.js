@@ -26,7 +26,7 @@ const receptionistSchema = new Schema(
       maxlength: 64,
     },
     role: {
-      type: String,
+      type:Number,
       default: receptionistRole,
     },
   },

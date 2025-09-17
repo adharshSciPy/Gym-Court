@@ -1,59 +1,118 @@
-import Trainer from "../model/trainerSchema.js";
+import { Trainer } from "../model/trainerSchema.js";
+import { Gym } from "../model/gymSchema.js";
+import { passwordValidator } from "../utils/passwordValidator.js";
+import { emailValidator } from "../utils/emailValidator.js";
+import mongoose from "mongoose";
 
-const createTrainer = async (req, res) => {
-    try {
-        const { name, email, phoneNumber, experience, availability } = req.body;
-        const response = await Trainer.create({
-            name, email, phoneNumber, experience, availability
-        })
-        res.status(200).json({ message: "Trainer Created Successfully", data: response })
-    } catch (error) {
-        res.status(500).json({ message: "Internal Server error due to", error: error.message })
+// Register Trainer
+const registerTrainer = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction(); // start transaction
+
+  try {
+    const { phoneNumber, password, trainerName, trainerEmail, experience } = req.body;
+
+    if (!phoneNumber || !password || !trainerName || !trainerEmail) {
+      return res.status(400).json({ message: "All fields are required" });
     }
-}
 
-const getTrainers = async (req, res) => {
-    try {
-        const response = await Trainer.find();
-        res.status(200).json({ message: "Fetched Trainers Details", data: response })
-    } catch (error) {
-        res.status(500).json({ message: "Internal server error due to", error: error.message })
+    if (!emailValidator(trainerEmail)) {
+      return res.status(400).json({ message: "Invalid email format" });
     }
-}
 
-const getTrainerById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const response = await Trainer.findById(id);
-        res.status(200).json({ message: "Trainer Detail", data: response })
-    } catch (error) {
-        res.status(500).json({ message: "Internal server error due to", error: error.message })
+    if (!passwordValidator(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be 8–64 characters long, include uppercase, lowercase, number, and special character.",
+      });
     }
-}
 
-const editTrainer = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { name, email, phoneNumber, experience, availability } = req.body;
-        const response = await Trainer.findByIdAndUpdate(id, {
-            name, email, phoneNumber, experience, availability
-        }, { new: true })
-        res.status(200).json({ message: "Trainer Edited Successfully", data: response })
-    } catch (error) {
-        res.status(500).json({ message: "Internal Server error due to", error: error.message })
+    // Check if trainer exists
+    const existingTrainer = await Trainer.findOne({
+      $or: [{ trainerEmail }, { phoneNumber }],
+    }).session(session);
+    if (existingTrainer) {
+      return res.status(409).json({ message: "Email or phone number already in use" });
     }
-}
 
-const deleteTrainer = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const response = await Trainer.findByIdAndDelete(id)
-        res.status(200).json({ message: "Trainer Deleted Successfully", data: response })
-    } catch (error) {
-        res.status(500).json({ message: "Internal Server error due to", error: error.message })
+    // Create trainer
+    const trainer = await Trainer.create(
+      [
+        {
+          phoneNumber,
+          password,
+          trainerName,
+          trainerEmail,
+          experience: experience || 0,
+        },
+      ],
+      { session }
+    );
+
+    // Fetch the single gym
+    const gym = await Gym.findOne().session(session);
+    if (!gym) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "No gym found in the system" });
     }
-}
 
-export {
-    createTrainer, getTrainers, getTrainerById, editTrainer, deleteTrainer
-}
+    // Add trainer to gym if not already added
+    if (!gym.trainers.includes(trainer[0]._id)) {
+      gym.trainers.push(trainer[0]._id);
+      await gym.save({ session });
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+
+    // Return trainer without password
+    const createdTrainer = await Trainer.findById(trainer[0]._id).select("-password");
+
+    res.status(201).json({
+      message: "Trainer registered successfully and added to the gym",
+      data: createdTrainer,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Trainer Registration Error:", error);
+    return res.status(500).json({ message: `Internal server error: ${error.message}` });
+  }
+};
+
+// Login Trainer
+const trainerLogin = async (req, res) => {
+  const { trainerEmail, password } = req.body;
+
+  try {
+    if (!trainerEmail || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const trainer = await Trainer.findOne({ trainerEmail });
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer not found" });
+    }
+
+    const isMatch = await trainer.isPasswordCorrect(password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = trainer.generateAccessToken();
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      role: trainer.role,
+      trainerId: trainer._id,
+      trainerEmail: trainer.trainerEmail,
+    });
+  } catch (error) {
+    console.error("Trainer Login Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export { registerTrainer, trainerLogin };
