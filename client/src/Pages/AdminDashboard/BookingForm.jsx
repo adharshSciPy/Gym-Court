@@ -5,7 +5,7 @@ import MemberTable from "./MemberTable";
 import PaymentHistory from "./PaymentHistory";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
-
+import BookingOverView from "./BookingOverview"
 const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
   const [activeTab, setActiveTab] = useState("details");
   const [formData, setFormData] = useState({
@@ -50,7 +50,7 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
         console.log(error);
         
     }
-    onBack();
+    
   };
 
   return (
@@ -63,9 +63,9 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
             </button>
             <h1 className={styles.formTitle}>Details - {selectedCourt}</h1>
           </div>
-          <button onClick={handleSubmit} className={styles.updateButton}>
+          {/* <button onClick={handleSubmit} className={styles.updateButton}>
             Update
-          </button>
+          </button> */}
         </div>
 
         <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -266,6 +266,8 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
 
         {activeTab === "members" && <MemberTable />}
         {activeTab === "payment-history" && <PaymentHistory />}
+        {activeTab === "booking-overview" && <BookingOverView selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber}   />}
+
       </div>
     </div>
   );

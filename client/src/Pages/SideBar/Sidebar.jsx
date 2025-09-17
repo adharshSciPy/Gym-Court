@@ -6,6 +6,7 @@ import {
   Calendar,
   BarChart3,
   Settings,
+  LogOut,
 } from "lucide-react";
 
 function Sidebar({ activeNav, setActiveNav }) {
@@ -17,6 +18,8 @@ function Sidebar({ activeNav, setActiveNav }) {
     { name: "Bookings", icon: Calendar },
     { name: "Reports", icon: BarChart3 },
     { name: "Settings", icon: Settings },
+    { name: "Logout", icon: LogOut },
+
   ];
   return (
     <div className={styles.sidebar}>
