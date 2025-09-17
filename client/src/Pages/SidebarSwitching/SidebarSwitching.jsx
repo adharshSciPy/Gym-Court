@@ -1,35 +1,46 @@
-import React from 'react'
-import DashboardPage from '../AdminDashboard/AdminDashboard'
-import MembersPage from '../MembersPage/MembersPage';
-import ReportsPage from '../ReportPage/ReportPage';
-import BookingsPage from '../BookingPage/BookingPage';
-import SettingsPage from '../SettingsPage/SettingsPage';
-import Sidebar from "../SideBar/Sidebar"
+import React from "react";
+import DashboardPage from "../AdminDashboard/AdminDashboard";
+import MembersPage from "../MembersPage/MembersPage";
+import ReportsPage from "../ReportPage/ReportPage";
+import BookingsPage from "../BookingPage/BookingPage";
+import SettingsPage from "../SettingsPage/SettingsPage";
+import Sidebar from "../SideBar/Sidebar";
+import {useNavigate} from "react-router-dom"
+import Login from "../Login/Login"
+
 const SidebarSwitching = ({ activeNav, setActiveNav }) => {
+  const navigate=useNavigate()
+  const handleLogout=()=>{
+    navigate("/")
+  }
   const styles = {
     container: {
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      backgroundColor: '#f8fafc',
-      minHeight: '100vh'
-    }
+      fontFamily: "system-ui, -apple-system, sans-serif",
+      backgroundColor: "#f8fafc",
+      minHeight: "100vh",
+    },
   };
 
-  const renderPage = () => {
-    switch (activeNav) {
-      case 'Dashboard':
-        return <DashboardPage />;
-      case 'Members':
-        return <MembersPage />;
-      case 'Bookings':
-        return <BookingsPage />;
-      case 'Reports':
-        return <ReportsPage />;
-      case 'Settings':
-        return <SettingsPage />;
-      default:
-        return <DashboardPage />;
-    }
-  };
+ const renderPage = () => {
+  switch (activeNav) {
+    case "Dashboard":
+      return <DashboardPage />;
+    case "Members":
+      return <MembersPage />;
+    case "Bookings":
+      return <BookingsPage />;
+    case "Reports":
+      return <ReportsPage />;
+    case "Settings":
+      return <SettingsPage />;
+    case "Logout":
+      handleLogout();
+      return <Login />; 
+    default:
+      return <DashboardPage />;
+  }
+};
+
 
   return (
     <div style={styles.container}>
@@ -39,4 +50,4 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
   );
 };
 
-export default SidebarSwitching
+export default SidebarSwitching;
