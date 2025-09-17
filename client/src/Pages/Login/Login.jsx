@@ -33,6 +33,8 @@ function Login() {
 
         <button className={styles.roleBtn} onClick={()=>{navigate('/Adminlogin')}}>Admin</button>
         <button className={styles.roleBtn} onClick={()=>{navigate('/ReceptionLogin')}}>Reception</button>
+        <button className={styles.roleBtn} onClick={()=>{navigate('/TrainerLogin')}}>Trainer</button>
+
 
         
       </div>
