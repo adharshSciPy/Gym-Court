@@ -199,24 +199,16 @@ const getLatestBookings = async (req, res) => {
 
 const getFullBookingHistory = async (req, res) => {
   try {
-    const {
-      courtId,
-      status, // e.g. "upcoming,active"
-      startDate,
-      endDate,
-      page = 1,
-      limit = 10,
-    } = req.query;
-
+    const { courtId, status, startDate, endDate, page = 1, limit = 10 } = req.query;
     const now = new Date();
-    const andConditions = [];
+    const query = {};
 
     // --- Court filter ---
     if (courtId) {
       if (!mongoose.Types.ObjectId.isValid(courtId)) {
         return res.status(400).json({ message: "Invalid courtId" });
       }
-      andConditions.push({ courtId: new mongoose.Types.ObjectId(courtId) });
+      query.courtId = courtId;
     }
 
     // --- Status filter ---
@@ -230,10 +222,7 @@ const getFullBookingHistory = async (req, res) => {
             statusConditions.push({ status: "cancelled" });
             break;
           case "upcoming":
-            statusConditions.push({
-              startDate: { $gt: now },
-              status: { $ne: "cancelled" },
-            });
+            statusConditions.push({ startDate: { $gt: now }, status: { $ne: "cancelled" } });
             break;
           case "active":
             statusConditions.push({
@@ -243,46 +232,35 @@ const getFullBookingHistory = async (req, res) => {
             });
             break;
           case "expired":
-            statusConditions.push({
-              endDate: { $lt: now },
-              status: { $ne: "cancelled" },
-            });
+            statusConditions.push({ endDate: { $lt: now }, status: { $ne: "cancelled" } });
             break;
         }
       }
 
       if (statusConditions.length) {
-        andConditions.push({ $or: statusConditions });
+        query.$or = statusConditions;
       }
     }
 
-    // --- Date filter (single or range) ---
-    if (startDate || endDate) {
-      const start = startDate ? new Date(startDate) : new Date("1970-01-01");
+    // --- Date filter ---
+    if (startDate) {
+      const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-
-      const end = endDate ? new Date(endDate) : new Date("2100-01-01");
-      end.setHours(23, 59, 59, 999);
-
-      // Include bookings that overlap the date/range
-      andConditions.push({
-        $or: [
-          { startDate: { $gte: start, $lte: end } },
-          { endDate: { $gte: start, $lte: end } },
-          { startDate: { $lte: start }, endDate: { $gte: end } },
-        ],
-      });
+      query.endDate = { ...query.endDate, $gte: start }; // bookings ending after startDate
     }
 
-    // --- Final query ---
-    const baseQuery = andConditions.length ? { $and: andConditions } : {};
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query.startDate = { ...query.startDate, $lte: end }; // bookings starting before endDate
+    }
 
     // --- Pagination ---
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // --- Fetch bookings & counts ---
     const [bookings, totalCount, cancelledCount, bookedCount] = await Promise.all([
-      Booking.find(baseQuery)
+      Booking.find(query)
         .populate("userId", "firstName lastName phoneNumber whatsAppNumber email")
         .populate("courtId", "courtName surface totalSlots")
         .populate("slotIds", "date startTime endTime isBooked")
@@ -290,43 +268,22 @@ const getFullBookingHistory = async (req, res) => {
         .skip(skip)
         .limit(parseInt(limit)),
 
-      // total count (all filtered bookings)
-      Booking.countDocuments(baseQuery),
-
-      // only cancelled
-      Booking.countDocuments({
-        $and: [...(andConditions || []), { status: "cancelled" }],
-      }),
-
-      // all except cancelled
-      Booking.countDocuments({
-        $and: [...(andConditions || []), { status: { $ne: "cancelled" } }],
-      }),
+      Booking.countDocuments(query),
+      Booking.countDocuments({ ...query, status: "cancelled" }),
+      Booking.countDocuments({ ...query, status: { $ne: "cancelled" } }),
     ]);
 
     // --- Formatting helpers ---
     const formatTime = (date) =>
       date
-        ? new Date(date).toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-            timeZone: "Asia/Kolkata",
-          })
+        ? new Date(date).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" })
         : null;
 
     const formatDate = (date) =>
       date
-        ? new Date(date).toLocaleDateString("en-IN", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-            timeZone: "Asia/Kolkata",
-          })
+        ? new Date(date).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "Asia/Kolkata" })
         : null;
 
-    // --- Format bookings ---
     const formattedBookings = bookings.map((b) => ({
       ...b.toObject(),
       startDate: formatDate(b.startDate),
@@ -340,7 +297,6 @@ const getFullBookingHistory = async (req, res) => {
       })),
     }));
 
-    // --- Response ---
     res.status(200).json({
       message: "Booking history fetched successfully",
       totalCount,
@@ -355,6 +311,9 @@ const getFullBookingHistory = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
 
 
 
