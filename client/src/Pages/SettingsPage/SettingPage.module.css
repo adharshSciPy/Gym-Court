@@ -72,7 +72,7 @@ input:focus {
   background-color: #45a049;
 }
 
-.main {
+/* .main {
   display: flex;
   flex-wrap: nowrap;
   gap: 5rem;
@@ -104,5 +104,28 @@ input:focus {
   .main{
     flex-wrap: wrap;
   }
+} */
+
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
+.tabBtn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tabBtn:hover {
+  background: #eaeaea;
+}
+
+.active {
+  background: #45a049; 
+  color: white;
+  border-color: #45a049;
+}
