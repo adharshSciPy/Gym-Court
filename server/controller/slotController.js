@@ -11,6 +11,9 @@ const formatTime = (date) => {
 };
 
 const bookSlot = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const {
       courtId,
@@ -31,6 +34,7 @@ const bookSlot = async (req, res) => {
       modeOfPayment,
     } = req.body;
 
+    // --- all your validations (unchanged) ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
 
     if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
@@ -52,7 +56,6 @@ const bookSlot = async (req, res) => {
 
     if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long (max 300 chars)" });
 
-    // --- Payment & Billing Validations ---
     if (amount == null) return res.status(400).json({ message: "Amount is required" });
     if (isNaN(amount) || amount < 0) return res.status(400).json({ message: "Amount must be a positive number" });
 
@@ -68,11 +71,11 @@ const bookSlot = async (req, res) => {
     }
 
     // --- Court Exists ---
-    const court = await Court.findById(courtId);
+    const court = await Court.findById(courtId).session(session);
     if (!court) return res.status(404).json({ message: "Court not found" });
 
     // --- User Handling ---
-    let user = await User.findOne({ phoneNumber });
+    let user = await User.findOne({ phoneNumber }).session(session);
 
     if (!user) {
       if (!firstName || firstName.length > 50) return res.status(400).json({ message: "First name is required (max 50 chars)" });
@@ -80,7 +83,8 @@ const bookSlot = async (req, res) => {
       if (!whatsAppNumber || !/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
       if (!address || address.length > 200) return res.status(400).json({ message: "Address is required (max 200 chars)" });
 
-      user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
+      user = await User.create([{ firstName, lastName, phoneNumber, whatsAppNumber, address }], { session });
+      user = user[0];
     } else {
       if (firstName && firstName.length > 50) return res.status(400).json({ message: "First name too long" });
       if (lastName && lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
@@ -91,7 +95,7 @@ const bookSlot = async (req, res) => {
       user.lastName = lastName || user.lastName;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
       user.address = address || user.address;
-      await user.save();
+      await user.save({ session });
     }
 
     // --- Prepare slots ---
@@ -114,7 +118,7 @@ const bookSlot = async (req, res) => {
         courtId,
         isBooked: true,
         $or: [{ startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } }],
-      }).populate("userId");
+      }).session(session).populate("userId");
 
       if (overlap) {
         return res.status(400).json({
@@ -152,9 +156,8 @@ const bookSlot = async (req, res) => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    const createdSlots = await Slot.insertMany(slotsToCreate);
+    const createdSlots = await Slot.insertMany(slotsToCreate, { session });
 
-    // --- Fix booking times (clone, don’t mutate start/end) ---
     const bookingStartTime = new Date(start);
     bookingStartTime.setHours(startH, startM, 0, 0);
 
@@ -162,34 +165,47 @@ const bookSlot = async (req, res) => {
     bookingEndTime.setHours(endH, endM, 0, 0);
 
     // Save booking
-    const booking = await Booking.create({
-      courtId,
-      userId: user._id,
-      slotIds: createdSlots.map((s) => s._id),
-      startDate: start,
-      endDate: end,
-      startTime: bookingStartTime,
-      endTime: bookingEndTime,
-      isMultiDay: start.toDateString() !== end.toDateString(),
-      notes,
-      amount,
-      isGst,
-      gst,
-      gstNumber,
-      modeOfPayment,
-    });
+    const booking = await Booking.create(
+      [
+        {
+          courtId,
+          userId: user._id,
+          slotIds: createdSlots.map((s) => s._id),
+          startDate: start,
+          endDate: end,
+          startTime: bookingStartTime,
+          endTime: bookingEndTime,
+          isMultiDay: start.toDateString() !== end.toDateString(),
+          notes,
+          amount,
+          isGst,
+          gst,
+          gstNumber,
+          modeOfPayment,
+        },
+      ],
+      { session }
+    );
 
     // Save billing
-    await Billing.create({
-      bookingId: booking._id,
-      userId: user._id,
-      courtId,
-      amount,
-      isGst,
-      gst,
-      gstNumber,
-      modeOfPayment,
-    });
+    await Billing.create(
+      [
+        {
+          bookingId: booking[0]._id,
+          userId: user._id,
+          courtId,
+          amount,
+          isGst,
+          gst,
+          gstNumber,
+          modeOfPayment,
+        },
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+    session.endSession();
 
     // Format response
     const formatTime = (date) =>
@@ -210,11 +226,11 @@ const bookSlot = async (req, res) => {
       });
 
     const formattedBooking = {
-      ...booking.toObject(),
-      startDate: formatDate(booking.startDate),
-      endDate: formatDate(booking.endDate),
-      startTime: formatTime(booking.startTime),
-      endTime: formatTime(booking.endTime),
+      ...booking[0].toObject(),
+      startDate: formatDate(booking[0].startDate),
+      endDate: formatDate(booking[0].endDate),
+      startTime: formatTime(booking[0].startTime),
+      endTime: formatTime(booking[0].endTime),
     };
 
     return res.status(201).json({
@@ -222,6 +238,8 @@ const bookSlot = async (req, res) => {
       booking: formattedBooking,
     });
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error in bookSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }

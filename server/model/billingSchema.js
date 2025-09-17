@@ -3,7 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const billingSchema = new Schema(
   {
     bookingId: { type: Schema.Types.ObjectId, ref: "Booking", required: true },
-
+ courtId: { type: Schema.Types.ObjectId, ref: "Court", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
 
     amount: { type: Number, required: true },     
@@ -22,6 +22,8 @@ const billingSchema = new Schema(
   },
   { timestamps: true }
 );
-
+billingSchema.index({ courtId: 1, createdAt: -1 });
+billingSchema.index({ userId: 1, createdAt: -1 });
+billingSchema.index({ bookingId: 1 });
 const Billing = mongoose.model("Billing", billingSchema);
 export default Billing;
