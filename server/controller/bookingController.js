@@ -5,20 +5,64 @@ import Court from "../model/courtSchema.js";
 import mongoose from "mongoose";
 const getLatestBookings = async (req, res) => {
   try {
-    const latestBookings = await Booking.aggregate([
+    const {
+      search,     
+      startDate,  
+      endDate,      
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+   
+    const matchConditions = {};
+
+   
+    if (startDate || endDate) {
+  matchConditions.startDate = {};
+
+  if (startDate) {
+    const startOfDay = new Date(startDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    matchConditions.startDate.$gte = startOfDay;
+  }
+
+  if (endDate) {
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    matchConditions.startDate.$lte = endOfDay;
+  }
+}
+    const pipeline = [
+      { $match: matchConditions },
+
       { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
       { $group: { _id: "$userId", latestBooking: { $first: "$$ROOT" } } },
 
-      // Join User
       {
         $lookup: {
           from: "users",
           localField: "latestBooking.userId",
           foreignField: "_id",
-          as: "user"
-        }
+          as: "user",
+        },
       },
       { $unwind: "$user" },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
 
       // Join Court
       {
@@ -26,8 +70,8 @@ const getLatestBookings = async (req, res) => {
           from: "courts",
           localField: "latestBooking.courtId",
           foreignField: "_id",
-          as: "court"
-        }
+          as: "court",
+        },
       },
       { $unwind: "$court" },
 
@@ -38,7 +82,7 @@ const getLatestBookings = async (req, res) => {
           firstName: "$user.firstName",
           lastName: "$user.lastName",
           phoneNumber: "$user.phoneNumber",
-          whatsAppNumber:"$user.whatsAppNumber",
+          whatsAppNumber: "$user.whatsAppNumber",
           courtName: "$court.courtName",
           startDate: "$latestBooking.startDate",
           endDate: "$latestBooking.endDate",
@@ -52,12 +96,50 @@ const getLatestBookings = async (req, res) => {
           isGst: "$latestBooking.isGst",
           gst: "$latestBooking.gst",
           gstNumber: "$latestBooking.gstNumber",
-        }
-      }
-    ]);
+        },
+      },
+
+      // Pagination
+      { $skip: skip },
+      { $limit: limitNum },
+    ];
+
+    // Run pipeline
+    const latestBookings = await Booking.aggregate(pipeline);
+
+    // Total count for pagination
+    const totalCountPipeline = [
+      { $match: matchConditions },
+      { $group: { _id: "$userId", latestBooking: { $first: "$$ROOT" } } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "latestBooking.userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+      { $count: "total" },
+    ];
+
+    const totalDocs = await Booking.aggregate(totalCountPipeline);
+    const total = totalDocs.length > 0 ? totalDocs[0].total : 0;
 
     // Format date & time properly
-    const formattedBookings = latestBookings.map(b => {
+    const formattedBookings = latestBookings.map((b) => {
       const startIST = b.startTime
         ? new Date(b.startTime).toLocaleTimeString("en-IN", {
             hour: "2-digit",
@@ -77,21 +159,7 @@ const getLatestBookings = async (req, res) => {
         : null;
 
       return {
-        bookingId: b.bookingId,
-        userId: b.userId,
-        firstName: b.firstName,
-        lastName: b.lastName,
-        phoneNumber: b.phoneNumber,
-        whatsAppNumber:b.whatsAppNumber,
-        courtName: b.courtName,
-        notes: b.notes || "",
-        status: b.status || "confirmed",
-        isMultiDay: b.isMultiDay || false,
-        amount: b.amount,
-        modeOfPayment: b.modeOfPayment,
-        isGst: b.isGst,
-        gst: b.gst,
-        gstNumber: b.gstNumber,
+        ...b,
         startDate: b.startDate
           ? new Date(b.startDate).toLocaleDateString("en-IN", {
               weekday: "short",
@@ -116,8 +184,11 @@ const getLatestBookings = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "Latest booking for all users",
+      message: "Latest bookings fetched successfully",
       count: formattedBookings.length,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
       data: formattedBookings,
     });
   } catch (err) {
@@ -125,9 +196,6 @@ const getLatestBookings = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
-
-
 
 const getFullBookingHistory = async (req, res) => {
   try {
