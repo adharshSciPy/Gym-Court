@@ -11,6 +11,7 @@ const gymBillingSchema = new Schema(
 
     subscriptionMonths: { type: Number, required: true, min: 1, max: 12 },
 
+
     modeOfPayment: {
       type: String,
       enum: ["card", "upi", "cash"],

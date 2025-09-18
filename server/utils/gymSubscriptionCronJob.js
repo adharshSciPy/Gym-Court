@@ -6,7 +6,7 @@ cron.schedule("0 0 * * *", async () => {
   const now = new Date();
 
   try {
-    // Expire old subscriptions
+    // Expire old subscriptions (highest priority)
     await GymUsers.updateMany(
       { "subscription.endDate": { $lt: now } },
       { $set: { "subscription.status": "expired" } }
@@ -18,14 +18,15 @@ cron.schedule("0 0 * * *", async () => {
       { $set: { "subscription.status": "active" } }
     );
 
-    // Mark upcoming subscriptions
+    // Mark upcoming subscriptions (only if endDate > now)
     await GymUsers.updateMany(
-      { "subscription.startDate": { $gt: now } },
+      { "subscription.startDate": { $gt: now }, "subscription.endDate": { $gt: now } },
       { $set: { "subscription.status": "upcoming" } }
     );
 
-    console.log("✅ Subscription statuses updated");
+    console.log("✅ Subscription statuses updated", now.toISOString());
   } catch (err) {
     console.error("❌ Error updating subscription statuses:", err);
   }
 });
+
