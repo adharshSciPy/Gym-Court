@@ -232,7 +232,101 @@ const registerToGym = async (req, res) => {
     res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
+const getAllGymUsers = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      trainerName,
+    } = req.query;
+
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+    const query = {};
+    if (search) {
+     
+      if (!isNaN(search)) {
+        query.phoneNumber = Number(search);
+      } else {
+        query.name = { $regex: search, $options: "i" };
+      }
+    }
+
+   
+    if (status && ["active", "expired"].includes(status)) {
+      query["subscription.status"] = status;
+    }
+    if (trainerName) {
+      const trainers = await Trainer.find({
+        trainerName: { $regex: trainerName, $options: "i" },
+      }).select("_id");
+
+      if (trainers.length > 0) {
+        query.trainer = { $in: trainers.map((t) => t._id) };
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "No trainers found with the given name",
+        });
+      }
+    }
+
+   
+    const [users, total] = await Promise.all([
+      GymUsers.find(query)
+        .populate("trainer", "trainerName trainerEmail phoneNumber")
+        .skip(skip)
+        .limit(parseInt(limit, 10))
+        .lean(),
+      GymUsers.countDocuments(query),
+    ]);
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({ success: false, message: "No gym users found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      count: users.length,
+      totalUsers: total,
+      totalPages: Math.ceil(total / limit),
+      currentPage: parseInt(page, 10),
+      message: "Gym users fetched successfully",
+      data: users,
+    });
+  } catch (error) {
+    console.error("Error fetching gym users:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
 
 
+const getGymUserById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await GymUsers.findById(id)
+      .populate("trainer", "trainerName trainerEmail phoneNumber")
+      .lean();
 
-export{createGym,registerToGym}
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Gym user not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Gym user fetched successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error fetching gym user:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
+
+export{createGym,registerToGym,getAllGymUsers,getGymUserById}
