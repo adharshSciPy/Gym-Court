@@ -4,8 +4,6 @@ import { GymUsers } from "../model/gymUserSchema.js";
 import { passwordValidator } from "../utils/passwordValidator.js";
 import { emailValidator } from "../utils/emailValidator.js";
 import mongoose from "mongoose";
-import fs from "fs";
-
 
 // Register Trainer
 const registerTrainer = async (req, res) => {
@@ -166,35 +164,34 @@ const getAllTrainers = async (req, res) => {
 };
 const assignDietPlan = async (req, res) => {
   try {
-    const { id: trainerId } = req.params;
+    const {id:trainerId }= req.params;
     const { userId } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(trainerId)) {
-  return res.status(400).json({ message: "Invalid trainer ID" });
-}
-
 
     if (!userId) {
-      if (req.file) fs.unlinkSync(req.file.path); 
       return res.status(400).json({ message: "User ID is required" });
     }
 
     if (!req.file) {
       return res.status(400).json({ message: "Diet PDF is required" });
     }
+
+    // Verify trainer exists
     const trainer = await Trainer.findById(trainerId);
     if (!trainer) {
-      fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: "Trainer not found" });
     }
+
+    // Verify user exists and is assigned to this trainer
     const gymUser = await GymUsers.findById(userId);
     if (!gymUser) {
-      fs.unlinkSync(req.file.path);
       return res.status(404).json({ message: "User not found" });
     }
+
     if (gymUser.trainer.toString() !== trainerId) {
-      fs.unlinkSync(req.file.path);
       return res.status(403).json({ message: "You are not assigned to this user" });
     }
+
+    // Update user's diet PDF
     gymUser.dietPdf = `/uploads/diets/${req.file.filename}`;
     await gymUser.save();
 
@@ -208,15 +205,6 @@ const assignDietPlan = async (req, res) => {
     });
   } catch (error) {
     console.error("Error assigning diet plan:", error);
-
-    if (req.file) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (unlinkErr) {
-        console.error("Failed to remove file:", unlinkErr.message);
-      }
-    }
-
     res.status(500).json({ message: "Server error" });
   }
 };
