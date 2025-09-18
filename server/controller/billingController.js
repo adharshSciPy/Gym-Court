@@ -137,7 +137,6 @@ if (search) {
 }
 
     // Step 2: Build date filter
-  // Step 2: Build date filter
 let dateFilter = {};
 if (startDate || endDate) {
   dateFilter.createdAt = {};
