@@ -7,6 +7,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  DollarSign
 } from "lucide-react";
 
 function Sidebar({ activeNav, setActiveNav }) {
@@ -18,9 +19,11 @@ function Sidebar({ activeNav, setActiveNav }) {
     { name: "Bookings", icon: Calendar },
     { name: "Reports", icon: BarChart3 },
     { name: "Settings", icon: Settings },
+    { name: "Payments", icon:DollarSign },
     { name: "Logout", icon: LogOut },
 
   ];
+  
   return (
     <div className={styles.sidebar}>
       <div className={styles.logo}>

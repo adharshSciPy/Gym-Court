@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import "./report.css";
-import "../BookingPage/BookingManagement.css"
+import "../BookingPage/BookingManagement.module.css"
 
 const ReportPage = () => {
   // Sample booking data

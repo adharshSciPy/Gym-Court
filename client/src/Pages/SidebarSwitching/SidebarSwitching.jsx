@@ -4,14 +4,15 @@ import MembersPage from "../MembersPage/MembersPage";
 import ReportsPage from "../ReportPage/ReportPage";
 import BookingsPage from "../BookingPage/BookingPage";
 import SettingsPage from "../SettingsPage/SettingsPage";
+import PaymentHistory from "../PaymentHistory/PaymentHistory";
 import Sidebar from "../SideBar/Sidebar";
 import {useNavigate} from "react-router-dom"
-import Login from "../Login/Login"
 
 const SidebarSwitching = ({ activeNav, setActiveNav }) => {
   const navigate=useNavigate()
   const handleLogout=()=>{
     navigate("/")
+    setActiveNav("Dashboard")
   }
   const styles = {
     container: {
@@ -29,13 +30,15 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
       return <MembersPage />;
     case "Bookings":
       return <BookingsPage />;
+    case "Payments":
+      return <PaymentHistory />;
     case "Reports":
       return <ReportsPage />;
     case "Settings":
       return <SettingsPage />;
     case "Logout":
       handleLogout();
-      return <Login />; 
+      return;
     default:
       return <DashboardPage />;
   }
