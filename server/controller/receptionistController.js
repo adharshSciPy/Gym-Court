@@ -1,6 +1,7 @@
 import { Receptionist } from "../model/receptionistSchema.js"
 import { passwordValidator } from "../utils/passwordValidator.js";
 import { emailValidator } from "../utils/emailValidator.js";
+import mongoose from "mongoose";
 
 // Register
 const registerReceptionist = async (req, res) => {
@@ -96,6 +97,25 @@ const receptionistLogin = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message});
   }
 };
+const deleteReceptionist = async (req, res) => {
+  const { id } = req.params;
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid Receptionist ID" });
+  }
+
+  try {
+    const receptionist = await Receptionist.findById(id);
+    if (!receptionist) {
+      return res.status(404).json({ message: "Receptionist not found" });
+    }
+    await Receptionist.findByIdAndDelete(id);
+
+    res.status(200).json({ message: "Receptionist deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting receptionist:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
 
 
-export { registerReceptionist, receptionistLogin,getAllReceptionists };
+export { registerReceptionist, receptionistLogin,getAllReceptionists ,deleteReceptionist};
