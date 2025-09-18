@@ -235,5 +235,4 @@ const registerToGym = async (req, res) => {
 
 
 
-
 export{createGym,registerToGym}
