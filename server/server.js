@@ -13,14 +13,17 @@ import "./utils/gymSubscriptionCronJob.js";
 import billingRouter from "./routes/billingRoute.js";
 import gymRouter from "./routes/gymRoute.js";
 import trainerRouter from "./routes/trainerRoute.js"
-
+import path from "path";
+import { fileURLToPath } from "url";
 dotenv.config();
 connectDB();
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 
 // Middleware
-app.use(express.json()); // for parsing JSON bodies
+app.use(express.json()); 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(cors());
 
 // Routes
