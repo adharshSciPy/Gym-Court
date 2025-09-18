@@ -1,4 +1,5 @@
 import Billing from "../model/billingSchema.js";
+import Booking from "../model/bookingSchema.js"
 import { User } from "../model/userSchema.js";
 const getBillingsByCourt = async (req, res) => {
   try {
@@ -100,67 +101,100 @@ const getBillingsByCourt = async (req, res) => {
 
 const getFullPaymentHistory = async (req, res) => {
   try {
-    const { search, startDate,courtId, endDate, page = 1, limit = 10 } = req.query;
+    const { search, startDate, endDate, courtId, page = 1, limit = 10 } = req.query;
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-   let userFilter = {};
-if (search) {
-  const orConditions = [
-    { firstName: new RegExp(search, "i") },
-    { lastName: new RegExp(search, "i") },
-  ];
+    // -----------------------------
+    // 1️⃣ User search filter
+    // -----------------------------
+    let userFilter = {};
+    if (search) {
+      const orConditions = [
+        { firstName: new RegExp(search, "i") },
+        { lastName: new RegExp(search, "i") },
+      ];
 
-  // If search is numeric → match phoneNumber as Number
-  if (/^\d+$/.test(search)) {
-    orConditions.push({ phoneNumber: Number(search) });
-  }
+      if (/^\d+$/.test(search)) {
+        orConditions.push({ phoneNumber: Number(search) });
+      }
 
-  // Find matching users
-  const users = await User.find({ $or: orConditions }).select("_id");
+      const users = await User.find({ $or: orConditions }).select("_id");
+      const userIds = users.map(u => u._id);
 
-  const userIds = users.map((u) => u._id);
-  if (userIds.length > 0) {
-    userFilter.userId = { $in: userIds };
-  } else {
-    return res.json({
-      message: "Payment history fetched successfully",
-      count: 0,
-      total: 0,
-      page: pageNum,
-      totalPages: 0,
-      billings: [],
-    });
-  }
-}
+      if (userIds.length === 0) {
+        return res.json({
+          message: "Payment history fetched successfully",
+          count: 0,
+          total: 0,
+          page: pageNum,
+          totalPages: 0,
+          billings: [],
+        });
+      }
 
-    // Step 2: Build date filter
-let dateFilter = {};
-if (startDate || endDate) {
-  dateFilter.createdAt = {};
-
-  if (startDate) {
-    const startOfDay = new Date(startDate);
-    startOfDay.setHours(0, 0, 0, 0); // include everything from start of the day
-    dateFilter.createdAt.$gte = startOfDay;
-  }
-
-  if (endDate) {
-    const endOfDay = new Date(endDate);
-    endOfDay.setHours(23, 59, 59, 999); // include everything until end of the day
-    dateFilter.createdAt.$lte = endOfDay;
-  }
-}
-
- let courtFilter = {};
-    if (courtId) {
-      courtFilter.courtId = courtId; // exact ObjectId match
+      userFilter.userId = { $in: userIds };
     }
-    // Step 3: Query billing with filters
-    const query = { ...userFilter, ...dateFilter ,...courtFilter};
 
+    // -----------------------------
+    // 2️⃣ Booking date filter
+    // -----------------------------
+    let bookingIds = [];
+    if (startDate || endDate) {
+      const bookingFilter = {};
+
+      if (startDate) {
+        const startOfDay = new Date(startDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        bookingFilter.startDate = { ...bookingFilter.startDate, $gte: startOfDay };
+      }
+
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        bookingFilter.startDate = { ...bookingFilter.startDate, $lte: endOfDay };
+      }
+
+      const bookings = await Booking.find(bookingFilter).select("_id");
+      bookingIds = bookings.map(b => b._id);
+
+      if (bookingIds.length === 0) {
+        return res.json({
+          message: "Payment history fetched successfully",
+          count: 0,
+          total: 0,
+          page: pageNum,
+          totalPages: 0,
+          billings: [],
+        });
+      }
+    }
+
+    // -----------------------------
+    // 3️⃣ Court filter
+    // -----------------------------
+    let courtFilter = {};
+    if (courtId) {
+      courtFilter.courtId = courtId;
+    }
+
+    // -----------------------------
+    // 4️⃣ BookingId filter (from date filter)
+    // -----------------------------
+    if (bookingIds.length > 0) {
+      courtFilter.bookingId = { $in: bookingIds };
+    }
+
+    // -----------------------------
+    // 5️⃣ Combine all filters
+    // -----------------------------
+    const query = { ...userFilter, ...courtFilter };
+
+    // -----------------------------
+    // 6️⃣ Fetch Billing with population
+    // -----------------------------
     const billings = await Billing.find(query)
       .populate("userId", "firstName lastName phoneNumber")
       .populate("courtId", "name")
@@ -184,6 +218,7 @@ if (startDate || endDate) {
     res.status(500).json({ message: "Server error", error });
   }
 };
+
 
 
 
