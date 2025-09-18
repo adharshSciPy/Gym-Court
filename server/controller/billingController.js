@@ -100,7 +100,7 @@ const getBillingsByCourt = async (req, res) => {
 
 const getFullPaymentHistory = async (req, res) => {
   try {
-    const { search, startDate, endDate, page = 1, limit = 10 } = req.query;
+    const { search, startDate,courtId, endDate, page = 1, limit = 10 } = req.query;
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -154,9 +154,12 @@ if (startDate || endDate) {
   }
 }
 
-
+ let courtFilter = {};
+    if (courtId) {
+      courtFilter.courtId = courtId; // exact ObjectId match
+    }
     // Step 3: Query billing with filters
-    const query = { ...userFilter, ...dateFilter };
+    const query = { ...userFilter, ...dateFilter ,...courtFilter};
 
     const billings = await Billing.find(query)
       .populate("userId", "firstName lastName phoneNumber")

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { deleteReceptionist, getAllReceptionists, receptionistLogin, registerReceptionist } from '../controller/receptionistController.js';
-import { deleteTrainer } from '../controller/trainerController.js';
+// import { deleteTrainer } from '../controller/trainerController.js';
 
 const receptionistRouter=Router();
 receptionistRouter.route('/register').post(registerReceptionist);

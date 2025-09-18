@@ -51,6 +51,7 @@
     "mongodb": "^6.19.0",
     "mongoose": "^8.18.1",
     "ms": "^2.1.3",
+    "multer": "^2.0.2",
     "negotiator": "^1.0.0",
     "node-cron": "^4.2.1",
     "object-inspect": "^1.13.4",

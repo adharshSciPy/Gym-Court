@@ -162,6 +162,52 @@ const getAllTrainers = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error", error: error.message });
   }
 };
+const assignDietPlan = async (req, res) => {
+  try {
+    const {id:trainerId }= req.params;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "Diet PDF is required" });
+    }
+
+    // Verify trainer exists
+    const trainer = await Trainer.findById(trainerId);
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer not found" });
+    }
+
+    // Verify user exists and is assigned to this trainer
+    const gymUser = await GymUsers.findById(userId);
+    if (!gymUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (gymUser.trainer.toString() !== trainerId) {
+      return res.status(403).json({ message: "You are not assigned to this user" });
+    }
+
+    // Update user's diet PDF
+    gymUser.dietPdf = `/uploads/diets/${req.file.filename}`;
+    await gymUser.save();
+
+    res.json({
+      message: "Diet plan assigned successfully",
+      user: {
+        id: gymUser._id,
+        name: gymUser.name,
+        dietPdf: gymUser.dietPdf,
+      },
+    });
+  } catch (error) {
+    console.error("Error assigning diet plan:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
-export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer};
+export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer,assignDietPlan};
