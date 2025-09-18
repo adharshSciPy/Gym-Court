@@ -4,11 +4,11 @@ const gymUsersSchema = new Schema(
   {
     name: { type: String, required: true, maxlength: 50 },
     address: { type: String, required: true, maxlength: 200 },
-    phoneNumber: { type: String, required: true, unique: true, match: /^[0-9]{10}$/ },
-    whatsAppNumber: { type: String, required: true, match: /^[0-9]{10}$/ },
+    phoneNumber: { type: Number, required: true, unique: true, match: /^[0-9]{10}$/ },
+    whatsAppNumber: { type:Number, required: true, match: /^[0-9]{10}$/ },
     notes: { type: String, maxlength: 300 },
     trainer: { type: Schema.Types.ObjectId, ref: "Trainer", required: true },
-    dietPdf: { type: String }, // store URL or path
+    dietPdf: { type: String },
     subscription: {
       startDate: { type: Date, required: true },
       endDate: { type: Date, required: true },

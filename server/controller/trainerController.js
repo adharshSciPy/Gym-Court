@@ -1,5 +1,6 @@
 import { Trainer } from "../model/trainerSchema.js";
 import { Gym } from "../model/gymSchema.js";
+import { GymUsers } from "../model/gymUserSchema.js";
 import { passwordValidator } from "../utils/passwordValidator.js";
 import { emailValidator } from "../utils/emailValidator.js";
 import mongoose from "mongoose";
@@ -114,5 +115,53 @@ const trainerLogin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+// Get all trainers with assigned users count
+const getAllTrainers = async (req, res) => {
+  try {
 
-export { registerTrainer, trainerLogin };
+    const trainers = await Trainer.find()
+      .populate("users", "firstName lastName phoneNumber") 
+      .lean();
+    const trainersWithCounts = trainers.map((trainer) => ({
+      ...trainer,
+      assignedUserCount: trainer.users ? trainer.users.length : 0,
+    }));
+
+    res.status(200).json({
+      message: "Trainers fetched successfully",
+      count: trainersWithCounts.length,
+      trainers: trainersWithCounts,
+    });
+  } catch (error) {
+    console.error("Error fetching trainers:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+ const deleteTrainer = async (req, res) => {
+  const { id } = req.params;
+
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid Trainer ID" });
+  }
+
+  try {
+
+    const trainer = await Trainer.findById(id);
+    if (!trainer) {
+      return res.status(404).json({ message: "Trainer not found" });
+    }
+    await GymUsers.updateMany(
+      { trainer: id },
+      { $pull: { trainer: id } } 
+    );
+    await Trainer.findByIdAndDelete(id);
+
+    res.status(200).json({ message: "Trainer deleted successfully and users released" });
+  } catch (error) {
+    console.error("Error deleting trainer:", error);
+    res.status(500).json({ message: "Internal Server Error", error: error.message });
+  }
+};
+
+
+export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer};
