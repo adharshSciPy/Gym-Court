@@ -32,8 +32,14 @@ const getLatestBookings = async (req, res) => {
       // Sort by newest first
       { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
 
-      // Group by userId + courtId → latest booking per user per court
-      { $group: { _id: { userId: "$userId", courtId: "$courtId" }, latestBooking: { $first: "$$ROOT" } } },
+  // Group by userId → latest booking per user
+{ 
+  $group: { 
+    _id: "$userId", 
+    latestBooking: { $first: "$$ROOT" } 
+  } 
+},
+
 
       // Lookup user
       {

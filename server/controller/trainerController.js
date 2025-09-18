@@ -114,5 +114,28 @@ const trainerLogin = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+// Get all trainers with assigned users count
+const getAllTrainers = async (req, res) => {
+  try {
 
-export { registerTrainer, trainerLogin };
+    const trainers = await Trainer.find()
+      .populate("users", "firstName lastName phoneNumber") 
+      .lean();
+    const trainersWithCounts = trainers.map((trainer) => ({
+      ...trainer,
+      assignedUserCount: trainer.users ? trainer.users.length : 0,
+    }));
+
+    res.status(200).json({
+      message: "Trainers fetched successfully",
+      count: trainersWithCounts.length,
+      trainers: trainersWithCounts,
+    });
+  } catch (error) {
+    console.error("Error fetching trainers:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+
+export { registerTrainer, trainerLogin,getAllTrainers };

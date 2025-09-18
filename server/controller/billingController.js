@@ -1,4 +1,5 @@
 import Billing from "../model/billingSchema.js";
+import { User } from "../model/userSchema.js";
 const getBillingsByCourt = async (req, res) => {
   try {
     const { id: courtId } = req.params;
@@ -13,22 +14,24 @@ const getBillingsByCourt = async (req, res) => {
     const limitNum = parseInt(limit, 10) || 10;
     const skip = (pageNum - 1) * limitNum;
 
-    // --- Build date filter for booking dates ---
-    const dateFilter = {};
-    if (startDate) {
-      dateFilter.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      const endOfDay = new Date(endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      dateFilter.$lte = endOfDay;
+    // --- Build booking filter (only if query is passed) ---
+    let bookingMatch = {};
+    if (startDate || endDate) {
+      const dateFilter = {};
+      if (startDate) dateFilter.$gte = new Date(startDate);
+      if (endDate) {
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        dateFilter.$lte = endOfDay;
+      }
+      bookingMatch.startDate = dateFilter;
     }
 
-    // --- Query billings, filter on booking startDate ---
+    // --- Query billings ---
     const billings = await Billing.find({ courtId })
       .populate({
         path: "bookingId",
-        match: startDate || endDate ? { startDate: dateFilter } : {}, // filter on booking
+        match: bookingMatch,
         select:
           "slotIds startDate endDate startTime endTime isMultiDay status notes amount modeOfPayment",
         populate: { path: "slotIds", select: "date startTime endTime" },
@@ -39,9 +42,11 @@ const getBillingsByCourt = async (req, res) => {
       .limit(limitNum);
 
     // --- Remove billings where bookingId got filtered out ---
-    const filteredBillings = billings.filter((b) => b.bookingId);
+    const filteredBillings = bookingMatch.startDate
+      ? billings.filter((b) => b.bookingId)
+      : billings;
 
-    // --- Total count ---
+    // --- Total count (respect date filter) ---
     const total = await Billing.countDocuments({ courtId });
 
     // --- Helpers ---
@@ -67,20 +72,22 @@ const getBillingsByCourt = async (req, res) => {
       const booking = billing.bookingId;
       return {
         ...billing.toObject(),
-        bookingId: {
-          ...booking.toObject(),
-          startDate: formatDate(booking.startDate),
-          endDate: formatDate(booking.endDate),
-          startTime: formatTime(booking.startTime),
-          endTime: formatTime(booking.endTime),
-        },
+        bookingId: booking
+          ? {
+              ...booking.toObject(),
+              startDate: formatDate(booking.startDate),
+              endDate: formatDate(booking.endDate),
+              startTime: formatTime(booking.startTime),
+              endTime: formatTime(booking.endTime),
+            }
+          : null,
       };
     });
 
     res.status(200).json({
       message: "Payment history fetched successfully",
       count: formattedBillings.length,
-      total: filteredBillings.length,
+      total,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
       billings: formattedBillings,
@@ -91,6 +98,91 @@ const getBillingsByCourt = async (req, res) => {
   }
 };
 
+const getFullPaymentHistory = async (req, res) => {
+  try {
+    const { search, startDate, endDate, page = 1, limit = 10 } = req.query;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+   let userFilter = {};
+if (search) {
+  const orConditions = [
+    { firstName: new RegExp(search, "i") },
+    { lastName: new RegExp(search, "i") },
+  ];
+
+  // If search is numeric → match phoneNumber as Number
+  if (/^\d+$/.test(search)) {
+    orConditions.push({ phoneNumber: Number(search) });
+  }
+
+  // Find matching users
+  const users = await User.find({ $or: orConditions }).select("_id");
+
+  const userIds = users.map((u) => u._id);
+  if (userIds.length > 0) {
+    userFilter.userId = { $in: userIds };
+  } else {
+    return res.json({
+      message: "Payment history fetched successfully",
+      count: 0,
+      total: 0,
+      page: pageNum,
+      totalPages: 0,
+      billings: [],
+    });
+  }
+}
+
+    // Step 2: Build date filter
+let dateFilter = {};
+if (startDate || endDate) {
+  dateFilter.createdAt = {};
+
+  if (startDate) {
+    const startOfDay = new Date(startDate);
+    startOfDay.setHours(0, 0, 0, 0); // include everything from start of the day
+    dateFilter.createdAt.$gte = startOfDay;
+  }
+
+  if (endDate) {
+    const endOfDay = new Date(endDate);
+    endOfDay.setHours(23, 59, 59, 999); // include everything until end of the day
+    dateFilter.createdAt.$lte = endOfDay;
+  }
+}
 
 
-export{getBillingsByCourt}
+    // Step 3: Query billing with filters
+    const query = { ...userFilter, ...dateFilter };
+
+    const billings = await Billing.find(query)
+      .populate("userId", "firstName lastName phoneNumber")
+      .populate("courtId", "name")
+      .populate("bookingId", "startDate endDate startTime endTime")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    const total = await Billing.countDocuments(query);
+
+    res.json({
+      message: "Payment history fetched successfully",
+      count: billings.length,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum),
+      billings,
+    });
+  } catch (error) {
+    console.error("Error fetching payment history:", error);
+    res.status(500).json({ message: "Server error", error });
+  }
+};
+
+
+
+
+export{getBillingsByCourt,getFullPaymentHistory}

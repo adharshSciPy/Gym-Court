@@ -1,7 +1,9 @@
 import { Router } from 'express'
-import { receptionistLogin, registerReceptionist } from '../controller/receptionistController.js';
+import { getAllReceptionists, receptionistLogin, registerReceptionist } from '../controller/receptionistController.js';
 
 const receptionistRouter=Router();
 receptionistRouter.route('/register').post(registerReceptionist);
-receptionistRouter.route('/login').post(receptionistLogin)
+receptionistRouter.route('/login').post(receptionistLogin);
+receptionistRouter.route('/all-receptionists').get(getAllReceptionists);
+
 export default receptionistRouter
