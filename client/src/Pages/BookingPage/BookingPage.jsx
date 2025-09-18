@@ -1,187 +1,327 @@
-
-import React, { useState } from 'react';
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
-import './BookingManagement.css';
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  Search,
+  MessageCircle,
+  
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import axios from "axios";
+import baseUrl from "../../baseUrl";
+import styles from "./BookingManagement.module.css";
 
 const BookingManagement = () => {
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedCourt, setSelectedCourt] = useState('Court 1');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [bookingHistory, setBookingHistory] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [itemsPerPage] = useState(10);
+  const [courts, setCourts] = useState([]);
+  const [selectedCourt, setSelectedCourt] = useState("");
 
-  // Mock data with custom time slots - replace with actual API call
-  const mockBookings = [
-    { id: 1, courtName: 'Court 1', playerName: 'Ava Davis', startTime: '07:00', endTime: '08:00', date: '2025-09-16' },
-    { id: 2, courtName: 'Court 1', playerName: 'Olivia Bennet', startTime: '08:15', endTime: '08:45', date: '2025-09-16' }, // 30 min slot
-    { id: 3, courtName: 'Court 1', playerName: 'John Smith', startTime: '09:20', endTime: '09:30', date: '2025-09-16' }, // 10 min slot
-    { id: 4, courtName: 'Court 1', playerName: 'Sarah Wilson', startTime: '10:00', endTime: '11:30', date: '2025-09-16' }, // 1.5 hour slot
-    { id: 5, courtName: 'Court 1', playerName: 'Mike Johnson', startTime: '14:00', endTime: '14:20', date: '2025-09-16' }, // 20 min slot
-    { id: 6, courtName: 'Court 1', playerName: 'Emma Brown', startTime: '15:30', endTime: '16:45', date: '2025-09-16' }, // 1 hour 15 min
-    { id: 7, courtName: 'Court 1', playerName: 'David Miller', startTime: '17:10', endTime: '17:25', date: '2025-09-16' }, // 15 min slot
-    { id: 8, courtName: 'Court 1', playerName: 'Lisa Garcia', startTime: '18:00', endTime: '19:00', date: '2025-09-16' },
-    { id: 9, courtName: 'Court 2', playerName: 'James Taylor', startTime: '07:30', endTime: '08:00', date: '2025-09-16' }, // 30 min
-    { id: 10, courtName: 'Court 2', playerName: 'Anna White', startTime: '09:00', endTime: '09:25', date: '2025-09-16' }, // 25 min
-    { id: 11, courtName: 'Court 2', playerName: 'Chris Lee', startTime: '13:15', endTime: '14:30', date: '2025-09-16' }, // 1 hour 15 min
-    { id: 12, courtName: 'Court 3', playerName: 'Maria Rodriguez', startTime: '08:45', endTime: '09:00', date: '2025-09-16' }, // 15 min
-    { id: 13, courtName: 'Court 3', playerName: 'Alex Johnson', startTime: '16:20', endTime: '16:30', date: '2025-09-16' }, // 10 min
-  ];
+  const handleWhatsApp = (phoneNumber, message)=>{
+  const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank");
+}
 
-  const courts = ['Court 1', 'Court 2', 'Court 3', 'Court 4'];
+  // const handleView = (memberName) => {
+  //   alert(`View details for ${memberName}`);
+  // };
 
-  const formatTime = (time) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+  const fetchBookingHistory = useCallback(
+  async (page = 1, search = "") => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit: itemsPerPage,
+      };
 
-  const calculateDuration = (startTime, endTime) => {
-    const [startHour, startMin] = startTime.split(':').map(Number);
-    const [endHour, endMin] = endTime.split(':').map(Number);
-    
-    const startMinutes = startHour * 60 + startMin;
-    const endMinutes = endHour * 60 + endMin;
-    const duration = endMinutes - startMinutes;
-    
-    if (duration < 60) {
-      return `${duration} min`;
-    } else {
-      const hours = Math.floor(duration / 60);
-      const minutes = duration % 60;
-      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+      if (search.trim()) params.search = search;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+      if (selectedCourt) params.courtId = selectedCourt;
+
+      const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
+        params,
+      });
+
+      setBookingHistory(res.data.bookings || []);
+      setTotalPages(
+        res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
+      );
+      setTotalRecords(res.data.total || res.data.bookings?.length || 0);
+    } catch (error) {
+      console.log(error);
+      setBookingHistory([]);
+    } finally {
+      setLoading(false);
+    }
+  },
+  [itemsPerPage, startDate, endDate, selectedCourt] // ✅ dependencies
+);
+
+  // ✅ Fetch courts for dropdown
+  const getAllCourt = async () => {
+    try {
+      const res = await axios.get(`${baseUrl}/api/v1/Court/fetchCourts`);
+      if (res.status === 200) {
+        setCourts(res.data.data);
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 
-  const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+  // Pagination handler
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+    }
   };
 
-  const formatDisplayDate = (date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  // Search handler
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
-  const changeDate = (days) => {
-    const newDate = new Date(selectedDate);
-    newDate.setDate(selectedDate.getDate() + days);
-    setSelectedDate(newDate);
-  };
-
-  const changeMonth = (months) => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(selectedDate.getMonth() + months);
-    setSelectedDate(newDate);
-  };
-
-  const goToToday = () => {
-    setSelectedDate(new Date());
-  };
-
+  // Date filter handlers
   const handleDateChange = (e) => {
-    setSelectedDate(new Date(e.target.value));
+    setStartDate(e.target.value);
+    setCurrentPage(1);
+  };
+  const handleEndDate = (e) => {
+    setEndDate(e.target.value);
+    setCurrentPage(1);
   };
 
-  // Filter bookings for selected date and court
-  const filteredBookings = mockBookings.filter(booking => 
-    booking.date === formatDate(selectedDate) && 
-    booking.courtName === selectedCourt
-  );
+  // Pagination numbers
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push("...");
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
+
+  // ✅ Effects
+  useEffect(() => {
+    getAllCourt();
+  }, []);
+
+  // Load data initially & when selectedCourt changes
+ useEffect(() => {
+  fetchBookingHistory(1, searchTerm);
+  setCurrentPage(1);
+}, [selectedCourt, fetchBookingHistory, searchTerm]);
+
+useEffect(() => {
+  fetchBookingHistory(currentPage, searchTerm);
+}, [currentPage, fetchBookingHistory, searchTerm]);
+
+useEffect(() => {
+  const delay = setTimeout(() => {
+    fetchBookingHistory(1, searchTerm);
+  }, 500);
+  return () => clearTimeout(delay);
+}, [searchTerm, fetchBookingHistory]);
+
+useEffect(() => {
+  fetchBookingHistory(1, searchTerm);
+}, [startDate, endDate, fetchBookingHistory, searchTerm]);
 
   return (
-    <div className="bookingPageWrapper">
-      <div className="bookingPageHeader">
-        <h1 className="courtlyMainTitle">Courtly</h1>
-        <h2 className="selectedCourtTitle">{selectedCourt}</h2>
-      </div>
-
-      <div className="bookingTabsWrapper">
-        <div className="bookingTabsList">
-          <button className="bookingTab">Members</button>
-          <button className="bookingTab">Book Now</button>
-          <button className="bookingTab bookingTabActive">Booking Overview</button>
-          <button className="bookingTab">Payment history</button>
-          <button className="bookingTab">Reports</button>
-          <button className="bookingTab">Bills</button>
+    <div className={styles.container}>
+      {/* Filters */}
+      <div className={styles.searchContainer}>
+        <div className={styles.searchWrapper}>
+          <Search className={styles.searchIcon} size={18} />
+          <input
+            type="text"
+            placeholder="Search members"
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className={styles.searchInput}
+          />
         </div>
-      </div>
+        <div className={styles.dateFilterWrapper}>
+          <input
+            type="date"
+            value={startDate}
+            onChange={handleDateChange}
+            className={styles.formInput}
+          />
+          <span style={{ margin: "0 10px" }}>To</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={handleEndDate}
+            className={styles.formInput}
+          />
 
-      <div className="bookingControlsSection">
-        <div className="bookingDateControls">
-          <button className="bookingMonthNavButton" onClick={() => changeMonth(-1)} title="Previous Month">
-            <ChevronLeft size={16} />
-            <ChevronLeft size={16} style={{marginLeft: '-8px'}} />
-          </button>
-          
-          <button className="bookingDateNavButton" onClick={() => changeDate(-1)} title="Previous Day">
-            <ChevronLeft size={20} />
-          </button>
-          
-          <div className="bookingDatePickerWrapper">
-            <Calendar size={20} className="bookingCalendarIcon" />
-            <input
-              type="date"
-              value={formatDate(selectedDate)}
-              onChange={handleDateChange}
-              className="bookingDateInput"
-            />
-            <span className="bookingDateDisplayText">{formatDisplayDate(selectedDate)}</span>
-          </div>
-          
-          <button className="bookingDateNavButton" onClick={() => changeDate(1)} title="Next Day">
-            <ChevronRight size={20} />
-          </button>
-
-          <button className="bookingMonthNavButton" onClick={() => changeMonth(1)} title="Next Month">
-            <ChevronRight size={16} />
-            <ChevronRight size={16} style={{marginLeft: '-8px'}} />
-          </button>
-
-          <button className="bookingTodayButton" onClick={goToToday}>
-            Today
-          </button>
-        </div>
-
-        <div className="bookingCourtSelectorWrapper">
-          <select 
-            value={selectedCourt} 
+          {/* Court Dropdown */}
+          <select
+            style={{padding:"8px",borderRadius:"8px", marginLeft:"10px",border:"none"}}
+            value={selectedCourt}
             onChange={(e) => setSelectedCourt(e.target.value)}
-            className="bookingCourtSelectDropdown"
           >
-            {courts.map(court => (
-              <option key={court} value={court}>{court}</option>
+            <option value="">All Courts</option>
+            {courts.map((court) => (
+              <option key={court._id} value={court._id}>
+                {court.courtName || ""}
+              </option>
             ))}
           </select>
         </div>
       </div>
 
-      <div className="bookingSlotsGrid">
-        {filteredBookings.length === 0 ? (
-          <div className="noBookingsMessage">
-            <div className="noBookingsIcon">📅</div>
-            <h3>No bookings for this date</h3>
-            <p>Select a different date or court to view bookings</p>
-          </div>
-        ) : (
-          filteredBookings
-            .sort((a, b) => a.startTime.localeCompare(b.startTime))
-            .map((booking) => (
-              <div key={booking.id} className="bookingSlot booked">
-                <div className="bookingInfo">
-                  <div className="playerName">{booking.playerName}</div>
-                  <div className="timeRange">
-                    {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
-                  </div>
-                  <div className="duration">
-                    {calculateDuration(booking.startTime, booking.endTime)}
-                  </div>
-                </div>
-              </div>
-            ))
-        )}
+      {/* Loader */}
+      {loading && (
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner}>Loading...</div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className={styles.tableWrapper}>
+        <table className={styles.table}>
+          <thead>
+            <tr className={styles.headerRow}>
+              <th className={styles.th}>Name</th>
+              <th className={styles.th}>Phone Number</th>
+              <th className={styles.th}>WhatsApp Number</th>
+              <th className={styles.th}>Booking Date</th>
+              <th className={styles.th}>Ended Date</th>
+              <th className={styles.th}>Booking Slots</th>
+              <th className={styles.th}>Status</th>
+              <th className={styles.th}>Court</th>
+              <th className={styles.th}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookingHistory.length === 0 && !loading ? (
+              <tr>
+                <td colSpan="9" className={styles.noData}>
+                  No bookings found
+                </td>
+              </tr>
+            ) : (
+              bookingHistory.map((member, index) => (
+                <tr key={member._id || index} className={styles.bodyRow}>
+                  <td className={styles.td}>{member.user?.firstName}</td>
+                  <td className={styles.td}>{member.user?.phoneNumber}</td>
+                  <td className={styles.td}>{member.user?.whatsAppNumber}</td>
+                  <td className={styles.td}>{member.startDate}</td>
+                  <td className={styles.td}>{member.endDate}</td>
+                  <td className={styles.td}>
+                    {member.startTime}-{member.endTime}
+                  </td>
+                  <td className={styles.td}>
+                    <span
+                      className={`${styles.status} ${
+                        member.status === "upcoming"
+                          ? styles.statusActive
+                          : styles.statusExpired
+                      }`}
+                    >
+                      {member.status}
+                    </span>
+                  </td>
+                  <td className={styles.td}>{member.court?.courtName}</td>
+                  <td className={styles.td}>
+                    <div className={styles.actionButtons}>
+                      <button
+                        className={`${styles.actionButton} ${styles.whatsappButton}`}
+                        onClick={() => handleWhatsApp(member.user?.whatsAppNumber,"this is a renew message")}
+                      >
+                        <MessageCircle size={16} />
+                      </button>
+                      {/* <button
+                        className={styles.actionButton}
+                        onClick={() => handleView(member.user?.firstName)}
+                      >
+                        <Eye size={16} />
+                      </button> */}
+                      {member.status === "expired" && (
+                        <button className={styles.renewButton}>Renew</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className={styles.paginationContainer}>
+          <div className={styles.paginationInfo}>
+            Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+            {Math.min(currentPage * itemsPerPage, totalRecords)} of{" "}
+            {totalRecords} entries
+          </div>
+          <div className={styles.paginationControls}>
+            <button
+              className={`${styles.paginationButton} ${
+                currentPage === 1 ? styles.disabled : ""
+              }`}
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <div className={styles.pageNumbers}>
+              {generatePageNumbers().map((page, index) => (
+                <button
+                  key={index}
+                  className={`${styles.pageButton} ${
+                    page === currentPage ? styles.activePage : ""
+                  } ${page === "..." ? styles.ellipsis : ""}`}
+                  onClick={() => page !== "..." && handlePageChange(page)}
+                  disabled={page === "..."}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <button
+              className={`${styles.paginationButton} ${
+                currentPage === totalPages ? styles.disabled : ""
+              }`}
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
