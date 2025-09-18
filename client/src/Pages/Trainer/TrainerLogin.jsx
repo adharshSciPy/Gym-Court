@@ -15,7 +15,7 @@ function TrainerLogin() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     const [form, setForm] = useState({
-        adminEmail: "",
+        trainerEmail: "",
         password: "",
     });
 
@@ -57,7 +57,7 @@ function TrainerLogin() {
 
     const trainerLogin = async () => {
         try {
-            const res = await axios.post(`${baseUrl}/api/v1/admin/login`, form);
+            const res = await axios.post(`${baseUrl}/api/v1/trainer/login`, form);
             if (res.status === 200) {
                 navigate("/Trainerdashboard");
             }
@@ -68,7 +68,7 @@ function TrainerLogin() {
 
     // ✅ Disabled if fields are empty or invalid
     const isDisabled =
-        !form.adminEmail || !form.password || emailError || passwordError;
+        !form.trainerEmail || !form.password || emailError || passwordError;
 
 
     return (
@@ -85,10 +85,10 @@ function TrainerLogin() {
                     <div className={styles.inputContainer}>
                         <input
                             type="email"
-                            name="adminEmail"
+                            name="trainerEmail"
                             placeholder="Email"
                             required
-                            value={form.adminEmail}
+                            value={form.trainerEmail}
                             onChange={handleChange}
                         />
                         {emailError && (
