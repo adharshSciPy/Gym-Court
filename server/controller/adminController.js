@@ -1,7 +1,12 @@
 import { Admin } from "../model/adminSchema.js";
 import { passwordValidator } from "../utils/passwordValidator.js";
 import { emailValidator } from "../utils/emailValidator.js";
+import { generateOtp, hashOtp, compareOtp } from "../utils/otp.js";
+import { sendOtpEmail } from "../utils/mailer.js";
+import { PasswordReset } from "../model/passwordResetSchema.js";
 // import jwt from "jsonwebtoken";
+const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10);
+const OTP_ATTEMPTS_LIMIT = parseInt(process.env.OTP_ATTEMPTS_LIMIT || "5", 10);
 
 const registerAdmin = async (req, res) => {
   const { phoneNumber, password, userName, adminEmail } = req.body;
@@ -81,6 +86,135 @@ const adminLogin = async (req, res) => {
   }
 };
 
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { adminEmail } = req.body;
+    if (!adminEmail) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    const admin = await Admin.findOne({ adminEmail });
+    if (!admin) {
+      // Don't reveal whether account exists
+      return res.status(200).json({
+        message: "If an account exists for this email, an OTP has been sent."
+      });
+    }
+
+    // 🔹 Check request limit (max 5 per minute)
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const recentRequests = await PasswordReset.countDocuments({
+      userId: admin._id,
+      role: "Admin",
+      createdAt: { $gte: oneMinuteAgo }
+    });
+
+    if (recentRequests >= 5) {
+      return res.status(429).json({
+        message: "Too many OTP requests. Please try again after a minute."
+      });
+    }
+
+    // Invalidate any old unused OTPs for this admin
+    await PasswordReset.updateMany(
+      { userId: admin._id, role: "Admin", used: false },
+      { used: true }
+    );
+
+    // Generate OTP
+    const otp = generateOtp(6);
+    const otpHash = await hashOtp(otp);
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    console.log(`Generated OTP for ${admin.adminEmail}: ${otp}`);
+
+    // Save reset request
+    await PasswordReset.create({
+      userId: admin._id,
+      role: "Admin",
+      otpHash,
+      expiresAt,
+    });
+
+    // Send OTP by email
+    await sendOtpEmail(admin.adminEmail, otp, admin.userName);
+
+    return res.status(200).json({
+      message: "If an account exists for this email, an OTP has been sent."
+    });
+  } catch (error) {
+    console.error("requestPasswordReset error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { adminEmail, otp, newPassword } = req.body;
+
+    if (!adminEmail || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and newPassword are required" });
+    }
+
+    if (!passwordValidator(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must be 8–64 characters long, include uppercase, lowercase, number, and special character."
+      });
+    }
+
+    const admin = await Admin.findOne({ adminEmail });
+    if (!admin) {
+      return res.status(400).json({ message: "Invalid OTP or email" });
+    }
+
+    // 🔹 Consistent with requestPasswordReset (userId + role)
+    const resetDoc = await PasswordReset.findOne({
+      userId: admin._id,
+      role: "Admin",
+      used: false
+    }).sort({ createdAt: -1 });
+
+    if (!resetDoc) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // Check expiry
+    if (resetDoc.expiresAt < new Date()) {
+      resetDoc.used = true;
+      await resetDoc.save();
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    // Too many attempts
+    if (resetDoc.attempts >= OTP_ATTEMPTS_LIMIT) {
+      resetDoc.used = true;
+      await resetDoc.save();
+      return res.status(429).json({ message: "Too many attempts. Request a new OTP." });
+    }
+
+    // Compare OTP
+    const ok = await compareOtp(otp, resetDoc.otpHash);
+    if (!ok) {
+      resetDoc.attempts += 1;
+      await resetDoc.save();
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // ✅ Update password
+    admin.password = newPassword;
+    await admin.save();
+
+    // ✅ Mark OTP as used
+    resetDoc.used = true;
+    await resetDoc.save();
+
+    return res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("resetPassword error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 
-export { registerAdmin ,adminLogin};
+export { registerAdmin ,adminLogin,requestPasswordReset,resetPassword};
