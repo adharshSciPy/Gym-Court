@@ -4,6 +4,12 @@ import { GymUsers } from "../model/gymUserSchema.js";
 import { passwordValidator } from "../utils/passwordValidator.js";
 import { emailValidator } from "../utils/emailValidator.js";
 import mongoose from "mongoose";
+import { generateOtp, hashOtp, compareOtp } from "../utils/otp.js";
+import { sendOtpEmail } from "../utils/mailer.js";
+import { PasswordReset } from "../model/passwordResetSchema.js";
+// import jwt from "jsonwebtoken";
+const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10);
+const OTP_ATTEMPTS_LIMIT = parseInt(process.env.OTP_ATTEMPTS_LIMIT || "5", 10);
 
 // Register Trainer
 const registerTrainer = async (req, res) => {
@@ -164,47 +170,51 @@ const getAllTrainers = async (req, res) => {
 };
 const getUsersByTrainer = async (req, res) => {
   const { id: trainerId } = req.params;
-  const { page = 1, limit = 10, search = "" } = req.query;
+  const { page = 1, limit = 10, search = "", userType } = req.query;
 
   const pageNum = parseInt(page, 10);
   const limitNum = parseInt(limit, 10);
   const skip = (pageNum - 1) * limitNum;
 
   try {
-    // Build search filter
-    const searchRegex = new RegExp(search, "i");
-    const filter = { trainer: trainerId, $or: [] };
+    // --- Build search filter ---
+    const filter = { trainer: trainerId };
+    filter.$or = [];
 
     if (search) {
-      // Search by name (regex)
+      const searchRegex = new RegExp(search, "i");
       filter.$or.push({ name: searchRegex });
 
-      // Search by phone numbers (exact match if numeric)
       if (!isNaN(search)) {
         filter.$or.push({ phoneNumber: Number(search) });
         filter.$or.push({ whatsAppNumber: Number(search) });
       }
     }
 
-    // Fetch filtered & paginated users
-    const users = await GymUsers.find(filter)
-      .select("name address phoneNumber whatsAppNumber dietPdf subscription")
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    // --- Filter by userType ---
+    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+      filter.userType = userType;
+    }
 
-    // Get total count for pagination
-    const totalCount = await GymUsers.countDocuments(filter);
+    // --- Fetch filtered & paginated users ---
+    const [users, totalCount] = await Promise.all([
+      GymUsers.find(filter)
+        .select("name address phoneNumber whatsAppNumber dietPdf subscription userType")
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      GymUsers.countDocuments(filter),
+    ]);
+
     const totalPages = Math.ceil(totalCount / limitNum);
 
     res.status(200).json({
       success: true,
       message: "Users fetched successfully",
-       page: pageNum,
+      page: pageNum,
       totalPages,
       totalCount,
       data: users,
-     
     });
   } catch (error) {
     console.error("Error fetching users for trainer:", error);
@@ -215,8 +225,6 @@ const getUsersByTrainer = async (req, res) => {
     });
   }
 };
-
-
 
 
 const assignDietPlan = async (req, res) => {
@@ -265,6 +273,129 @@ const assignDietPlan = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+const requestPasswordReset = async (req, res) => {
+  try {
+    const { trainerEmail } = req.body;
+    if (!trainerEmail)
+      return res.status(400).json({ message: "Email is required" });
 
+    const trainer = await Trainer.findOne({ trainerEmail });
+    if (!trainer) {
+      // Don't reveal existence
+      return res.status(200).json({
+        message: "If an account exists for this email, an OTP has been sent."
+      });
+    }
 
-export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer,getUsersByTrainer,assignDietPlan};
+    // --- Check request limit and mark old OTPs as used in parallel ---
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const [recentRequests] = await Promise.all([
+      PasswordReset.countDocuments({
+        userId: trainer._id,
+        role: "Trainer",
+        createdAt: { $gte: oneMinuteAgo }
+      }),
+      PasswordReset.updateMany(
+        { userId: trainer._id, role: "Trainer", used: false },
+        { used: true }
+      )
+    ]);
+
+    if (recentRequests >= 5) {
+      return res.status(429).json({
+        message: "Too many OTP requests. Please try again after a minute."
+      });
+    }
+
+    // --- Generate OTP ---
+    const otp = generateOtp(6);
+    const otpHash = hashOtp(otp); // crypto hash is synchronous & fast
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    console.log(`Generated OTP for ${trainer.trainerEmail}: ${otp}`);
+
+    await PasswordReset.create({
+      userId: trainer._id,
+      role: "Trainer",
+      otpHash,
+      expiresAt,
+    });
+
+    // --- Send email async, don't block response ---
+    sendOtpEmail(trainer.trainerEmail, otp, trainer.userName)
+      .catch(err => console.error("Failed to send OTP email:", err));
+
+    return res.status(200).json({
+      message: "If an account exists for this email, an OTP has been sent."
+    });
+  } catch (error) {
+    console.error("requestPasswordReset error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+const resetPassword = async (req, res) => {
+  try {
+    const { trainerEmail, otp, newPassword } = req.body;
+
+    if (!trainerEmail || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, OTP and newPassword are required" });
+    }
+
+    if (!passwordValidator(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must be 8–64 characters long, include uppercase, lowercase, number, and special character."
+      });
+    }
+
+    const trainer = await Trainer.findOne({ trainerEmail });
+    if (!trainer) {
+      return res.status(400).json({ message: "Invalid OTP or email" });
+    }
+
+    const resetDoc = await PasswordReset.findOne({
+      userId: trainer._id,
+      role: "Trainer",
+      used: false
+    }).sort({ createdAt: -1 });
+
+    if (!resetDoc) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    if (resetDoc.expiresAt < new Date()) {
+      resetDoc.used = true;
+      await resetDoc.save();
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    if (resetDoc.attempts >= OTP_ATTEMPTS_LIMIT) {
+      resetDoc.used = true;
+      await resetDoc.save();
+      return res.status(429).json({ message: "Too many attempts. Request a new OTP." });
+    }
+
+    // ✅ Compare OTP
+    const ok = compareOtp(otp, resetDoc.otpHash);
+    if (!ok) {
+      resetDoc.attempts += 1;
+      await resetDoc.save();
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // ✅ Update password (auto-hashed via pre-save middleware)
+    trainer.password = newPassword;
+    await trainer.save();
+
+    // ✅ Mark OTP as used
+    resetDoc.used = true;
+    await resetDoc.save();
+
+    return res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (error) {
+    console.error("resetPassword error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer,getUsersByTrainer,assignDietPlan,requestPasswordReset,resetPassword};
