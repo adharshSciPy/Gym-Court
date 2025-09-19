@@ -7,27 +7,29 @@ import { useParams } from 'react-router-dom';
 
 const GymMembers = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState('members');
+  // const [activeTab, setActiveTab] = useState('members');
+  const [userTypeFilter, setUserTypeFilter] = useState('');
   const [members, setMembers] = useState([])
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [limit] = useState(10);
+  const [limit] = useState(5);
+  const [subscriptionFilter, setSubscriptionFilter] = useState('');
+  const [combinedFilter, setCombinedFilter] = useState("");
   const { id } = useParams()
 
 
+  // Fetch members with filters & pagination
   const fetchMembers = async () => {
     try {
+      const params = { page, limit, search: searchTerm };
+      if (userTypeFilter) params.userType = userTypeFilter;
+      if (subscriptionFilter) params.status = subscriptionFilter;
+
       const res = await axios.get(
         `${baseUrl}/api/v1/trainer/assigned-users/${id}`,
-        {
-          params: {
-            page,
-            limit,
-            search: searchTerm
-          }
-        }
+        { params }
       );
-
+      console.log(res)
       setMembers(res.data.data);
       setTotalPages(res.data.totalPages);
     } catch (error) {
@@ -35,9 +37,10 @@ const GymMembers = () => {
     }
   };
 
+  // Refetch when page, searchTerm, or userTypeFilter changes
   useEffect(() => {
     fetchMembers();
-  }, [page, searchTerm]);
+  }, [page, searchTerm, userTypeFilter, subscriptionFilter]);
 
 
   const formatDate = (dateString) => {
@@ -67,7 +70,7 @@ const GymMembers = () => {
         <div className={styles.content}>
           <div className={styles.contentContainer}>
             {/* Tabs */}
-            <div className={styles.tabs}>
+            {/* <div className={styles.tabs}>
               <button
                 onClick={() => setActiveTab('members')}
                 className={`${styles.tab} ${activeTab === 'members' ? styles.tabActive : styles.tabInactive
@@ -82,121 +85,132 @@ const GymMembers = () => {
               >
                 Add Members
               </button>
-            </div>
+            </div> */}
 
             {/* Content based on active tab */}
-            {activeTab === 'members' ? (
-              <>
-                <div className={styles.searchselect}>
-                  {/* Search Bar */}
-                  <div className={styles.searchContainer}>
-                    <Search className={styles.searchIcon} />
-                    <input
-                      type="text"
-                      placeholder="Search members"
-                      className={styles.searchInput}
-                      value={searchTerm}
-                       onChange={(e) => {
-                        setPage(1); // reset to first page when searching
-                        setSearchTerm(e.target.value);
-                      }}
-                    />
-                  </div>
-                  <div className={styles.selectmembers}>
-                    <select>
-                      <option className={styles.selectoption} value="">Select</option>
-                      <option className={styles.selectoption} value="All Members">All Members</option>
-                      <option className={styles.selectoption} value="Athlete">Athlete</option>
-                      <option className={styles.selectoption} value="Non Athlete">Non Athlete</option>
-                      <option className={styles.selectoption} value="Active Members">Active Members</option>
-                      <option className={styles.selectoption} value="Inactive Members">Inactive Members</option>
-                    </select>
-                  </div>
-                </div>
+            {/* {activeTab === 'members' ? (
+              <> */}
+            <div className={styles.searchselect}>
+              {/* Search Bar */}
+              <div className={styles.searchContainer}>
+                <Search className={styles.searchIcon} />
+                <input
+                  type="text"
+                  placeholder="Search members"
+                  className={styles.searchInput}
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setPage(1);
+                    setSearchTerm(e.target.value);
+                  }}
+                />
+              </div>
+              <div className={styles.selectmembers}>
+                <select
+                  value={combinedFilter}
+                  onChange={(e) => {
+                    setPage(1);
+                    const value = e.target.value;
+                    setCombinedFilter(value);
+
+                    // Reset both filters first
+                    setUserTypeFilter("");
+                    setSubscriptionFilter("");
+
+                    // Apply filter based on selection
+                    if (value === "athlete" || value === "non-athlete") {
+                      setUserTypeFilter(value);
+                    } else if (value === "active" || value === "expired") {
+                      setSubscriptionFilter(value);
+                    }
+                  }}
+                >
+                  <option className={styles.selectoption} value="">Select</option>
+                  <option className={styles.selectoption} value="athlete">Athlete</option>
+                  <option className={styles.selectoption} value="non-athlete">Non Athlete</option>
+                  <option className={styles.selectoption} value="active">Active Members</option>
+                  <option className={styles.selectoption} value="expired">Inactive Members</option>
+                </select>
+              </div>
+            </div>
 
 
-                {/* Table */}
-                <div className={styles.tableContainer}>
-                  <table className={styles.table}>
-                    <thead className={styles.tableHeader}>
-                      <tr>
-                        <th className={styles.tableHeaderCell}>Name</th>
-                        <th className={styles.tableHeaderCell}>Phone Number</th>
-                        <th className={styles.tableHeaderCell}>WhatsApp Number</th>
-                        <th className={styles.tableHeaderCell}>Joining date</th>
-                        <th className={styles.tableHeaderCell}>Ended Date</th>
-                        <th className={styles.tableHeaderCell}>Subscription Status</th>
-                        <th className={styles.tableHeaderCell}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {members.map((member, index) => (
-                        <tr key={index} className={styles.tableRow}>
-                          <td className={`${styles.tableCell} ${styles.tableCellName}`}>{member.name}</td>
-                          <td className={styles.tableCell}>{member.phoneNumber}</td>
-                          <td className={styles.tableCell}>{member.whatsAppNumber}</td>
-                          <td className={styles.tableCell}>{formatDate(member.subscription.startDate)}</td>
-                          <td className={styles.tableCell}>{formatDate(member.subscription.endDate)}</td>
-                          <td className={styles.tableCell}>
-                            <div className={styles.statusContainer}>
-                              <span className={`${styles.statusBadge} ${member.subscription.status === 'active'
-                                ? styles.statusActive
-                                : styles.statusExpired
-                                }`}>
-                                {member.subscription.status}
-                              </span>
-                              <button className={styles.renewButton}>
-                                Renew
-                              </button>
-                            </div>
-                          </td>
-                          <td className={styles.tableCell}>
-                            <div className={styles.actionButtons}>
-                              <button className={`${styles.actionButton} ${styles.actionButtonEdit}`}>
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button className={`${styles.actionButton} ${styles.actionButtonDelete}`}>
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                              <button className={`${styles.actionButton} ${styles.actionButtonMessage}`}>
-                                <MessageCircle className="w-4 h-4" />
-                              </button>
-                              <button className={`${styles.actionButton} ${styles.actionButtonView}`}>
-                                <Eye className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* Table */}
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead className={styles.tableHeader}>
+                  <tr>
+                    <th className={styles.tableHeaderCell}>Name</th>
+                    <th className={styles.tableHeaderCell}>Phone Number</th>
+                    <th className={styles.tableHeaderCell}>WhatsApp Number</th>
+                    <th className={styles.tableHeaderCell}>Joining date</th>
+                    <th className={styles.tableHeaderCell}>Ended Date</th>
+                    <th className={styles.tableHeaderCell}>Subscription Status</th>
+                    <th className={styles.tableHeaderCell}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {members.map((member, index) => (
+                    <tr key={index} className={styles.tableRow}>
+                      <td className={`${styles.tableCell} ${styles.tableCellName}`}>{member.name}</td>
+                      <td className={styles.tableCell}>{member.phoneNumber}</td>
+                      <td className={styles.tableCell}>{member.whatsAppNumber}</td>
+                      <td className={styles.tableCell}>{formatDate(member.subscription.startDate)}</td>
+                      <td className={styles.tableCell}>{formatDate(member.subscription.endDate)}</td>
+                      <td className={styles.tableCell}>
+                        <div className={styles.statusContainer}>
+                          <span className={`${styles.statusBadge} ${member.subscription.status === 'active'
+                            ? styles.statusActive
+                            : styles.statusExpired
+                            }`}>
+                            {member.subscription.status}
+                          </span>
+                          {member.subscription.status === "expired" && (
+                            <button className={styles.renewButton}>
+                              Renew
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className={styles.tableCell}>
+                        <div className={styles.actionButtons}>
+                          <button className={`${styles.actionButton} ${styles.actionButtonMessage}`}>
+                            <MessageCircle color='green' className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-                {/* Pagination */}
-                <div className={styles.pagination}>
-                  <button
-                    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
-                    disabled={page === 1}
-                  >
-                    Prev
-                  </button>
-                  <span> Page {page} of {totalPages} </span>
-                  <button
-                    onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={page === totalPages}
-                  >
-                    Next
-                  </button>
-                </div>
-              </>
+            {/* Pagination */}
+            <div className={styles.pagination}>
+              <button
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                disabled={page === 1}
+              >
+                Prev
+              </button>
+              <span> Page {page} of {totalPages} </span>
+              <button
+                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={page === totalPages}
+              >
+                Next
+              </button>
+            </div>
+
+            {/* </>
             ) : (
-              /* Add Members Form */
+            
               <div className={styles.formWrapper}>
                 <div className={styles.formContainer}>
                   <h2 className={styles.formTitle}>Add Members</h2>
 
                   <form className={styles.form}>
-                    {/* Enter Member Name */}
+                  
                     <div className={styles.formSection}>
                       <label className={styles.sectionLabel}>Enter Member Name</label>
                       <div className={styles.formRow}>
@@ -213,7 +227,7 @@ const GymMembers = () => {
                       </div>
                     </div>
 
-                    {/* Phone Numbers */}
+                   
                     <div className={styles.formSection}>
                       <div className={styles.formRow}>
                         <div className={styles.formGroup}>
@@ -235,7 +249,7 @@ const GymMembers = () => {
                       </div>
                     </div>
 
-                    {/* Address */}
+                   
                     <div className={styles.formSection}>
                       <label className={styles.sectionLabel}>Enter Address</label>
                       <textarea
@@ -245,7 +259,7 @@ const GymMembers = () => {
                       ></textarea>
                     </div>
 
-                    {/* Health Note */}
+                   
                     <div className={styles.formSection}>
                       <label className={styles.sectionLabel}>Health Note</label>
                       <textarea
@@ -255,7 +269,7 @@ const GymMembers = () => {
                       ></textarea>
                     </div>
 
-                    {/* Assign Trainers */}
+                   
                     <div className={styles.formSection}>
                       <label className={styles.sectionLabel}>Assign Trainers</label>
                       <select className={styles.formSelect}>
@@ -266,7 +280,7 @@ const GymMembers = () => {
                       </select>
                     </div>
 
-                    {/* Billing */}
+                  
                     <div className={styles.formSection}>
                       <label className={styles.sectionLabel}>Billing</label>
                       <div className={styles.billingRow}>
@@ -297,7 +311,8 @@ const GymMembers = () => {
                   </form>
                 </div>
               </div>
-            )}
+            )} */}
+
           </div>
         </div>
       </div>
