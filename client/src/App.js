@@ -35,7 +35,7 @@ function App() {
           <Route path='/report' element={<ReportPage />} />
 
           {/* Trainer */}
-          <Route path='/Trainerdashboard' element={
+          <Route path='/Trainerdashboard/:id' element={
             <TrainerSidebarSwitching
               activeNav={activeNav}
               setActiveNav={setActiveNav}
