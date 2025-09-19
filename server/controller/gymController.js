@@ -343,6 +343,92 @@ const getGymUserById = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
+const updateGymUser = async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    address,
+    phoneNumber,
+    whatsAppNumber,
+    notes,
+    trainerId,
+    dietPdf,
+    userType,
+    subscription,
+  } = req.body;
+
+  try {
+    const user = await GymUsers.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Gym user not found" });
+    }
+
+    // --- Update fields if provided ---
+    if (name) user.name = name;
+    if (address) user.address = address;
+    if (phoneNumber) user.phoneNumber = phoneNumber;
+    if (whatsAppNumber) user.whatsAppNumber = whatsAppNumber;
+    if (notes) user.notes = notes;
+    if (dietPdf) user.dietPdf = dietPdf;
+    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+      user.userType = userType;
+    }
+
+    if (trainerId) {
+      const trainer = await Trainer.findById(trainerId);
+      if (!trainer) {
+        return res.status(404).json({ success: false, message: "Trainer not found" });
+      }
+      user.trainer = trainerId;
+    }
+
+    if (subscription) {
+      const { startDate, endDate, months, status } = subscription;
+      user.subscription = {
+        startDate: startDate || user.subscription.startDate,
+        endDate: endDate || user.subscription.endDate,
+        months: months || user.subscription.months,
+        status: status || user.subscription.status,
+      };
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Gym user updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error updating gym user:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+const deleteGymUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await GymUsers.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Gym user not found" });
+    }
+
+    // Optionally, remove user from trainer.users array
+    await Trainer.updateOne(
+      { _id: user.trainer },
+      { $pull: { users: user._id } }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Gym user deleted successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error deleting gym user:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
 
 
-export{createGym,registerToGym,getAllGymUsers,getGymUserById}
+
+export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser}
