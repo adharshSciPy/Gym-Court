@@ -34,7 +34,7 @@ function TrainerDashboard() {
                         }}
                     >
                         <div className={styles.courtName}>{court.name}</div>
-                        {court.name == "Members" ? (
+                        {court.name === "Members" ? (
                             <button
                                 className={styles.bookButton}
                                 onMouseEnter={(e) => {

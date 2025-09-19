@@ -441,7 +441,7 @@ const renewSlot = async (req, res) => {
       gstNumber,
       modeOfPayment,
       notes,
-    } = req.body || {}; // <-- default empty object to avoid crash
+    } = req.body || {};
 
     // Validate courtId
     if (!courtId) {

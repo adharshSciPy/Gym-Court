@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./SettingPage.module.css";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
@@ -6,18 +6,55 @@ import { Trash2 } from "lucide-react"
 
 function SettingsPage() {
 
-  const receptionsData = [
-    { id: 1, name: "Vishva", date: '10/02/2025', phone: '9874545112', email: "vishva@gmal.com", password: "Vishva@123" },
-    { id: 2, name: "Sanju", date: '15/02/2025', phone: '65847956454', email: "sanju@gmal.com", password: "Sanju@123" },
-    { id: 3, name: "Adithyan", date: '28/02/2025', phone: '4556446554', email: "adithyan@gmal.com", password: "Adithyan@123" },
-    { id: 4, name: "Gokul", date: '20/02/2025', phone: '4864554645', email: "gokul@gmal.com", password: "Gokul@123" }
-  ]
+  const [trainersData, setTrainersData] = useState([]);
+  const [receptionsData, setReceptionsData] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [deleteType, setDeleteType] = useState("");
 
-  const trainersData = [
-    { id: 1, name: "Akshay", date: '10/02/2025', phone: '68451531521', email: "akshay@gmal.com", password: "Akshay@123" },
-    { id: 2, name: "Vinod", date: '15/02/2025', phone: '65847956454', email: "Vinod@gmal.com", password: "Vinod@123" },
-    { id: 3, name: "Varun", date: '28/02/2025', phone: '4556446554', email: "varun@gmal.com", password: "Varun@123" }
-  ]
+
+  const fetchTrainers = async () => {
+    try {
+      const trainerdetails = await axios.get(`${baseUrl}/api/v1/trainer/all-trainers`);
+      setTrainersData(trainerdetails.data.trainers)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const fetchReceptionist = async () => {
+    try {
+      const receptionsdetails = await axios.get(`${baseUrl}/api/v1/receptionist/all-receptionists`);
+      setReceptionsData(receptionsdetails.data.receptionists)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  useEffect(() => {
+    fetchReceptionist();
+    fetchTrainers();
+  }, [])
+
+  const deleteTrainer = async (id) => {
+    try {
+      const trainerRes = await axios.delete(`${baseUrl}/api/v1/trainer/delete/${id}`)
+      console.log("deleteTrainer", trainerRes)
+      fetchTrainers()
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const deleteReception = async (id) => {
+    try {
+      const receptionRes = await axios.delete(`${baseUrl}/api/v1/receptionist/delete/${id}`)
+      console.log("deleteReception", receptionRes)
+      fetchReceptionist()
+    } catch (error) {
+      console.log(error)
+    }
+  }
 
 
   const [activeTab, setActiveTab] = useState("receptionist");
@@ -116,6 +153,8 @@ function SettingsPage() {
       const res = await axios.post(endpoint, data);
       console.log(res.data);
       alert(`${tab === "receptionist" ? "Receptionist" : "Trainer"} added successfully!`);
+      fetchReceptionist();
+      fetchTrainers();
 
       // reset
       setReceptionistData({
@@ -154,8 +193,23 @@ function SettingsPage() {
     !/^\d{10}$/.test(trainerData.phoneNumber) ||
     (trainerData.experience && isNaN(trainerData.experience));
 
-  const isDisabled =
-    activeTab === "receptionist" ? disableReceptionist : disableTrainer;
+  const isDisabled = activeTab === "receptionist" ? disableReceptionist : disableTrainer;
+
+  // Converts ISO date string to DD/MM/YYYY
+  function formatDate(isoDate) {
+    if (!isoDate) return "";
+
+    const date = new Date(isoDate);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  }
+
+
+
+
 
   // ---------- JSX ----------
   return (
@@ -310,7 +364,6 @@ function SettingsPage() {
                   name="experience"
                   value={trainerData.experience}
                   onChange={(e) => handleChange(e, "trainer")}
-                  placeholder="Optional"
                 />
                 {errors["trainer_experience"] && (
                   <span className={styles.error}>
@@ -342,20 +395,26 @@ function SettingsPage() {
                       <th>Date</th>
                       <th>Phone</th>
                       <th>Email</th>
-                      <th>Password</th>
                       <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {receptionsData.map((value, index) => (
-                      <tr key={value.id}>
+                      <tr key={value._id}>
                         <td>{index + 1}</td>
-                        <td>{value.name}</td>
-                        <td>{value.date}</td>
-                        <td>{value.phone}</td>
-                        <td>{value.email}</td>
-                        <td>{value.password}</td>
-                        <td><Trash2 color="red" /></td>
+                        <td>{value.userName}</td>
+                        <td>{formatDate(value.createdAt)}</td>
+                        <td>{value.phoneNumber}</td>
+                        <td>{value.receptionistEmail}</td>
+                        <td><Trash2
+                          color="red"
+                          onClick={() => {
+                            setDeleteId(value._id);
+                            setDeleteType("receptionist");
+                            setShowModal(true);
+                          }}
+                        />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -378,20 +437,28 @@ function SettingsPage() {
                       <th>Date</th>
                       <th>Phone</th>
                       <th>Email</th>
-                      <th>Password</th>
+                      <th>Experience</th>
                       <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {trainersData.map((value, index) => (
-                      <tr key={value.id}>
+                      <tr key={value._id}>
                         <td>{index + 1}</td>
-                        <td>{value.name}</td>
-                        <td>{value.date}</td>
-                        <td>{value.phone}</td>
-                        <td>{value.email}</td>
-                        <td>{value.password}</td>
-                        <td><Trash2 color="red" /></td>
+                        <td>{value.trainerName}</td>
+                        <td>{formatDate(value.createdAt)}</td>
+                        <td>{value.phoneNumber}</td>
+                        <td>{value.trainerEmail}</td>
+                        <td>{value.experience}</td>
+                        <td><Trash2
+                          color="red"
+                          onClick={() => {
+                            setDeleteId(value._id);
+                            setDeleteType("trainer");
+                            setShowModal(true);
+                          }}
+                        />
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -402,6 +469,37 @@ function SettingsPage() {
           </>
         )}
       </div>
+
+      {showModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <h3>Confirm Delete</h3>
+            <p>Are you sure you want to delete this {deleteType}?</p>
+            <div className={styles.modalActions}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setShowModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.deleteBtn}
+                onClick={async () => {
+                  if (deleteType === "trainer") {
+                    await deleteTrainer(deleteId);
+                  } else {
+                    await deleteReception(deleteId);
+                  }
+                  setShowModal(false);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
