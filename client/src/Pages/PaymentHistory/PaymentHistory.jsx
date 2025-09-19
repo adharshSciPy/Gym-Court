@@ -68,7 +68,9 @@ function PaymentHistory() {
       params.append('limit', itemsPerPage.toString());
 
       const queryString = params.toString();
+      
       const url = `${baseUrl}/api/v1/billings/payment-history${queryString ? `?${queryString}` : ''}`;
+      
       
       const res = await axios.get(url);
       

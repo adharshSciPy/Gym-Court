@@ -1,12 +1,11 @@
 
 import React, { useEffect, useState } from "react";
-import { Search, MessageCircle, File, Eye } from "lucide-react";
+import {  MessageCircle, File, Eye } from "lucide-react";
 import styles from "./MemberTable.module.css";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
 
 function PaymentHistory({selectedCourtNumber}) {
-  const [searchTerm, setSearchTerm] = useState("");
   const [billData,setBillData]=useState([])
 
 
@@ -49,18 +48,7 @@ function PaymentHistory({selectedCourtNumber}) {
   },[selectedCourtNumber])
   return (
     <div className={styles.container}>
-      <div className={styles.searchContainer}>
-        <div className={styles.searchWrapper}>
-          <Search className={styles.searchIcon} size={18} />
-          <input
-            type="text"
-            placeholder="Search members"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className={styles.searchInput}
-          />
-        </div>
-      </div>
+      
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>

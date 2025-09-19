@@ -54,10 +54,10 @@ const BookingManagement = ({ selectedCourtNumber }) => {
 
   return (
     <div className={styles.bookingPageWrapper}>
-      <div className="bookingSlotsGrid">
+      <div className={styles.bookingSlotsGrid}>
         {bookData.length === 0 ? (
-          <div className="noBookingsMessage">
-            <div className="noBookingsIcon">📅</div>
+          <div className={styles.noBookingsMessage}>
+            <div className={styles.noBookingsIcon}>📅</div>
             <h3>No bookings for this date</h3>
             <p>Select a different date or court to view bookings</p>
           </div>
@@ -65,11 +65,11 @@ const BookingManagement = ({ selectedCourtNumber }) => {
           bookData
             .sort((a, b) => a.time.localeCompare(b.time)) // Sorting by 'time' string
             .map((booking) => (
-              <div key={booking.slotId} className="bookingSlot booked">
-                <div className="bookingInfo">
-                  <div className="playerName">{booking.bookedBy}</div>
-                  <div className="timeRange">{booking.time}</div>
-                  <div className="duration">
+              <div key={booking.slotId} className= {`${styles.bookingSlot} ${styles.booked}`}>
+                <div className={styles.bookingInfo}>
+                  <div className={styles.playerName}>{booking.bookedBy}</div>
+                  <div className={styles.timeRange}>{booking.time}</div>
+                  <div className={styles.duration}>
                     {calculateDurationFromTimeString(booking.time)}
                   </div>
                 </div>
