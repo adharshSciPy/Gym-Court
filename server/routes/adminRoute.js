@@ -3,7 +3,7 @@ import { adminLogin, registerAdmin, requestPasswordReset, resetPassword } from '
 const adminRouter=Router();
 adminRouter.route('/register').post(registerAdmin);
 adminRouter.route('/login').post(adminLogin)
-adminRouter.route('/send-otp').post(requestPasswordReset)
+adminRouter.route('/sent-otp').post(requestPasswordReset)
 adminRouter.route('/reset-password').post(resetPassword)
 
 
