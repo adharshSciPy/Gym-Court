@@ -86,28 +86,33 @@ const adminLogin = async (req, res) => {
   }
 };
 
-const requestPasswordReset = async (req, res) => {
+ const requestPasswordReset = async (req, res) => {
   try {
     const { adminEmail } = req.body;
-    if (!adminEmail) {
-      return res.status(400).json({ message: "Email is required" });
-    }
+    if (!adminEmail) return res.status(400).json({ message: "Email is required" });
 
     const admin = await Admin.findOne({ adminEmail });
     if (!admin) {
-      // Don't reveal whether account exists
+      // Don't reveal existence
       return res.status(200).json({
         message: "If an account exists for this email, an OTP has been sent."
       });
     }
 
-    // 🔹 Check request limit (max 5 per minute)
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-    const recentRequests = await PasswordReset.countDocuments({
-      userId: admin._id,
-      role: "Admin",
-      createdAt: { $gte: oneMinuteAgo }
-    });
+
+    // Parallel DB ops: check recent requests + invalidate old OTPs
+    const [recentRequests] = await Promise.all([
+      PasswordReset.countDocuments({
+        userId: admin._id,
+        role: "Admin",
+        createdAt: { $gte: oneMinuteAgo }
+      }),
+      PasswordReset.updateMany(
+        { userId: admin._id, role: "Admin", used: false },
+        { used: true }
+      )
+    ]);
 
     if (recentRequests >= 5) {
       return res.status(429).json({
@@ -115,20 +120,14 @@ const requestPasswordReset = async (req, res) => {
       });
     }
 
-    // Invalidate any old unused OTPs for this admin
-    await PasswordReset.updateMany(
-      { userId: admin._id, role: "Admin", used: false },
-      { used: true }
-    );
-
-    // Generate OTP
+    // Generate OTP and hash
     const otp = generateOtp(6);
-    const otpHash = await hashOtp(otp);
+    const otpHash = hashOtp(otp);
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
     console.log(`Generated OTP for ${admin.adminEmail}: ${otp}`);
 
-    // Save reset request
+    // Save OTP record
     await PasswordReset.create({
       userId: admin._id,
       role: "Admin",
@@ -136,12 +135,14 @@ const requestPasswordReset = async (req, res) => {
       expiresAt,
     });
 
-    // Send OTP by email
-    await sendOtpEmail(admin.adminEmail, otp, admin.userName);
+    // Send OTP asynchronously
+    sendOtpEmail(admin.adminEmail, otp, admin.userName)
+      .catch(err => console.error("Failed to send OTP email:", err));
 
     return res.status(200).json({
       message: "If an account exists for this email, an OTP has been sent."
     });
+
   } catch (error) {
     console.error("requestPasswordReset error:", error);
     return res.status(500).json({ message: "Internal server error" });
@@ -164,57 +165,50 @@ const resetPassword = async (req, res) => {
     }
 
     const admin = await Admin.findOne({ adminEmail });
-    if (!admin) {
-      return res.status(400).json({ message: "Invalid OTP or email" });
-    }
+    if (!admin) return res.status(400).json({ message: "Invalid OTP or email" });
 
-    // 🔹 Consistent with requestPasswordReset (userId + role)
     const resetDoc = await PasswordReset.findOne({
       userId: admin._id,
       role: "Admin",
       used: false
     }).sort({ createdAt: -1 });
 
-    if (!resetDoc) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
+    if (!resetDoc) return res.status(400).json({ message: "Invalid or expired OTP" });
 
-    // Check expiry
     if (resetDoc.expiresAt < new Date()) {
       resetDoc.used = true;
       await resetDoc.save();
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    // Too many attempts
     if (resetDoc.attempts >= OTP_ATTEMPTS_LIMIT) {
       resetDoc.used = true;
       await resetDoc.save();
       return res.status(429).json({ message: "Too many attempts. Request a new OTP." });
     }
 
-    // Compare OTP
-    const ok = await compareOtp(otp, resetDoc.otpHash);
+    // Compare OTP using fast crypto
+    const ok = compareOtp(otp, resetDoc.otpHash);
     if (!ok) {
       resetDoc.attempts += 1;
       await resetDoc.save();
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // ✅ Update password
+    // Update password (pre-save hook will hash it)
     admin.password = newPassword;
     await admin.save();
 
-    // ✅ Mark OTP as used
+    // Mark OTP as used
     resetDoc.used = true;
     await resetDoc.save();
 
     return res.status(200).json({ message: "Password has been reset successfully" });
+
   } catch (error) {
     console.error("resetPassword error:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 export { registerAdmin ,adminLogin,requestPasswordReset,resetPassword};
