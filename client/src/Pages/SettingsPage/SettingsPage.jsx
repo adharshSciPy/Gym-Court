@@ -213,7 +213,7 @@ function SettingsPage() {
 
   // ---------- JSX ----------
   return (
-    <div>
+    <div style={{overflow: "hidden"}} >
       <div className={styles.container}>
         <h2 className={styles.heading}>Settings</h2>
 

@@ -58,8 +58,10 @@ function TrainerLogin() {
     const trainerLogin = async () => {
         try {
             const res = await axios.post(`${baseUrl}/api/v1/trainer/login`, form);
+            console.log("res", res)
+            const id = res.data.trainerId
             if (res.status === 200) {
-                navigate("/Trainerdashboard");
+                navigate(`/Trainerdashboard/${id}`);
             }
         } catch (error) {
             console.log(error);

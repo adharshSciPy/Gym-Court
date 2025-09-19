@@ -266,9 +266,9 @@ useEffect(() => {
                       >
                         <Eye size={16} />
                       </button> */}
-                      {member.status === "expired" && (
+                      {/* {member.status === "expired" && (
                         <button className={styles.renewButton}>Renew</button>
-                      )}
+                      )} */}
                     </div>
                   </td>
                 </tr>

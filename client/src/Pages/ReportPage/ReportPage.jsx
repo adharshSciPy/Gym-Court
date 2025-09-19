@@ -25,17 +25,6 @@ const ReportPage = () => {
   return (
     <div className="reportsPageContainer">
       <div className="reportsCourtHeader">
-        <h2>Court 1</h2>
-      </div>
-       <div className="bookingTabsWrapper">
-        <div className="bookingTabsList">
-          <button className="bookingTab">Members</button>
-          <button className="bookingTab">Book Now</button>
-          <button className="bookingTab ">Booking Overview</button>
-          <button className="bookingTab">Payment history</button>
-          <button className="bookingTab bookingTabActive">Reports</button>
-          <button className="bookingTab">Bills</button>
-        </div>
       </div>
 
       {/* Booking Overview */}

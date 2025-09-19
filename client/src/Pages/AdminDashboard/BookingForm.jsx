@@ -5,9 +5,11 @@ import MemberTable from "./MemberTable";
 import PaymentHistory from "./PaymentHistory";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
-import BookingOverView from "./BookingOverview"
-const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
+import BookingOverView from "./BookingOverview";
+const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   const [activeTab, setActiveTab] = useState("details");
+  const [errors, setErrors] = useState({});
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -19,11 +21,11 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
     startTime: "",
     endTime: "",
     amount: 0,
-    isGst: false, 
+    isGst: false,
     gst: 0,
     gstNumber: "",
     modeOfPayment: "cash",
-    courtId:selectedCourtNumber
+    courtId: selectedCourtNumber,
   });
 
   const tabs = [
@@ -39,18 +41,67 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
       [field]: field === "isGst" ? value === "yes" : value,
     }));
   };
+  const validateForm = () => {
+    const newErrors = {};
 
-  const handleSubmit = async() => {
-      console.log(formData);
-    try {
-        const res=await axios.post(`${baseUrl}/api/v1/slot/book`,formData)
-        console.log(res);
-        
-    } catch (error) {
-        console.log(error);
-        
+    // Names
+    if (!formData.firstName.trim())
+      newErrors.firstName = "First name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last name is required";
+
+    // Phone numbers (basic length check for India)
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = "Phone number is required";
+    } else if (!/^\d{10}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = "Enter a valid 10-digit phone number";
     }
-    
+
+    if (!formData.whatsAppNumber) {
+      newErrors.whatsAppNumber = "WhatsApp number is required";
+    } else if (!/^\d{10}$/.test(formData.whatsAppNumber)) {
+      newErrors.whatsAppNumber = "Enter a valid 10-digit WhatsApp number";
+    }
+
+    // Address
+    if (!formData.address.trim()) newErrors.address = "Address is required";
+
+    // Booking details
+    if (!formData.startDate) newErrors.startDate = "Start date is required";
+    if (!formData.endDate) newErrors.endDate = "End date is required";
+    if (!formData.startTime) newErrors.startTime = "Start time is required";
+    if (!formData.endTime) newErrors.endTime = "End time is required";
+
+    // Billing
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      newErrors.amount = "Enter a valid amount";
+    }
+
+    if (formData.isGst) {
+      if (!formData.gst || Number(formData.gst) <= 0) {
+        newErrors.gst = "GST amount is required";
+      }
+      if (!formData.gstNumber.trim()) {
+        newErrors.gstNumber = "GST number is required";
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0; // ✅ true if no errors
+  };
+
+  const handleSubmit = async () => {
+    console.log(formData);
+    try {
+      if (validateForm()) {
+        const res = await axios.post(`${baseUrl}/api/v1/slot/book`, formData);
+        console.log(res);
+        console.log("Form submitted successfully", formData);
+      } else {
+        console.log("Validation failed");
+      }
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
@@ -100,6 +151,23 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                     className={styles.formInput}
                   />
                 </div>
+                <div className={styles.nameInputs}>
+                  <div className="">
+                    {errors.firstName && (
+                      <span id="firstNameError" className={styles.errorMessage}>
+                        {errors.firstName}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="">
+                    {errors.lastName && (
+                      <span id="lastNameError" className={styles.errorMessage}>
+                        {errors.lastName}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Phone Numbers */}
@@ -115,6 +183,11 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                     }
                     className={styles.formInput}
                   />
+                  {errors.phoneNumber && (
+                    <span id="phoneNumberError" className={styles.errorMessage}>
+                      {errors.phoneNumber}
+                    </span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
@@ -130,6 +203,14 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                     }
                     className={styles.formInput}
                   />
+                  {errors.whatsAppNumber && (
+                    <span
+                      id="whatsAppNumberError"
+                      className={styles.errorMessage}
+                    >
+                      {errors.whatsAppNumber}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -143,6 +224,11 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                   rows={3}
                   className={styles.textareaInput}
                 />
+                {errors.address && (
+                  <span id="addressError" className={styles.errorMessage}>
+                    {errors.address}
+                  </span>
+                )}
               </div>
 
               {/* Booking Details */}
@@ -151,42 +237,94 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                   Enter Booking Details
                 </label>
                 <div className={styles.bookingInputs}>
-                  <input
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) =>
-                      handleInputChange("startDate", e.target.value)
-                    }
-                    className={styles.formInput}
-                    placeholder="Start Date"
-                  />
-                  <input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) =>
-                      handleInputChange("endDate", e.target.value)
-                    }
-                    className={styles.formInput}
-                    placeholder="End Date"
-                  />
-                  <input
-                    type="time"
-                    placeholder="Start Time"
-                    value={formData.startTime}
-                    onChange={(e) =>
-                      handleInputChange("startTime", e.target.value)
-                    }
-                    className={styles.formInput}
-                  />
-                  <input
-                    type="time"
-                    placeholder="End Time"
-                    value={formData.endTime}
-                    onChange={(e) =>
-                      handleInputChange("endTime", e.target.value)
-                    }
-                    className={styles.formInput}
-                  />
+                  <div className="">
+                    <label
+                      className={styles.formLabel}
+                      style={{ marginRight: "10px" }}
+                    >
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) =>
+                        handleInputChange("startDate", e.target.value)
+                      }
+                      className={styles.formInput}
+                      placeholder="Start Date"
+                    />
+                    {errors.startDate && (
+                      <span id="startDateError" className={styles.errorMessage}>
+                        {errors.startDate}
+                      </span>
+                    )}
+                  </div>
+                  <div className="">
+                    <label
+                      className={styles.formLabel}
+                      style={{ marginRight: "10px" }}
+                    >
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) =>
+                        handleInputChange("endDate", e.target.value)
+                      }
+                      className={styles.formInput}
+                      placeholder="End Date"
+                    />
+                    {errors.endDate && (
+                      <span id="endDateError" className={styles.errorMessage}>
+                        {errors.endDate}
+                      </span>
+                    )}
+                  </div>
+                  <div className="">
+                    <label
+                      className={styles.formLabel}
+                      style={{ marginRight: "10px" }}
+                    >
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      placeholder="Start Time"
+                      value={formData.startTime}
+                      onChange={(e) =>
+                        handleInputChange("startTime", e.target.value)
+                      }
+                      className={styles.formInput}
+                    />
+                    {errors.startTime && (
+                      <span id="startTimeError" className={styles.errorMessage}>
+                        {errors.startTime}
+                      </span>
+                    )}
+                  </div>
+                  <div className="">
+                    <label
+                      className={styles.formLabel}
+                      style={{ marginRight: "10px" }}
+                    >
+                      End Time
+                    </label>
+                    <input
+                      type="time"
+                      placeholder="End Time"
+                      value={formData.endTime}
+                      onChange={(e) =>
+                        handleInputChange("endTime", e.target.value)
+                      }
+                      className={styles.formInput}
+                    />
+                    {errors.endTime && (
+                      <span id="endTimeError" className={styles.errorMessage}>
+                        {errors.endTime}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -195,30 +333,39 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                 <label className={styles.formLabel}>Billing</label>
                 <div className={styles.billingInputs}>
                   {/* Amount field - always shown */}
-                  <input
+                 <div className="">
+                   <input
                     type="number"
                     placeholder="Amount"
                     value={formData.amount}
-                    onChange={(e) => handleInputChange("amount", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("amount", e.target.value)
+                    }
                     className={styles.formInput}
                   />
-
+                    {errors.amount && (
+                      <span id="amountError" className={styles.errorMessage}>
+                        {errors.amount}
+                      </span>
+                    )}
+                 </div>
                   {/* GST Applicable dropdown */}
-                  <select
+                  <div className="">
+                    <select
                     value={formData.isGst ? "yes" : "no"}
-                    onChange={(e) =>
-                      handleInputChange("isGst", e.target.value)
-                    }
+                    onChange={(e) => handleInputChange("isGst", e.target.value)}
                     className={styles.formInput}
                   >
                     <option value="no">GST: No</option>
                     <option value="yes">GST: Yes</option>
                   </select>
+                  </div>
 
                   {/* Conditionally show GST fields */}
                   {formData.isGst && (
                     <>
-                      <input
+                      <div className="">
+                        <input
                         type="text"
                         placeholder="GST Amount"
                         value={formData.gst}
@@ -227,7 +374,14 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                         }
                         className={styles.formInput}
                       />
-                      <input
+                      {errors.gst && (
+                          <span id="gstError" className={styles.errorMessage}>
+                            {errors.gst}
+                          </span>
+                        )}
+                      </div>
+                      <div className="">
+                        <input
                         type="text"
                         placeholder="GST Number"
                         value={formData.gstNumber}
@@ -236,6 +390,12 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
                         }
                         className={styles.formInput}
                       />
+                      {errors.gstNumber && (
+                          <span id="gstNumberError" className={styles.errorMessage}>
+                            {errors.gstNumber}
+                          </span>
+                        )}
+                      </div>
                     </>
                   )}
 
@@ -264,10 +424,24 @@ const BookingForm = ({ selectedCourt, onBack,selectedCourtNumber}) => {
           </div>
         )}
 
-        {activeTab === "members" && <MemberTable selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber}/>}
-        {activeTab === "payment-history" && <PaymentHistory  selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber} />}
-        {activeTab === "booking-overview" && <BookingOverView selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber}   />}
-
+        {activeTab === "members" && (
+          <MemberTable
+            selectedCourt={selectedCourt}
+            selectedCourtNumber={selectedCourtNumber}
+          />
+        )}
+        {activeTab === "payment-history" && (
+          <PaymentHistory
+            selectedCourt={selectedCourt}
+            selectedCourtNumber={selectedCourtNumber}
+          />
+        )}
+        {activeTab === "booking-overview" && (
+          <BookingOverView
+            selectedCourt={selectedCourt}
+            selectedCourtNumber={selectedCourtNumber}
+          />
+        )}
       </div>
     </div>
   );
