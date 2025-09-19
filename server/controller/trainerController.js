@@ -170,47 +170,51 @@ const getAllTrainers = async (req, res) => {
 };
 const getUsersByTrainer = async (req, res) => {
   const { id: trainerId } = req.params;
-  const { page = 1, limit = 10, search = "" } = req.query;
+  const { page = 1, limit = 10, search = "", userType } = req.query;
 
   const pageNum = parseInt(page, 10);
   const limitNum = parseInt(limit, 10);
   const skip = (pageNum - 1) * limitNum;
 
   try {
-    // Build search filter
-    const searchRegex = new RegExp(search, "i");
-    const filter = { trainer: trainerId, $or: [] };
+    // --- Build search filter ---
+    const filter = { trainer: trainerId };
+    filter.$or = [];
 
     if (search) {
-      // Search by name (regex)
+      const searchRegex = new RegExp(search, "i");
       filter.$or.push({ name: searchRegex });
 
-      // Search by phone numbers (exact match if numeric)
       if (!isNaN(search)) {
         filter.$or.push({ phoneNumber: Number(search) });
         filter.$or.push({ whatsAppNumber: Number(search) });
       }
     }
 
-    // Fetch filtered & paginated users
-    const users = await GymUsers.find(filter)
-      .select("name address phoneNumber whatsAppNumber dietPdf subscription")
-      .skip(skip)
-      .limit(limitNum)
-      .lean();
+    // --- Filter by userType ---
+    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+      filter.userType = userType;
+    }
 
-    // Get total count for pagination
-    const totalCount = await GymUsers.countDocuments(filter);
+    // --- Fetch filtered & paginated users ---
+    const [users, totalCount] = await Promise.all([
+      GymUsers.find(filter)
+        .select("name address phoneNumber whatsAppNumber dietPdf subscription userType")
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      GymUsers.countDocuments(filter),
+    ]);
+
     const totalPages = Math.ceil(totalCount / limitNum);
 
     res.status(200).json({
       success: true,
       message: "Users fetched successfully",
-       page: pageNum,
+      page: pageNum,
       totalPages,
       totalCount,
       data: users,
-     
     });
   } catch (error) {
     console.error("Error fetching users for trainer:", error);
@@ -221,6 +225,7 @@ const getUsersByTrainer = async (req, res) => {
     });
   }
 };
+
 
 const assignDietPlan = async (req, res) => {
   try {

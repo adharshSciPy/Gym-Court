@@ -80,7 +80,8 @@ const registerToGym = async (req, res) => {
       gstNumber,
       modeOfPayment,
       subscriptionMonths = 1, // default 1 month
-      startDate, // subscription start date
+      startDate,
+      userType
     } = req.body;
 
     // --- Validations ---
@@ -91,7 +92,9 @@ const registerToGym = async (req, res) => {
     if (!trainerId) return res.status(400).json({ message: "Trainer must be assigned" });
     const trainer = await Trainer.findById(trainerId).session(session);
     if (!trainer) return res.status(404).json({ message: "Trainer not found" });
-
+if (!["athlete", "non-athlete"].includes(userType)) {
+  return res.status(400).json({ message: "Invalid userType. Must be 'athlete' or 'non-athlete'" });
+}
     if (subscriptionMonths < 1 || subscriptionMonths > 12) {
       return res.status(400).json({ message: "Subscription months must be between 1 and 12" });
     }
@@ -158,6 +161,7 @@ const registerToGym = async (req, res) => {
             notes,
             trainer: trainer._id,
             dietPdf,
+             userType,
             subscription: {
               startDate: subscriptionStart,
               endDate: subscriptionEnd,
@@ -180,6 +184,8 @@ const registerToGym = async (req, res) => {
       user.address = address || user.address;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
       user.notes = notes || user.notes;
+      user.userType = userType || user.userType;
+
       if (dietPdf) user.dietPdf = dietPdf;
       user.trainer = trainer._id;
 
@@ -240,12 +246,14 @@ const getAllGymUsers = async (req, res) => {
       search,
       status,
       trainerName,
+      userType, // NEW: filter by athlete / non-athlete
     } = req.query;
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const query = {};
+
+    // --- Search by name or phone number ---
     if (search) {
-     
       if (!isNaN(search)) {
         query.phoneNumber = Number(search);
       } else {
@@ -253,10 +261,12 @@ const getAllGymUsers = async (req, res) => {
       }
     }
 
-   
+    // --- Filter by subscription status ---
     if (status && ["active", "expired"].includes(status)) {
       query["subscription.status"] = status;
     }
+
+    // --- Filter by trainerName ---
     if (trainerName) {
       const trainers = await Trainer.find({
         trainerName: { $regex: trainerName, $options: "i" },
@@ -272,7 +282,12 @@ const getAllGymUsers = async (req, res) => {
       }
     }
 
-   
+    // --- Filter by userType ---
+    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+      query.userType = userType;
+    }
+
+    // --- Fetch users and total count in parallel ---
     const [users, total] = await Promise.all([
       GymUsers.find(query)
         .populate("trainer", "trainerName trainerEmail phoneNumber")
@@ -304,6 +319,7 @@ const getAllGymUsers = async (req, res) => {
     });
   }
 };
+
 
 
 const getGymUserById = async (req, res) => {

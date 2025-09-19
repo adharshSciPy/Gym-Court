@@ -9,6 +9,7 @@ const gymUsersSchema = new Schema(
     notes: { type: String, maxlength: 300 },
     trainer: { type: Schema.Types.ObjectId, ref: "Trainer", required: true },
     dietPdf: { type: String },
+    userType: { type: String, enum: ["athlete", "non-athlete"], default: "non-athlete" },
     subscription: {
       startDate: { type: Date, required: true },
       endDate: { type: Date, required: true },
