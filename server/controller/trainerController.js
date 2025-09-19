@@ -170,21 +170,24 @@ const getAllTrainers = async (req, res) => {
 };
 const getUsersByTrainer = async (req, res) => {
   const { id: trainerId } = req.params;
-  const { page = 1, limit = 10, search = "", userType } = req.query;
+  const { page = 1, limit = 10, search = "", userType, status } = req.query;
 
   const pageNum = parseInt(page, 10);
   const limitNum = parseInt(limit, 10);
   const skip = (pageNum - 1) * limitNum;
 
   try {
-    // --- Build search filter ---
+    // --- Build base filter ---
     const filter = { trainer: trainerId };
-    filter.$or = [];
 
+    // --- Search filter ---
     if (search) {
       const searchRegex = new RegExp(search, "i");
-      filter.$or.push({ name: searchRegex });
 
+      // search by name always
+      filter.$or = [{ name: searchRegex }];
+
+      // if search is numeric → check phone & WhatsApp too
       if (!isNaN(search)) {
         filter.$or.push({ phoneNumber: Number(search) });
         filter.$or.push({ whatsAppNumber: Number(search) });
@@ -194,6 +197,11 @@ const getUsersByTrainer = async (req, res) => {
     // --- Filter by userType ---
     if (userType && ["athlete", "non-athlete"].includes(userType)) {
       filter.userType = userType;
+    }
+
+    // --- Filter by subscription status ---
+    if (status && ["active", "expired"].includes(status)) {
+      filter["subscription.status"] = status;
     }
 
     // --- Fetch filtered & paginated users ---
