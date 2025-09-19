@@ -55,6 +55,42 @@ const GymMembers = () => {
     return `${year}/${month}/${day}`;
   };
 
+  // helper (put near top of file or in utils)
+  const normalizeWhatsApp = (raw) => {
+    if (raw === undefined || raw === null) return null;
+
+    // If it's an object like { number: '...' } try to get the number field
+    if (typeof raw === "object") {
+      if (raw.number) raw = raw.number;
+      else return null;
+    }
+
+    // convert to string and strip non-digits
+    const digits = String(raw).trim().replace(/\D/g, "");
+
+    if (!digits) return null;
+
+    // If number looks local (10 digits) assume India (91) — change as needed
+    if (digits.length === 10) return "91" + digits;
+
+    // otherwise return as-is (already contains country code)
+    return digits;
+  };
+
+  // open whatsapp with optional pre-filled message
+  const openWhatsApp = (rawNumber, name = "") => {
+    const phone = normalizeWhatsApp(rawNumber);
+    if (!phone) {
+      alert("No valid WhatsApp number provided.");
+      return;
+    }
+
+    const message = `Hi ${name || "there"}, I wanted to check in about your membership.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
+
+
 
 
   return (
@@ -174,7 +210,9 @@ const GymMembers = () => {
                       </td>
                       <td className={styles.tableCell}>
                         <div className={styles.actionButtons}>
-                          <button className={`${styles.actionButton} ${styles.actionButtonMessage}`}>
+                          <button className={`${styles.actionButton} ${styles.actionButtonMessage}`}
+                            onClick={() => openWhatsApp(member.whatsAppNumber, member.name)}
+                          >
                             <MessageCircle color='green' className="w-4 h-4" />
                           </button>
                         </div>
