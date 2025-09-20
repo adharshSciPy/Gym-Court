@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Search,
-  MessageCircle,
-  
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -23,10 +21,7 @@ const BookingManagement = () => {
   const [courts, setCourts] = useState([]);
   const [selectedCourt, setSelectedCourt] = useState("");
 
-  const handleWhatsApp = (phoneNumber, message)=>{
-  const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-  window.open(url, "_blank");
-}
+
 
   // const handleView = (memberName) => {
   //   alert(`View details for ${memberName}`);
@@ -219,7 +214,6 @@ useEffect(() => {
               <th className={styles.th}>Booking Slots</th>
               <th className={styles.th}>Status</th>
               <th className={styles.th}>Court</th>
-              <th className={styles.th}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -252,14 +246,14 @@ useEffect(() => {
                     </span>
                   </td>
                   <td className={styles.td}>{member.court?.courtName}</td>
-                  <td className={styles.td}>
-                    <div className={styles.actionButtons}>
-                      <button
+                  {/* <td className={styles.td}>
+                    <div className={styles.actionButtons}> */}
+                      {/* <button
                         className={`${styles.actionButton} ${styles.whatsappButton}`}
                         onClick={() => handleWhatsApp(member.user?.whatsAppNumber,"this is a renew message")}
                       >
                         <MessageCircle size={16} />
-                      </button>
+                      </button> */}
                       {/* <button
                         className={styles.actionButton}
                         onClick={() => handleView(member.user?.firstName)}
@@ -269,8 +263,8 @@ useEffect(() => {
                       {/* {member.status === "expired" && (
                         <button className={styles.renewButton}>Renew</button>
                       )} */}
-                    </div>
-                  </td>
+                    {/* </div>
+                  </td> */} 
                 </tr>
               ))
             )}

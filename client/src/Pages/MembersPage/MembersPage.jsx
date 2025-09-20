@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Search, X, Edit, MessageCircle, Phone, Eye, Trash2 } from "lucide-react";
+import { Search, X, MessageCircle, Eye, Trash2, Calendar, Clock, CreditCard, User, Phone } from "lucide-react";
 import styles from "./MembersPage.module.css";
 import axios from "axios";
 import baseUrl from "../../baseUrl";
@@ -8,13 +8,14 @@ function MembersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [members, setMembers] = useState([]);
   const [showRenewalPopup, setShowRenewalPopup] = useState(false);
+  const [showViewPopup, setShowViewPopup] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [courts, setCourts] = useState([]);
   const [loadingCourts, setLoadingCourts] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [error, setError] = useState(null);
   const [slot, setSlotid] = useState(null);
-
+  const [deletePopup, setDeletePopup] = useState(false);
   const [renewalData, setRenewalData] = useState({
     courtId: "",
     startDate: "",
@@ -56,7 +57,6 @@ function MembersPage() {
     try {
       const response = await axios.get(`${baseUrl}/api/v1/Court/fetchCourts`);
       console.log(response);
-      
       setCourts(response.data.data || response.data || []);
     } catch (error) {
       console.error("Error fetching courts:", error);
@@ -94,7 +94,10 @@ function MembersPage() {
       return;
     }
 
-    if (renewalData.isGst && (!renewalData.gstValue || !renewalData.gstNumber)) {
+    if (
+      renewalData.isGst &&
+      (!renewalData.gstValue || !renewalData.gstNumber)
+    ) {
       setError("GST value and number are required when GST is enabled.");
       return;
     }
@@ -117,7 +120,7 @@ function MembersPage() {
         renewalPayload
       );
       console.log(response);
-      
+
       alert("Renewal successful!");
       setShowRenewalPopup(false);
       getMembers(); // Refresh member list
@@ -147,10 +150,14 @@ function MembersPage() {
     setError(null);
   };
 
+  // Close view popup
+  const closeViewPopup = () => {
+    setShowViewPopup(false);
+    setSelectedMember(null);
+  };
+
   // Handle renew button click
   const handleRenew = async (member) => {
-    
-    
     setSelectedMember(member);
     setSlotid(member.bookingId || "");
     setRenewalData({
@@ -166,53 +173,65 @@ function MembersPage() {
       modeOfPayment: member.modeOfPayment || "cash",
     });
 
-    await fetchCourts ();
+    await fetchCourts();
     setShowRenewalPopup(true);
   };
-console.log(selectedMember);
 
-  // Action button handlers (placeholder implementations)
-  const handleEdit = (member) => {
-    alert(`Edit member: ${member.firstName}`);
-    // Add your edit logic here (e.g., open an edit form)
+  const handleDelete = (member) => {
+    setSelectedMember(member);
+    setDeletePopup(true);
   };
 
-  const handleDelete = async (member) => {
-    if (window.confirm(`Are you sure you want to delete ${member.firstName}?`)) {
-      try {
-        // Example delete API call
-        await axios.delete(`${baseUrl}/api/v1/bookings/${member._id}`);
-        alert("Member deleted successfully!");
-        getMembers(); // Refresh member list
-      } catch (error) {
-        console.error("Delete error:", error);
-        setError("Failed to delete member. Please try again.");
-      }
+  const onDelete = async () => {
+    try {
+      await axios.delete(`${baseUrl}/api/v1/user/delete/${selectedMember._id}`);
+      // alert("Member deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting member:", error);
+      setError("Failed to delete member. Please try again.");
+    } finally {
+      setDeletePopup(false);
+      setSelectedMember(null);
+      getMembers();
     }
   };
 
+  const onCancel = () => {
+    setDeletePopup(false);
+    setSelectedMember(null);
+  };
+
+  // Enhanced WhatsApp handler with subscription reminder
   const handleWhatsApp = (member) => {
     const phone = member.whatsAppNumber || member.phoneNumber;
     if (phone) {
-      window.open(`https://wa.me/${phone}`, "_blank");
+      let message = "";
+      
+      if (member.status === "expired") {
+        // Expired subscription message
+        message = `Hello ${member.firstName || 'Member'},\n\nYour subscription has expired on ${member.endDate || 'N/A'}.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${member.courtName || 'N/A'}\nLast booking period: ${member.startDate || 'N/A'} to ${member.endDate || 'N/A'}\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
+      } else if (member.status === "upcoming") {
+        // Active subscription message
+        message = `Hello ${member.firstName || 'Member'},\n\nYour subscription is active until ${member.endDate || 'N/A'}.\n\nCourt: ${member.courtName || 'N/A'}\nBooking period: ${member.startDate || 'N/A'} to ${member.endDate || 'N/A'}\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
+      } else {
+        // General message
+        message = `Hello ${member.firstName || 'Member'},\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
+      }
+      
+      const encodedMessage = encodeURIComponent(message);
+      window.open(`https://wa.me/${phone}?text=${encodedMessage}`, "_blank");
     } else {
       alert("No WhatsApp number available.");
     }
   };
 
-  const handleCall = (member) => {
-    const phone = member.phoneNumber;
-    if (phone) {
-      window.open(`tel:${phone}`);
-    } else {
-      alert("No phone number available.");
-    }
+  // Handle view button click
+  const handleView = (member) => {
+    setSelectedMember(member);
+    setShowViewPopup(true);
   };
 
-  const handleView = (member) => {
-    alert(`View details for ${member.firstName}`);
-    // Add your view logic here (e.g., open a details modal)
-  };
+  console.log(selectedMember);
 
   // Filter members based on search term
   const filteredMembers = members.filter(
@@ -221,6 +240,34 @@ console.log(selectedMember);
       member.phoneNumber?.includes(searchTerm) ||
       member.whatsAppNumber?.includes(searchTerm)
   );
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      return new Date(dateString).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Format time for display
+  const formatTime = (timeString) => {
+    if (!timeString) return "N/A";
+    try {
+      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return timeString;
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -267,7 +314,9 @@ console.log(selectedMember);
                 <tr key={member._id || index} className={styles.bodyRow}>
                   <td className={styles.td}>{member.firstName || "N/A"}</td>
                   <td className={styles.td}>{member.phoneNumber || "N/A"}</td>
-                  <td className={styles.td}>{member.whatsAppNumber || "N/A"}</td>
+                  <td className={styles.td}>
+                    {member.whatsAppNumber || "N/A"}
+                  </td>
                   <td className={styles.td}>{member.startDate || "N/A"}</td>
                   <td className={styles.td}>{member.endDate || "N/A"}</td>
                   <td className={styles.td}>{member.courtName || "N/A"}</td>
@@ -285,25 +334,11 @@ console.log(selectedMember);
                   <td className={styles.td}>
                     <div className={styles.actionButtons}>
                       <button
-                        className={styles.actionButton}
-                        onClick={() => handleEdit(member)}
-                        title="Edit member"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button
                         className={`${styles.actionButton} ${styles.whatsappButton}`}
                         onClick={() => handleWhatsApp(member)}
                         title="Send WhatsApp message"
                       >
                         <MessageCircle size={16} />
-                      </button>
-                      <button
-                        className={`${styles.actionButton} ${styles.callButton}`}
-                        onClick={() => handleCall(member)}
-                        title="Call member"
-                      >
-                        <Phone size={16} />
                       </button>
                       <button
                         className={styles.actionButton}
@@ -336,12 +371,187 @@ console.log(selectedMember);
         )}
       </div>
 
+      {/* Member Details View Popup */}
+      {showViewPopup && selectedMember && (
+        <div className={styles.modalOverlay}>
+          <div className={`${styles.modalContent} ${styles.viewModalContent}`}>
+            <div className={styles.modalHeader}>
+              <h2>
+                <User size={20} style={{ marginRight: '8px' }} />
+                Member Details
+              </h2>
+              <button
+                className={styles.closeButton}
+                onClick={closeViewPopup}
+                aria-label="Close view popup"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className={styles.memberDetailsContent}>
+              {/* Personal Information */}
+              <div className={styles.detailsSection}>
+                <h3>Personal Information</h3>
+                <div className={styles.detailsGrid}>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Name:</span>
+                    <span className={styles.detailValue}>
+                      {selectedMember.firstName || "N/A"}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Phone Number:</span>
+                    <span className={styles.detailValue}>
+                      <Phone size={14} style={{ marginRight: '4px' }} />
+                      {selectedMember.phoneNumber || "N/A"}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>WhatsApp Number:</span>
+                    <span className={styles.detailValue}>
+                      <MessageCircle size={14} style={{ marginRight: '4px' }} />
+                      {selectedMember.whatsAppNumber || "N/A"}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Member ID:</span>
+                    <span className={styles.detailValue}>
+                      {selectedMember._id || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Booking Information */}
+              <div className={styles.detailsSection}>
+                <h3>Booking Information</h3>
+                <div className={styles.detailsGrid}>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Court Name:</span>
+                    <span className={styles.detailValue}>
+                      {selectedMember.courtName || "N/A"}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Start Date:</span>
+                    <span className={styles.detailValue}>
+                      <Calendar size={14} style={{ marginRight: '4px' }} />
+                      {formatDate(selectedMember.startDate)}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>End Date:</span>
+                    <span className={styles.detailValue}>
+                      <Calendar size={14} style={{ marginRight: '4px' }} />
+                      {formatDate(selectedMember.endDate)}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Start Time:</span>
+                    <span className={styles.detailValue}>
+                      <Clock size={14} style={{ marginRight: '4px' }} />
+                      {formatTime(selectedMember.startTime)}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>End Time:</span>
+                    <span className={styles.detailValue}>
+                      <Clock size={14} style={{ marginRight: '4px' }} />
+                      {formatTime(selectedMember.endTime)}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Subscription Status:</span>
+                    <span className={`${styles.detailValue} ${styles.statusBadge} ${
+                      selectedMember.status === "upcoming"
+                        ? styles.statusActive
+                        : styles.statusExpired
+                    }`}>
+                      {selectedMember.status || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className={styles.detailsSection}>
+                <h3>Payment Information</h3>
+                <div className={styles.detailsGrid}>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Amount:</span>
+                    <span className={styles.detailValue}>
+                      <CreditCard size={14} style={{ marginRight: '4px' }} />
+                      ₹{selectedMember.amount || "N/A"}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Payment Mode:</span>
+                    <span className={styles.detailValue}>
+                      {selectedMember.modeOfPayment || "N/A"}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>GST Applied:</span>
+                    <span className={styles.detailValue}>
+                      {selectedMember.isGst ? "Yes" : "No"}
+                    </span>
+                  </div>
+                  {selectedMember.isGst && (
+                    <>
+                      <div className={styles.detailItem}>
+                        <span className={styles.detailLabel}>GST Value:</span>
+                        <span className={styles.detailValue}>
+                          {selectedMember.gstValue || "N/A"}%
+                        </span>
+                      </div>
+                      <div className={styles.detailItem}>
+                        <span className={styles.detailLabel}>GST Number:</span>
+                        <span className={styles.detailValue}>
+                          {selectedMember.gstNumber || "N/A"}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Booking ID:</span>
+                    <span className={styles.detailValue}>
+                      {selectedMember.bookingId || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                className={`${styles.actionButton} ${styles.whatsappButton}`}
+                onClick={() => handleWhatsApp(selectedMember)}
+                style={{ marginRight: '10px' }}
+              >
+                <MessageCircle size={16} style={{ marginRight: '5px' }} />
+                Send WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={closeViewPopup}
+                className={styles.cancelButton}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Renewal Popup */}
       {showRenewalPopup && (
         <div className={styles.modalOverlay}>
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h2>Renew Booking for {selectedMember?.firstName || "Member"}</h2>
+              <h2>
+                Renew Booking for {selectedMember?.firstName || "Member"}
+              </h2>
               <button
                 className={styles.closeButton}
                 onClick={closeRenewalPopup}
@@ -351,7 +561,10 @@ console.log(selectedMember);
               </button>
             </div>
 
-            <form onSubmit={handleRenewalSubmit} className={styles.renewalForm}>
+            <form
+              onSubmit={handleRenewalSubmit}
+              className={styles.renewalForm}
+            >
               <div className={styles.formGrid}>
                 {/* Court Dropdown */}
                 <div className={styles.formGroup}>
@@ -521,10 +734,9 @@ console.log(selectedMember);
                     required
                   >
                     <option value="cash">Cash</option>
-                    <option value="card">Card</option>
+                    {/* <option value="card">Card</option> */}
                     <option value="upi">UPI</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="cheque">Cheque</option>
+                    
                   </select>
                 </div>
               </div>
@@ -545,6 +757,24 @@ console.log(selectedMember);
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Popup */}
+      {deletePopup && (
+        <div className={styles.overlay || styles.modalOverlay}>
+          <div className={styles.popup || styles.modalContent}>
+            <h3>Are you sure?</h3>
+            <p>This action cannot be undone. Do you want to delete {selectedMember?.firstName}?</p>
+            <div className={styles.actions || styles.modalActions}>
+              <button onClick={onCancel} className={styles.cancelBtn || styles.cancelButton}>
+                Cancel
+              </button>
+              <button onClick={onDelete} className={styles.deleteBtn || styles.deleteButton}>
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
