@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styles from './AdminDashboard.module.css';
 import BookingForm from './BookingForm';
-import TrainerSidebarSwitching from '../TrainerSidebarSwitching/TrainerSidebarSwitching';
+import GymSideBarSwitching from '../GymSidebarSwitching/GymSidebarSwitching';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
 
@@ -61,7 +61,7 @@ function AdminDashboard() {
             Switch to Admin View
           </button>
         </div>
-        <TrainerSidebarSwitching 
+        <GymSideBarSwitching 
           activeNav={trainerActiveNav} 
           setActiveNav={setTrainerActiveNav}
         />
