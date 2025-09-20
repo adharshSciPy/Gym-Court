@@ -7,14 +7,16 @@ import SettingsPage from "../SettingsPage/SettingsPage";
 import PaymentHistory from "../PaymentHistory/PaymentHistory";
 import Gym from "../Gym/Gym";
 import Sidebar from "../SideBar/Sidebar";
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom";
 
 const SidebarSwitching = ({ activeNav, setActiveNav }) => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
+  
   const handleLogout = () => {
-    navigate("/")
-    setActiveNav("Dashboard")
-  }
+    navigate("/");
+    setActiveNav("Dashboard");
+  };
+
   const styles = {
     container: {
       fontFamily: "system-ui, -apple-system, sans-serif",
@@ -26,7 +28,7 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
   const renderPage = () => {
     switch (activeNav) {
       case "Dashboard":
-        return <DashboardPage />;
+        return <DashboardPage activeNav={activeNav} setActiveNav={setActiveNav} />;
       case "Members":
         return <MembersPage />;
       case "Bookings":
@@ -41,12 +43,11 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
         return <SettingsPage />;
       case "Logout":
         handleLogout();
-        return;
+        return null;
       default:
-        return <DashboardPage />;
+        return <DashboardPage activeNav={activeNav} setActiveNav={setActiveNav} />;
     }
   };
-
 
   return (
     <div style={styles.container}>

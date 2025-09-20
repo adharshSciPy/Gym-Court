@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Search, Edit, Trash2, MessageCircle, Eye } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Search, Edit, Trash2, MessageCircle, Eye, Upload } from 'lucide-react';
 import styles from './GymMembers.module.css';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
@@ -17,6 +17,8 @@ const GymMembers = () => {
   const [combinedFilter, setCombinedFilter] = useState("");
   const { id } = useParams()
 
+  // File upload refs - one for each member
+  const fileInputRefs = useRef({});
 
   // Fetch members with filters & pagination
   const fetchMembers = async () => {
@@ -90,8 +92,49 @@ const GymMembers = () => {
     window.open(url, "_blank");
   };
 
+  // Handle file upload button click
+  const handleFileUploadClick = (memberId) => {
+    if (fileInputRefs.current[memberId]) {
+      fileInputRefs.current[memberId].click();
+    }
+  };
 
+  // Handle file selection
+  const handleFileChange = async (event, member) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
+    // You can add file validation here
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('memberId', member._id);
+      formData.append('memberName', member.name);
+
+      // Replace this with your actual upload endpoint
+      // const response = await axios.post(`${baseUrl}/api/v1/upload-member-file`, formData, {
+      //   headers: {
+      //     'Content-Type': 'multipart/form-data',
+      //   },
+      // });
+
+      // For now, just show a success message
+      alert(`File "${file.name}" uploaded successfully for ${member.name}`);
+      
+      // Reset the input
+      event.target.value = '';
+      
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file. Please try again.');
+    }
+  };
 
   return (
     <div className={styles.dashboard}>
@@ -105,27 +148,6 @@ const GymMembers = () => {
         {/* Content */}
         <div className={styles.content}>
           <div className={styles.contentContainer}>
-            {/* Tabs */}
-            {/* <div className={styles.tabs}>
-              <button
-                onClick={() => setActiveTab('members')}
-                className={`${styles.tab} ${activeTab === 'members' ? styles.tabActive : styles.tabInactive
-                  }`}
-              >
-                Members
-              </button>
-              <button
-                onClick={() => setActiveTab('addMembers')}
-                className={`${styles.tab} ${activeTab === 'addMembers' ? styles.tabActive : styles.tabInactive
-                  }`}
-              >
-                Add Members
-              </button>
-            </div> */}
-
-            {/* Content based on active tab */}
-            {/* {activeTab === 'members' ? (
-              <> */}
             <div className={styles.searchselect}>
               {/* Search Bar */}
               <div className={styles.searchContainer}>
@@ -169,7 +191,6 @@ const GymMembers = () => {
                 </select>
               </div>
             </div>
-
 
             {/* Table */}
             <div className={styles.tableContainer}>
@@ -215,6 +236,20 @@ const GymMembers = () => {
                           >
                             <MessageCircle color='green' className="w-4 h-4" />
                           </button>
+                          <button 
+                            className={`${styles.actionButton} ${styles.actionButtonUpload}`}
+                            onClick={() => handleFileUploadClick(member._id)}
+                            title={`Upload file for ${member.name}`}
+                          >
+                            <Upload color='blue' className="w-4 h-4" />
+                          </button>
+                          <input
+                            ref={el => fileInputRefs.current[member._id] = el}
+                            type="file"
+                            style={{ display: 'none' }}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
+                            onChange={(e) => handleFileChange(e, member)}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -239,117 +274,6 @@ const GymMembers = () => {
                 Next
               </button>
             </div>
-
-            {/* </>
-            ) : (
-            
-              <div className={styles.formWrapper}>
-                <div className={styles.formContainer}>
-                  <h2 className={styles.formTitle}>Add Members</h2>
-
-                  <form className={styles.form}>
-                  
-                    <div className={styles.formSection}>
-                      <label className={styles.sectionLabel}>Enter Member Name</label>
-                      <div className={styles.formRow}>
-                        <input
-                          type="text"
-                          className={styles.formInput}
-                          placeholder="First Name"
-                        />
-                        <input
-                          type="text"
-                          className={styles.formInput}
-                          placeholder="Last Name"
-                        />
-                      </div>
-                    </div>
-
-                   
-                    <div className={styles.formSection}>
-                      <div className={styles.formRow}>
-                        <div className={styles.formGroup}>
-                          <label className={styles.sectionLabel}>Enter Phone Number</label>
-                          <input
-                            type="tel"
-                            className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
-                          />
-                        </div>
-                        <div className={styles.formGroup}>
-                          <label className={styles.sectionLabel}>Enter whatsapp Number</label>
-                          <input
-                            type="tel"
-                            className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                   
-                    <div className={styles.formSection}>
-                      <label className={styles.sectionLabel}>Enter Address</label>
-                      <textarea
-                        rows={3}
-                        className={styles.formTextarea}
-                        placeholder="Home/Office"
-                      ></textarea>
-                    </div>
-
-                   
-                    <div className={styles.formSection}>
-                      <label className={styles.sectionLabel}>Health Note</label>
-                      <textarea
-                        rows={3}
-                        className={styles.formTextarea}
-                        placeholder="Enter your health information"
-                      ></textarea>
-                    </div>
-
-                   
-                    <div className={styles.formSection}>
-                      <label className={styles.sectionLabel}>Assign Trainers</label>
-                      <select className={styles.formSelect}>
-                        <option value="">Select Trainer</option>
-                        <option value="trainer1">John Smith</option>
-                        <option value="trainer2">Sarah Johnson</option>
-                        <option value="trainer3">Mike Wilson</option>
-                      </select>
-                    </div>
-
-                  
-                    <div className={styles.formSection}>
-                      <label className={styles.sectionLabel}>Billing</label>
-                      <div className={styles.billingRow}>
-                        <input className={styles.formInput} type='date' />
-                        <input
-                          type="number"
-                          className={styles.formInput}
-                          placeholder="Enter Amount for Booking"
-                        />
-                        <select className={styles.formSelect}>
-                          <option value="">Select</option>
-                          <option value="cash">Cash</option>
-                          <option value="card">Card</option>
-                          <option value="online">Online</option>
-                          <option value="upi">UPI</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className={styles.formButtons}>
-                      <button
-                        type="submit"
-                        className={styles.submitButton}
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )} */}
 
           </div>
         </div>

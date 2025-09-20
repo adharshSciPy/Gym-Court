@@ -1,17 +1,18 @@
-// AdminDashboard.js
 import React, { useEffect, useState } from 'react';
 import styles from './AdminDashboard.module.css';
 import BookingForm from './BookingForm';
+import TrainerSidebarSwitching from '../TrainerSidebarSwitching/TrainerSidebarSwitching';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
 
-function AdminDashboard() {
+function AdminDashboard({ activeNav, setActiveNav }) {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedCourt, setSelectedCourt] = useState(null);
-  const [selectedCourtNumber,setSelectedCourtNumber]=useState(null)
-  const [courts,setCourts]=useState([])
+  const [selectedCourtNumber, setSelectedCourtNumber] = useState(null);
+  const [courts, setCourts] = useState([]);
+  const [isTrainerView, setIsTrainerView] = useState(false);
+  const [trainerActiveNav, setTrainerActiveNav] = useState("Dashboard");
 
- 
   const stats = [
     { label: 'Total Members', value: '250' },
     { label: 'Booking Details', value: '35' }
@@ -20,8 +21,7 @@ function AdminDashboard() {
   const handleBookNow = (court) => {
     setSelectedCourt(court.courtName);
     setShowBookingForm(true);
-    setSelectedCourtNumber(court._id)
-    
+    setSelectedCourtNumber(court._id);
   };
 
   const handleBackToDashboard = () => {
@@ -29,33 +29,69 @@ function AdminDashboard() {
     setSelectedCourt(null);
   };
 
-  
-useEffect(()=>{
-  getCourts()
-},[])
-const getCourts=async () => {
-  try {
-    const response=await axios.get(`${baseUrl}/api/v1/Court/fetchCourts`);
-    if(response.status===200){
-      setCourts(response.data.data)
+  const handleToggleView = () => {
+    setIsTrainerView(!isTrainerView);
+    // Reset trainer navigation to Dashboard when switching views
+    if (!isTrainerView) {
+      setTrainerActiveNav("Dashboard");
     }
-    
-  } catch (error) {
-    console.log(error);
-    
+  };
+
+  useEffect(() => {
+    getCourts();
+  }, []);
+
+  const getCourts = async () => {
+    try {
+      const response = await axios.get(`${baseUrl}/api/v1/Court/fetchCourts`);
+      if (response.status === 200) {
+        setCourts(response.data.data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  // If in trainer view, render the trainer dashboard
+  if (isTrainerView) {
+    return (
+      <div>
+        <div className={styles.toggleContainer}>
+          <button 
+            className={styles.toggleButton} 
+            onClick={handleToggleView}
+          >
+            Switch to Admin View
+          </button>
+        </div>
+        <TrainerSidebarSwitching 
+          activeNav={trainerActiveNav} 
+          setActiveNav={setTrainerActiveNav}
+        />
+      </div>
+    );
   }
-}
-if (showBookingForm) {
+
+  if (showBookingForm) {
     return <BookingForm selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber} onBack={handleBackToDashboard} />;
   }
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.header}>
-        <h1 className={styles.headerTitle}>Dashboard</h1>
+        <div className={styles.headerContent}>
+          <h1 className={styles.headerTitle}>Admin Dashboard</h1>
+          <button 
+            className={styles.toggleButton} 
+            onClick={handleToggleView}
+          >
+            Switch to Trainer View
+          </button>
+        </div>
       </div>
 
       <div className={styles.courtsGrid}>
-        {courts.map((court,index) => (
+        {courts.map((court, index) => (
           <div
             key={index}
             className={styles.courtCard}

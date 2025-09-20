@@ -94,19 +94,19 @@ const deleteUser = async (req, res) => {
     const bookingIds = bookings.map(b => b._id);
     const slotIds = bookings.flatMap(b => b.slotIds);
 
-    // Delete all related data in parallel (faster)
+    // Delete all related data in parallel
     await Promise.all([
       User.deleteOne({ _id: id }).session(session),
       Booking.deleteMany({ userId: id }).session(session),
-      Billing.deleteMany({ userId: id }).session(session),
       Slot.deleteMany({ $or: [{ userId: id }, { _id: { $in: slotIds } }] }).session(session),
+      Billing.deleteMany({ $or: [{ userId: id }, { bookingId: { $in: bookingIds } }] }).session(session),
     ]);
 
     await session.commitTransaction();
     session.endSession();
 
     return res.status(200).json({
-      message: "User and all related data deleted successfully",
+      message: "User, bookings, slots, and all related billing deleted successfully",
       deleted: {
         bookings: bookingIds.length,
         slots: slotIds.length,
