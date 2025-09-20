@@ -196,7 +196,7 @@ const getFullPaymentHistory = async (req, res) => {
     // 6️⃣ Fetch Billing with population
     // -----------------------------
     const billings = await Billing.find(query)
-      .populate("userId", "firstName lastName phoneNumber")
+      .populate("userId", "firstName lastName phoneNumber whatsAppNumber")
       .populate("courtId", "name")
       .populate("bookingId", "startDate endDate startTime endTime")
       .sort({ createdAt: -1 })
