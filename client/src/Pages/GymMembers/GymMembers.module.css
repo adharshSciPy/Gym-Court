@@ -327,7 +327,37 @@ select option {
 }
 
 
+/* Add this to your existing GymMembers.module.css */
 
+.actionButtonUpload {
+  background-color: #e3f2fd;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.actionButtonUpload:hover {
+  background-color: #bbdefb;
+  transform: translateY(-1px);
+}
+
+.actionButtonUpload:active {
+  transform: translateY(0);
+}
+
+/* Make sure action buttons are displayed in a row */
+.actionButtons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
 
 
