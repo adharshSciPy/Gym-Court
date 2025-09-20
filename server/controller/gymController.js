@@ -429,6 +429,181 @@ const deleteGymUser = async (req, res) => {
   }
 };
 
+const getGymPaymentHistory = async (req, res) => {
+  try {
+    const {
+      search,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+      latest,
+      userId,
+    } = req.query;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const matchConditions = {};
+
+    // --- Date Filter (by createdAt) ---
+    if (startDate || endDate) {
+      matchConditions.createdAt = {};
+      if (startDate) {
+        matchConditions.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchConditions.createdAt.$lte = end;
+      }
+    }
+
+    // --- User Filter ---
+    if (userId) {
+      matchConditions.userId = userId;
+    }
+
+    // --- Search Filter for Aggregations ---
+    let userMatch = {};
+    if (search) {
+      userMatch = {
+        $or: [
+          { "user.name": { $regex: search, $options: "i" } },
+          { "user.phoneNumber": { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    // --- Latest Transactions ---
+    if (latest === "true") {
+      const aggregationPipeline = [
+        { $match: matchConditions },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: "$userId",
+            latestTransaction: { $first: "$$ROOT" },
+          },
+        },
+        {
+          $lookup: {
+            from: "gymusers",
+            localField: "latestTransaction.userId",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+      ];
+
+      if (search) {
+        aggregationPipeline.push({ $match: userMatch });
+      }
+
+      // Count BEFORE pagination
+      const totalDocsAgg = await GymBilling.aggregate([
+        ...aggregationPipeline,
+        { $count: "total" },
+      ]);
+      const totalDocs = totalDocsAgg[0]?.total || 0;
+
+      aggregationPipeline.push({ $skip: skip }, { $limit: limitNum });
+
+      const latestTransactions = await GymBilling.aggregate(aggregationPipeline);
+
+      return res.status(200).json({
+        success: true,
+        count: latestTransactions.length,
+        total: totalDocs,
+        message: "Latest transactions per user fetched successfully",
+        data: latestTransactions.map((doc) => {
+          const createdAt = new Date(doc.latestTransaction.createdAt);
+          const expiryDate = new Date(createdAt);
+          expiryDate.setMonth(
+            expiryDate.getMonth() + (doc.latestTransaction.subscriptionMonths || 0)
+          );
+
+          const status = expiryDate > new Date() ? "active" : "expired";
+
+          return {
+            id: doc.latestTransaction._id,
+            amount: doc.latestTransaction.amount,
+            isGst: doc.latestTransaction.isGst,
+            gst: doc.latestTransaction.gst,
+            gstNumber: doc.latestTransaction.gstNumber,
+            subscriptionMonths: doc.latestTransaction.subscriptionMonths,
+            modeOfPayment: doc.latestTransaction.modeOfPayment,
+            notes: doc.latestTransaction.notes,
+            createdAt: doc.latestTransaction.createdAt,
+            updatedAt: doc.latestTransaction.updatedAt,
+            subscriptionStatus: status,
+            user: {
+              _id: doc.user._id,
+              name: doc.user.name,
+              phoneNumber: doc.user.phoneNumber,
+              whatsAppNumber: doc.user.whatsAppNumber,
+            },
+          };
+        }),
+        pagination: { page: pageNum, limit: limitNum },
+      });
+    }
+
+    // --- Full History ---
+    let historyQuery = GymBilling.find(matchConditions)
+      .populate("userId", "name phoneNumber whatsAppNumber")
+      .sort({ createdAt: -1 });
+
+    let history = await historyQuery.lean();
+
+    // Apply search filter after populate
+    if (search) {
+      history = history.filter(
+        (h) =>
+          h.userId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+          h.userId?.phoneNumber?.toString().includes(search)
+      );
+    }
+
+    const totalDocs = history.length;
+    const paginatedHistory = history.slice(skip, skip + limitNum);
+
+    res.status(200).json({
+      success: true,
+      count: paginatedHistory.length,
+      total: totalDocs,
+      pagination: {
+        total: totalDocs,
+        page: pageNum,
+        limit: limitNum,
+      },
+      message: userId
+        ? "User's full payment history fetched successfully"
+        : "Gym payment history fetched successfully",
+      data: paginatedHistory.map((h) => {
+        const createdAt = new Date(h.createdAt);
+        const expiryDate = new Date(createdAt);
+        expiryDate.setMonth(expiryDate.getMonth() + (h.subscriptionMonths || 0));
+
+        const status = expiryDate > new Date() ? "active" : "expired";
+
+        return {
+          ...h,
+          subscriptionStatus: status,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error("Error fetching payment history:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
 
 
-export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser}
+export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory}
