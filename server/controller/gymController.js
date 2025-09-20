@@ -4,7 +4,10 @@ import { GymUsers } from "../model/gymUserSchema.js";
 import { Trainer } from "../model/trainerSchema.js";
 import GymBilling from "../model/gymBillingSchema.js";
 
-
+const getFileUrl = (req, folder, filename) => {
+  if (!filename) return null;
+  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+};
 const createGym = async (req, res) => {
   try {
     const { name, address, phoneNumber } = req.body || {};
@@ -57,8 +60,6 @@ const createGym = async (req, res) => {
     });
   }
 };
-
-
 const isValidPhone = (num) => /^[0-9]{10}$/.test(num);
 
 const registerToGym = async (req, res) => {
@@ -73,7 +74,6 @@ const registerToGym = async (req, res) => {
       whatsAppNumber,
       notes,
       trainerId,
-      dietPdf, // optional
       amount,
       isGst,
       gst,
@@ -114,13 +114,21 @@ if (!["athlete", "non-athlete"].includes(userType)) {
       if (!gstNumber || gstNumber.length > 20)
         return res.status(400).json({ message: "GST number is required and max 20 chars" });
     }
+const dietPdf = req.files?.dietPdf?.[0]?.filename
+  ? `uploads/diets/${req.files.dietPdf[0].filename}`
+  : null;
+
+const profilePicture = req.files?.profilePicture?.[0]?.filename
+  ? `uploads/profiles/${req.files.profilePicture[0].filename}`
+  : null;
+
 
     // --- Check if user exists ---
     let user = await GymUsers.findOne({ phoneNumber }).session(session);
 
     const subscriptionStart = new Date(startDate);
     const subscriptionEnd = new Date(subscriptionStart);
-    subscriptionEnd.setMonth(subscriptionEnd.getMonth() + subscriptionMonths);
+   subscriptionEnd.setMonth(subscriptionEnd.getMonth() + Number(subscriptionMonths));
 
     // --- Overlap validation ---
     if (user && user.subscription) {
@@ -161,6 +169,7 @@ if (!["athlete", "non-athlete"].includes(userType)) {
             notes,
             trainer: trainer._id,
             dietPdf,
+            profilePicture,  
              userType,
             subscription: {
               startDate: subscriptionStart,
@@ -186,7 +195,10 @@ if (!["athlete", "non-athlete"].includes(userType)) {
       user.notes = notes || user.notes;
       user.userType = userType || user.userType;
 
-      if (dietPdf) user.dietPdf = dietPdf;
+  // Update existing user
+if (dietPdf) user.dietPdf = dietPdf;
+if (profilePicture) user.profilePicture = profilePicture;
+
       user.trainer = trainer._id;
 
       // Update subscription

@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { generateOtp, hashOtp, compareOtp } from "../utils/otp.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 import { PasswordReset } from "../model/passwordResetSchema.js";
+import path from "path";
 // import jwt from "jsonwebtoken";
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10);
 const OTP_ATTEMPTS_LIMIT = parseInt(process.env.OTP_ATTEMPTS_LIMIT || "5", 10);
@@ -233,18 +234,18 @@ const getUsersByTrainer = async (req, res) => {
     });
   }
 };
-
-
 const assignDietPlan = async (req, res) => {
   try {
-    const {id:trainerId }= req.params;
+    const { id: trainerId } = req.params;
     const { userId } = req.body;
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    if (!req.file) {
+    // Access uploaded diet PDF (from multer .fields)
+    const dietFile = req.files?.dietPdf?.[0];
+    if (!dietFile) {
       return res.status(400).json({ message: "Diet PDF is required" });
     }
 
@@ -264,8 +265,8 @@ const assignDietPlan = async (req, res) => {
       return res.status(403).json({ message: "You are not assigned to this user" });
     }
 
-    // Update user's diet PDF
-    gymUser.dietPdf = `/uploads/diets/${req.file.filename}`;
+    // Store diet PDF path consistent with registerToGym
+    gymUser.dietPdf = `uploads/diets/${dietFile.filename}`;
     await gymUser.save();
 
     res.json({
@@ -273,14 +274,16 @@ const assignDietPlan = async (req, res) => {
       user: {
         id: gymUser._id,
         name: gymUser.name,
-        dietPdf: gymUser.dietPdf,
+        dietPdf: gymUser.dietPdf, // now matches registerToGym format
       },
     });
   } catch (error) {
     console.error("Error assigning diet plan:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
 const requestPasswordReset = async (req, res) => {
   try {
     const { trainerEmail } = req.body;
