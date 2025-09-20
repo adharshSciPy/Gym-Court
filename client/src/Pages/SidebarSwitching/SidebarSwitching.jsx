@@ -5,7 +5,6 @@ import ReportsPage from "../ReportPage/ReportPage";
 import BookingsPage from "../BookingPage/BookingPage";
 import SettingsPage from "../SettingsPage/SettingsPage";
 import PaymentHistory from "../PaymentHistory/PaymentHistory";
-import Gym from "../Gym/Gym";
 import Sidebar from "../SideBar/Sidebar";
 import { useNavigate } from "react-router-dom";
 
@@ -33,8 +32,6 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
         return <MembersPage />;
       case "Bookings":
         return <BookingsPage />;
-      case "Gym":
-        return <Gym />;
       case "Payments":
         return <PaymentHistory />;
       case "Reports":
