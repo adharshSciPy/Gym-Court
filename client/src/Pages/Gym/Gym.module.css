@@ -202,11 +202,159 @@
   background-color: #f3f4f6;
 }
 
+.actionButtonEdit:hover {
+  color: #2563eb;
+  background-color: #dbeafe;
+}
+
+.actionButtonDelete:hover {
+  color: #dc2626;
+  background-color: #fecaca;
+}
+
 .actionButtonMessage:hover {
   color: #16a34a;
   background-color: #dcfce7;
 }
 
+.actionButtonView:hover {
+  color: #374151;
+  background-color: #f3f4f6;
+}
+
+/* Form Styles */
+.formWrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.formContainer {
+  background: #d1e5d9;
+  border-radius: 1rem;
+  padding: 3rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.formTitle {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 20px;
+}
+
+.formSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sectionLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+}
+
+.billingRow {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 3rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.formInput,
+.formSelect {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #0d9488;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: all 0.2s ease;
+  background-color: #d1e5d9;
+  font-size: 0.875rem;
+}
+
+.formInput:focus,
+.formSelect:focus {
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.formInput::placeholder {
+  color: #374151;
+}
+
+.formTextarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #0d9488;
+  border-radius: 0.5rem;
+  outline: none;
+  transition: all 0.2s ease;
+  background-color: #d1e5d9;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.875rem;
+  min-height: 80px;
+}
+
+.formTextarea:focus {
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.formTextarea::placeholder {
+  color: #374151;
+}
+
+/* Form Buttons */
+.formButtons {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+}
+
+.submitButton {
+  background-color: #10b981;
+  color: white;
+  padding: 0.75rem 3rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.submitButton:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.submitButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+}
 
 .searchselect {
   display: flex;
@@ -333,6 +481,12 @@ select option {
 
 
 
+/* Responsive Design */
+@media (min-width: 768px) {
+  .formRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
 
 @media (max-width: 1024px) {
   .contentContainer {
@@ -364,6 +518,14 @@ select option {
   .header {
     padding: 1rem;
   }
+
+  .formWrapper {
+    max-width: 100%;
+  }
+
+  .formContainer {
+    padding: 1.5rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -384,6 +546,14 @@ select option {
   .renewButton {
     font-size: 0.75rem;
     padding: 0.125rem 0.5rem;
+  }
+
+  .formButtons {
+    flex-direction: column;
+  }
+
+  .formContainer {
+    padding: 1rem;
   }
 }
 
