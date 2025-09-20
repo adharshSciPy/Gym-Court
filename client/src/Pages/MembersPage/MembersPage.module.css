@@ -340,7 +340,298 @@
 .renewSubmitButton:active {
   transform: translateY(1px);
 }
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
+.popup {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 300px;
+  text-align: center;
+  box-shadow: 0px 4px 20px rgba(0,0,0,0.2);
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.cancelBtn {
+  background: #ddd;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.deleteBtn {
+  background: #e63946;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+/* Add these styles to your existing MembersPage.module.css file */
+
+/* Enhanced modal for member details view */
+.viewModalContent {
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Member details content container */
+.memberDetailsContent {
+  padding: 20px 0;
+}
+
+/* Details sections */
+.detailsSection {
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.detailsSection h3 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 8px;
+}
+
+/* Details grid layout */
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
+
+/* Individual detail items */
+.detailItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px;
+  background-color: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  transition: box-shadow 0.2s ease;
+}
+
+.detailItem:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Detail labels and values */
+.detailLabel {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detailValue {
+  font-size: 16px;
+  color: #2c3e50;
+  display: flex;
+  align-items: center;
+  word-break: break-word;
+}
+
+/* Status badge styling */
+.statusBadge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+}
+
+.statusBadge.statusActive {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.statusBadge.statusExpired {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Enhanced action buttons in modal */
+.modalActions .actionButton {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.modalActions .whatsappButton {
+  background-color: #25d366;
+  color: white;
+}
+
+.modalActions .whatsappButton:hover {
+  background-color: #128c7e;
+  transform: translateY(-1px);
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+  .viewModalContent {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .detailsGrid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .detailsSection {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .detailItem {
+    padding: 10px;
+  }
+  
+  .detailLabel {
+    font-size: 12px;
+  }
+  
+  .detailValue {
+    font-size: 14px;
+  }
+  
+  .memberDetailsContent {
+    padding: 15px 0;
+  }
+}
+
+/* Enhanced modal header */
+.modalHeader h2 {
+  display: flex;
+  align-items: center;
+  color: #2c3e50;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Improved scrollbar for modal content */
+.viewModalContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.viewModalContent::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.viewModalContent::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+.viewModalContent::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading and empty states */
+.loadingState,
+.emptyState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px;
+  font-size: 16px;
+  color: #6c757d;
+}
+
+/* Enhanced button styles for better UX */
+.cancelButton,
+.renewSubmitButton {
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.cancelButton {
+  background-color: #6c757d;
+  color: white;
+}
+
+.cancelButton:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
+}
+
+.renewSubmitButton {
+  background-color: #28a745;
+  color: white;
+}
+
+.renewSubmitButton:hover {
+  background-color: #218838;
+  transform: translateY(-1px);
+}
+
+/* Close button enhancement */
+.closeButton {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  background: #e9ecef;
+  transform: scale(1.05);
+}
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .modalContent {
