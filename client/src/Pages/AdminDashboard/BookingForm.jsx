@@ -6,6 +6,8 @@ import PaymentHistory from "./PaymentHistory";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
 import BookingOverView from "./BookingOverview";
+import { toast } from "react-toastify";
+import { FileArchive } from "lucide-react";
 const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [errors, setErrors] = useState({});
@@ -96,11 +98,49 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
         const res = await axios.post(`${baseUrl}/api/v1/slot/book`, formData);
         console.log(res);
         console.log("Form submitted successfully", formData);
+        if (res.status === 201) {
+          toast.success("Booking Successful");
+        }
+        setFormData({
+          firstName: "",
+          lastName: "",
+          phoneNumber: 0,
+          whatsAppNumber: 0,
+          address: "",
+          startDate: "",
+          endDate: "",
+          startTime: "",
+          endTime: "",
+          amount: 0,
+          isGst: false,
+          gst: 0,
+          gstNumber: "",
+          modeOfPayment: "cash",
+          courtId: selectedCourtNumber,
+        });
       } else {
         console.log("Validation failed");
       }
     } catch (error) {
       console.log(error);
+      setFormData({
+          firstName: "",
+          lastName: "",
+          phoneNumber: 0,
+          whatsAppNumber: 0,
+          address: "",
+          startDate: "",
+          endDate: "",
+          startTime: "",
+          endTime: "",
+          amount: 0,
+          isGst: false,
+          gst: 0,
+          gstNumber: "",
+          modeOfPayment: "cash",
+          courtId: selectedCourtNumber,
+        });
+      toast.error("Booking Failed. Please try again." + error?.response?.data?.message || error.message);
     }
   };
 
@@ -333,32 +373,34 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                 <label className={styles.formLabel}>Billing</label>
                 <div className={styles.billingInputs}>
                   {/* Amount field - always shown */}
-                 <div className="">
-                   <input
-                    type="number"
-                    placeholder="Amount"
-                    value={formData.amount}
-                    onChange={(e) =>
-                      handleInputChange("amount", e.target.value)
-                    }
-                    className={styles.formInput}
-                  />
+                  <div className="">
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={formData.amount}
+                      onChange={(e) =>
+                        handleInputChange("amount", e.target.value)
+                      }
+                      className={styles.formInput}
+                    />
                     {errors.amount && (
                       <span id="amountError" className={styles.errorMessage}>
                         {errors.amount}
                       </span>
                     )}
-                 </div>
+                  </div>
                   {/* GST Applicable dropdown */}
                   <div className="">
                     <select
-                    value={formData.isGst ? "yes" : "no"}
-                    onChange={(e) => handleInputChange("isGst", e.target.value)}
-                    className={styles.formInput}
-                  >
-                    <option value="no">GST: No</option>
-                    <option value="yes">GST: Yes</option>
-                  </select>
+                      value={formData.isGst ? "yes" : "no"}
+                      onChange={(e) =>
+                        handleInputChange("isGst", e.target.value)
+                      }
+                      className={styles.formInput}
+                    >
+                      <option value="no">GST: No</option>
+                      <option value="yes">GST: Yes</option>
+                    </select>
                   </div>
 
                   {/* Conditionally show GST fields */}
@@ -366,15 +408,15 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                     <>
                       <div className="">
                         <input
-                        type="text"
-                        placeholder="GST Amount"
-                        value={formData.gst}
-                        onChange={(e) =>
-                          handleInputChange("gst", e.target.value)
-                        }
-                        className={styles.formInput}
-                      />
-                      {errors.gst && (
+                          type="text"
+                          placeholder="GST Amount"
+                          value={formData.gst}
+                          onChange={(e) =>
+                            handleInputChange("gst", e.target.value)
+                          }
+                          className={styles.formInput}
+                        />
+                        {errors.gst && (
                           <span id="gstError" className={styles.errorMessage}>
                             {errors.gst}
                           </span>
@@ -382,16 +424,19 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                       </div>
                       <div className="">
                         <input
-                        type="text"
-                        placeholder="GST Number"
-                        value={formData.gstNumber}
-                        onChange={(e) =>
-                          handleInputChange("gstNumber", e.target.value)
-                        }
-                        className={styles.formInput}
-                      />
-                      {errors.gstNumber && (
-                          <span id="gstNumberError" className={styles.errorMessage}>
+                          type="text"
+                          placeholder="GST Number"
+                          value={formData.gstNumber}
+                          onChange={(e) =>
+                            handleInputChange("gstNumber", e.target.value)
+                          }
+                          className={styles.formInput}
+                        />
+                        {errors.gstNumber && (
+                          <span
+                            id="gstNumberError"
+                            className={styles.errorMessage}
+                          >
                             {errors.gstNumber}
                           </span>
                         )}

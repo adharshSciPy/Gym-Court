@@ -3,6 +3,7 @@ import { Search, X, MessageCircle, Eye, Trash2, Calendar, Clock, CreditCard, Use
 import styles from "./MembersPage.module.css";
 import axios from "axios";
 import baseUrl from "../../baseUrl";
+import { toast } from "react-toastify";
 
 function MembersPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -184,11 +185,14 @@ function MembersPage() {
 
   const onDelete = async () => {
     try {
-      await axios.delete(`${baseUrl}/api/v1/user/delete/${selectedMember._id}`);
-      // alert("Member deleted successfully!");
+      const res=await axios.delete(`${baseUrl}/api/v1/user/delete/${selectedMember._id}`);
+      if(res.status===200){
+        toast.success("Member deleted successfully");
+      }
     } catch (error) {
       console.error("Error deleting member:", error);
       setError("Failed to delete member. Please try again.");
+      toast.error("Failed to delete member. Please try again.");
     } finally {
       setDeletePopup(false);
       setSelectedMember(null);
