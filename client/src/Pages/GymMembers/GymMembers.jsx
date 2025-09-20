@@ -7,7 +7,6 @@ import { useParams } from 'react-router-dom';
 
 const GymMembers = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  // const [activeTab, setActiveTab] = useState('members');
   const [userTypeFilter, setUserTypeFilter] = useState('');
   const [members, setMembers] = useState([])
   const [page, setPage] = useState(1);
@@ -15,9 +14,10 @@ const GymMembers = () => {
   const [limit] = useState(5);
   const [subscriptionFilter, setSubscriptionFilter] = useState('');
   const [combinedFilter, setCombinedFilter] = useState("");
+  const [uploadingMembers, setUploadingMembers] = useState(new Set());
   const { id } = useParams()
 
-  // File upload refs - one for each member
+  // File upload refs - one for each member (specifically for diet PDFs)
   const fileInputRefs = useRef({});
 
   // Fetch members with filters & pagination
@@ -43,7 +43,6 @@ const GymMembers = () => {
   useEffect(() => {
     fetchMembers();
   }, [page, searchTerm, userTypeFilter, subscriptionFilter]);
-
 
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -92,47 +91,78 @@ const GymMembers = () => {
     window.open(url, "_blank");
   };
 
-  // Handle file upload button click
-  const handleFileUploadClick = (memberId) => {
+  // Handle diet plan upload button click
+  const handleDietUploadClick = (memberId) => {
     if (fileInputRefs.current[memberId]) {
       fileInputRefs.current[memberId].click();
     }
   };
 
-  // Handle file selection
-  const handleFileChange = async (event, member) => {
+  // Handle diet plan file selection and upload
+  const handleDietFileChange = async (event, member) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // You can add file validation here
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      alert('File size must be less than 5MB');
+    // Validate file type - only PDF allowed for diet plans
+    if (file.type !== 'application/pdf') {
+      alert('Please select a PDF file for the diet plan.');
+      event.target.value = '';
       return;
     }
 
+    // Validate file size (5MB limit)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('File size must be less than 5MB');
+      event.target.value = '';
+      return;
+    }
+
+    // Set loading state
+    setUploadingMembers(prev => new Set([...prev, member._id]));
+
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('memberId', member._id);
-      formData.append('memberName', member.name);
+      formData.append('dietPdf', file);
+      formData.append('userId', member._id);
 
-      // Replace this with your actual upload endpoint
-      // const response = await axios.post(`${baseUrl}/api/v1/upload-member-file`, formData, {
-      //   headers: {
-      //     'Content-Type': 'multipart/form-data',
-      //   },
-      // });
+      // Upload diet plan using the assign-diet-plan endpoint
+      const response = await axios.post(
+        `${baseUrl}/api/v1/trainer/assign-diet-plan/${id}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
-      // For now, just show a success message
-      alert(`File "${file.name}" uploaded successfully for ${member.name}`);
+      alert(`Diet plan uploaded successfully for ${member.name}`);
       
-      // Reset the input
-      event.target.value = '';
+      // Optionally refresh members data to show updated info
+      await fetchMembers();
       
     } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Failed to upload file. Please try again.');
+      console.error('Error uploading diet plan:', error);
+      
+      // Handle different error scenarios
+      if (error.response?.status === 400) {
+        alert(error.response.data.message || 'Invalid request. Please check your inputs.');
+      } else if (error.response?.status === 403) {
+        alert('You are not authorized to assign diet plans to this member.');
+      } else if (error.response?.status === 404) {
+        alert('Member not found or trainer not found.');
+      } else {
+        alert('Failed to upload diet plan. Please try again.');
+      }
+    } finally {
+      // Reset loading state and clear input
+      setUploadingMembers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(member._id);
+        return newSet;
+      });
+      event.target.value = '';
     }
   };
 
@@ -203,6 +233,7 @@ const GymMembers = () => {
                     <th className={styles.tableHeaderCell}>Joining date</th>
                     <th className={styles.tableHeaderCell}>Ended Date</th>
                     <th className={styles.tableHeaderCell}>Subscription Status</th>
+                    <th className={styles.tableHeaderCell}>Diet Plan</th>
                     <th className={styles.tableHeaderCell}>Actions</th>
                   </tr>
                 </thead>
@@ -230,25 +261,43 @@ const GymMembers = () => {
                         </div>
                       </td>
                       <td className={styles.tableCell}>
+                        <div className={styles.dietPlanStatus}>
+                          {member.dietPdf ? (
+                            <div className={styles.dietPlanAssigned}>
+                              <span className={styles.dietPlanBadge}>Assigned</span>
+                              {/* You can add a view/download link here if needed */}
+                            </div>
+                          ) : (
+                            <span className={styles.noDietPlan}>Not Assigned</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className={styles.tableCell}>
                         <div className={styles.actionButtons}>
-                          <button className={`${styles.actionButton} ${styles.actionButtonMessage}`}
+                          <button 
+                            className={`${styles.actionButton} ${styles.actionButtonMessage}`}
                             onClick={() => openWhatsApp(member.whatsAppNumber, member.name)}
                           >
                             <MessageCircle color='green' className="w-4 h-4" />
                           </button>
                           <button 
                             className={`${styles.actionButton} ${styles.actionButtonUpload}`}
-                            onClick={() => handleFileUploadClick(member._id)}
-                            title={`Upload file for ${member.name}`}
+                            onClick={() => handleDietUploadClick(member._id)}
+                            title={`Upload diet plan for ${member.name}`}
+                            disabled={uploadingMembers.has(member._id)}
                           >
-                            <Upload color='blue' className="w-4 h-4" />
-                          </button>
+                            {uploadingMembers.has(member._id) ? (
+                              <div className={styles.uploadingSpinner}></div>
+                            ) : (
+                              <Upload color='blue' className="w-4 h-4" />
+                            )}
+                          </button> 
                           <input
                             ref={el => fileInputRefs.current[member._id] = el}
                             type="file"
                             style={{ display: 'none' }}
-                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt"
-                            onChange={(e) => handleFileChange(e, member)}
+                            accept=".pdf"
+                            onChange={(e) => handleDietFileChange(e, member)}
                           />
                         </div>
                       </td>
