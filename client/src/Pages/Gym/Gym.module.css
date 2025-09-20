@@ -198,6 +198,26 @@
   transition: all 0.2s ease;
 }
 
+.editButton {
+  padding: 0.5rem;
+  color: #31549e;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.deleteButton {
+  padding: 0.5rem;
+  color: red;
+  background: none;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
 .actionButton:hover {
   background-color: #f3f4f6;
 }
@@ -369,6 +389,7 @@
   position: relative;
   display: inline-block;
   min-width: 200px;
+  margin-left: 10px;
 }
 
 select option {
@@ -474,8 +495,21 @@ select option {
   color: #111827;
 }
 
+.noUsersMessage {
+  padding: 20px;
+  text-align: center;
+  font-weight: bold;
+  color: #555;
+}
 
-
+.editModal{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 50px;
+  padding: 20px;
+  width: 700px;
+}
 
 
 
