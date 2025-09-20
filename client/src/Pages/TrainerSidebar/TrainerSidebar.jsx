@@ -6,7 +6,7 @@ import {
     UserRound,
     BarChart3,
     Settings,
-    LogOut,
+    LogOut, Dumbbell
 } from "lucide-react";
 
 function TrainerSidebar({ activeNav, setActiveNav }) {
@@ -15,6 +15,7 @@ function TrainerSidebar({ activeNav, setActiveNav }) {
     const navItems = [
         { name: "Dashboard", icon: LayoutDashboard },
         { name: "Members", icon: Users },
+        { name: "Gym", icon: Dumbbell },
         { name: "Reports", icon: BarChart3 },
         { name: "Settings", icon: Settings },
         { name: "Logout", icon: LogOut },
