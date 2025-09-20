@@ -5,7 +5,7 @@ import TrainerSidebarSwitching from '../TrainerSidebarSwitching/TrainerSidebarSw
 import axios from "axios"
 import baseUrl from "../../baseUrl"
 
-function AdminDashboard({ activeNav, setActiveNav }) {
+function AdminDashboard() {
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [selectedCourt, setSelectedCourt] = useState(null);
   const [selectedCourtNumber, setSelectedCourtNumber] = useState(null);
@@ -13,10 +13,7 @@ function AdminDashboard({ activeNav, setActiveNav }) {
   const [isTrainerView, setIsTrainerView] = useState(false);
   const [trainerActiveNav, setTrainerActiveNav] = useState("Dashboard");
 
-  const stats = [
-    { label: 'Total Members', value: '250' },
-    { label: 'Booking Details', value: '35' }
-  ];
+  
 
   const handleBookNow = (court) => {
     setSelectedCourt(court.courtName);
@@ -118,21 +115,6 @@ function AdminDashboard({ activeNav, setActiveNav }) {
             >
               Book
             </button>
-          </div>
-        ))}
-      </div>
-
-      <div className={styles.statsGrid}>
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className={styles.statCard}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-            }}
-          >
-            <p className={styles.statLabel}>{stat.label}</p>
-            <h2 className={styles.statValue}>{stat.value}</h2>
           </div>
         ))}
       </div>
