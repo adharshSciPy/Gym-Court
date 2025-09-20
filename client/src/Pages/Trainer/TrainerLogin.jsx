@@ -5,6 +5,7 @@ import axios from "axios";
 import baseUrl from "../../baseUrl";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 function TrainerLogin() {
     const navigate = useNavigate();
@@ -22,7 +23,6 @@ function TrainerLogin() {
     const [newPasswordError, setNewPasswordError] = useState("");
     const [confirmPasswordError, setConfirmPasswordError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState("");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -126,25 +126,47 @@ function TrainerLogin() {
     };
 
     const trainerLogin = async () => {
+        if (isDisabled) {
+            toast.warning("Please fill in all required fields correctly.");
+            return;
+        }
+
+        setIsLoading(true);
         try {
             const res = await axios.post(`${baseUrl}/api/v1/trainer/login`, form);
             console.log("res", res)
             const id = res.data.trainerId
             if (res.status === 200) {
-                navigate(`/Trainerdashboard/${id}`);
+                toast.success("Login successful! Redirecting to dashboard...");
+                setTimeout(() => {
+                    navigate(`/Trainerdashboard/${id}`);
+                }, 1500);
             }
         } catch (error) {
             console.log(error);
+            if (error.response?.status === 401) {
+                toast.error("Invalid email or password. Please check your credentials.");
+            } else if (error.response?.status === 404) {
+                toast.error("Trainer account not found.");
+            } else if (error.response?.status === 403) {
+                toast.error("Account access denied. Please contact support.");
+            } else if (error.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error("Login failed. Please try again.");
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleSendOtp = async () => {
         if (!forgotEmail || forgotEmailError) {
+            toast.warning("Please enter a valid email address.");
             return;
         }
 
         setIsLoading(true);
-        setMessage("");
 
         try {
             const res = await axios.post(`${baseUrl}/api/v1/trainer/sent-otp`, {
@@ -152,17 +174,19 @@ function TrainerLogin() {
             });
             
             if (res.status === 200) {
-                setMessage("If an account exists for this email, an OTP has been sent.");
+                toast.success("OTP sent successfully! Please check your email.");
                 setShowOtpVerification(true);
             }
         } catch (error) {
             console.log(error);
             if (error.response?.status === 429) {
-                setMessage("Too many OTP requests. Please try again after a minute.");
+                toast.error("Too many OTP requests. Please try again after a minute.");
+            } else if (error.response?.status === 404) {
+                toast.error("No trainer account found with this email address.");
             } else if (error.response?.data?.message) {
-                setMessage(error.response.data.message);
+                toast.error(error.response.data.message);
             } else {
-                setMessage("Failed to send OTP. Please try again.");
+                toast.error("Failed to send OTP. Please try again.");
             }
         } finally {
             setIsLoading(false);
@@ -171,11 +195,11 @@ function TrainerLogin() {
 
     const handleResetPassword = async () => {
         if (!otp || !newPassword || !confirmPassword || otpError || newPasswordError || confirmPasswordError) {
+            toast.warning("Please fill in all fields correctly.");
             return;
         }
 
         setIsLoading(true);
-        setMessage("");
 
         try {
             const res = await axios.post(`${baseUrl}/api/v1/trainer/reset-password`, {
@@ -185,7 +209,7 @@ function TrainerLogin() {
             });
             
             if (res.status === 200) {
-                setMessage("Password has been reset successfully! You can now login with your new password.");
+                toast.success("Password reset successful! You can now login with your new password.");
                 setTimeout(() => {
                     resetForgotPassword();
                 }, 2000);
@@ -193,13 +217,13 @@ function TrainerLogin() {
         } catch (error) {
             console.log(error);
             if (error.response?.status === 400) {
-                setMessage(error.response.data.message || "Invalid OTP or email");
+                toast.error(error.response.data.message || "Invalid OTP or expired. Please try again.");
             } else if (error.response?.status === 429) {
-                setMessage("Too many attempts. Request a new OTP.");
+                toast.error("Too many attempts. Please request a new OTP.");
             } else if (error.response?.data?.message) {
-                setMessage(error.response.data.message);
+                toast.error(error.response.data.message);
             } else {
-                setMessage("Failed to reset password. Please try again.");
+                toast.error("Failed to reset password. Please try again.");
             }
         } finally {
             setIsLoading(false);
@@ -217,10 +241,10 @@ function TrainerLogin() {
         setOtpError("");
         setNewPasswordError("");
         setConfirmPasswordError("");
-        setMessage("");
+        toast.info("Redirected to login page.");
     };
 
-    const isDisabled = !form.trainerEmail || !form.password || emailError || passwordError;
+    const isDisabled = !form.trainerEmail || !form.password || emailError || passwordError || isLoading;
     const isForgotDisabled = !forgotEmail || forgotEmailError || isLoading;
     const isResetDisabled = !otp || !newPassword || !confirmPassword || otpError || newPasswordError || confirmPasswordError || isLoading;
 
@@ -280,12 +304,6 @@ function TrainerLogin() {
                             )}
                         </div>
 
-                        {message && (
-                            <p className={message.includes("successfully") ? styles.successText : styles.errorText}>
-                                {message}
-                            </p>
-                        )}
-
                         <button
                             onClick={handleResetPassword}
                             disabled={isResetDisabled}
@@ -332,12 +350,6 @@ function TrainerLogin() {
                                 </p>
                             )}
                         </div>
-
-                        {message && (
-                            <p className={message.includes("sent") ? styles.successText : styles.errorText}>
-                                {message}
-                            </p>
-                        )}
 
                         <button
                             onClick={handleSendOtp}
@@ -417,7 +429,10 @@ function TrainerLogin() {
                     <div className={styles.forgotPasswordContainer}>
                         <button
                             type="button"
-                            onClick={() => setShowForgotPassword(true)}
+                            onClick={() => {
+                                setShowForgotPassword(true);
+                                toast.info("Enter your email to reset your password.");
+                            }}
                             className={styles.forgotPasswordLink}
                         >
                             Forgot Password?
@@ -428,7 +443,7 @@ function TrainerLogin() {
                         onClick={trainerLogin}
                         disabled={isDisabled}
                     >
-                        Login
+                        {isLoading ? "Logging in..." : "Login"}
                     </button>
                 </div>
             </div>
