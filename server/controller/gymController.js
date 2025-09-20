@@ -439,6 +439,7 @@ const getGymPaymentHistory = async (req, res) => {
       limit = 10,
       latest,
       userId,
+      status, // active | expired
     } = req.query;
 
     const pageNum = parseInt(page, 10) || 1;
@@ -450,9 +451,7 @@ const getGymPaymentHistory = async (req, res) => {
     // --- Date Filter (by createdAt) ---
     if (startDate || endDate) {
       matchConditions.createdAt = {};
-      if (startDate) {
-        matchConditions.createdAt.$gte = new Date(startDate);
-      }
+      if (startDate) matchConditions.createdAt.$gte = new Date(startDate);
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
@@ -461,11 +460,9 @@ const getGymPaymentHistory = async (req, res) => {
     }
 
     // --- User Filter ---
-    if (userId) {
-      matchConditions.userId = userId;
-    }
+    if (userId) matchConditions.userId = userId;
 
-    // --- Search Filter for Aggregations ---
+    // --- Search Filter ---
     let userMatch = {};
     if (search) {
       userMatch = {
@@ -476,8 +473,10 @@ const getGymPaymentHistory = async (req, res) => {
       };
     }
 
-    // --- Latest Transactions ---
-    if (latest === "true") {
+    // --- Determine if we should fetch latest transactions ---
+    const fetchLatest = latest === "true" || !!status; // auto fetch latest if status is provided
+
+    if (fetchLatest) {
       const aggregationPipeline = [
         { $match: matchConditions },
         { $sort: { createdAt: -1 } },
@@ -498,11 +497,9 @@ const getGymPaymentHistory = async (req, res) => {
         { $unwind: "$user" },
       ];
 
-      if (search) {
-        aggregationPipeline.push({ $match: userMatch });
-      }
+      if (search) aggregationPipeline.push({ $match: userMatch });
 
-      // Count BEFORE pagination
+      // Get total count before pagination
       const totalDocsAgg = await GymBilling.aggregate([
         ...aggregationPipeline,
         { $count: "total" },
@@ -511,54 +508,61 @@ const getGymPaymentHistory = async (req, res) => {
 
       aggregationPipeline.push({ $skip: skip }, { $limit: limitNum });
 
-      const latestTransactions = await GymBilling.aggregate(aggregationPipeline);
+      let latestTransactions = await GymBilling.aggregate(aggregationPipeline);
+
+      // Compute subscriptionStatus
+      latestTransactions = latestTransactions.map((doc) => {
+        const createdAt = new Date(doc.latestTransaction.createdAt);
+        const expiryDate = new Date(createdAt);
+        expiryDate.setMonth(
+          expiryDate.getMonth() + (doc.latestTransaction.subscriptionMonths || 0)
+        );
+        const computedStatus = expiryDate > new Date() ? "active" : "expired";
+
+        return {
+          id: doc.latestTransaction._id,
+          amount: doc.latestTransaction.amount,
+          isGst: doc.latestTransaction.isGst,
+          gst: doc.latestTransaction.gst,
+          gstNumber: doc.latestTransaction.gstNumber,
+          subscriptionMonths: doc.latestTransaction.subscriptionMonths,
+          modeOfPayment: doc.latestTransaction.modeOfPayment,
+          notes: doc.latestTransaction.notes,
+          createdAt: doc.latestTransaction.createdAt,
+          updatedAt: doc.latestTransaction.updatedAt,
+          subscriptionStatus: computedStatus,
+          user: {
+            _id: doc.user._id,
+            name: doc.user.name,
+            phoneNumber: doc.user.phoneNumber,
+            whatsAppNumber: doc.user.whatsAppNumber,
+          },
+        };
+      });
+
+      // --- Filter by status if provided ---
+      if (status) {
+        latestTransactions = latestTransactions.filter(
+          (t) => t.subscriptionStatus === status
+        );
+      }
 
       return res.status(200).json({
         success: true,
         count: latestTransactions.length,
         total: totalDocs,
         message: "Latest transactions per user fetched successfully",
-        data: latestTransactions.map((doc) => {
-          const createdAt = new Date(doc.latestTransaction.createdAt);
-          const expiryDate = new Date(createdAt);
-          expiryDate.setMonth(
-            expiryDate.getMonth() + (doc.latestTransaction.subscriptionMonths || 0)
-          );
-
-          const status = expiryDate > new Date() ? "active" : "expired";
-
-          return {
-            id: doc.latestTransaction._id,
-            amount: doc.latestTransaction.amount,
-            isGst: doc.latestTransaction.isGst,
-            gst: doc.latestTransaction.gst,
-            gstNumber: doc.latestTransaction.gstNumber,
-            subscriptionMonths: doc.latestTransaction.subscriptionMonths,
-            modeOfPayment: doc.latestTransaction.modeOfPayment,
-            notes: doc.latestTransaction.notes,
-            createdAt: doc.latestTransaction.createdAt,
-            updatedAt: doc.latestTransaction.updatedAt,
-            subscriptionStatus: status,
-            user: {
-              _id: doc.user._id,
-              name: doc.user.name,
-              phoneNumber: doc.user.phoneNumber,
-              whatsAppNumber: doc.user.whatsAppNumber,
-            },
-          };
-        }),
+        data: latestTransactions,
         pagination: { page: pageNum, limit: limitNum },
       });
     }
 
-    // --- Full History ---
-    let historyQuery = GymBilling.find(matchConditions)
+    // --- Full History (if no status filter) ---
+    let history = await GymBilling.find(matchConditions)
       .populate("userId", "name phoneNumber whatsAppNumber")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    let history = await historyQuery.lean();
-
-    // Apply search filter after populate
     if (search) {
       history = history.filter(
         (h) =>
@@ -574,36 +578,16 @@ const getGymPaymentHistory = async (req, res) => {
       success: true,
       count: paginatedHistory.length,
       total: totalDocs,
-      pagination: {
-        total: totalDocs,
-        page: pageNum,
-        limit: limitNum,
-      },
+      pagination: { total: totalDocs, page: pageNum, limit: limitNum },
       message: userId
         ? "User's full payment history fetched successfully"
         : "Gym payment history fetched successfully",
-      data: paginatedHistory.map((h) => {
-        const createdAt = new Date(h.createdAt);
-        const expiryDate = new Date(createdAt);
-        expiryDate.setMonth(expiryDate.getMonth() + (h.subscriptionMonths || 0));
-
-        const status = expiryDate > new Date() ? "active" : "expired";
-
-        return {
-          ...h,
-          subscriptionStatus: status,
-        };
-      }),
+      data: paginatedHistory,
     });
   } catch (error) {
     console.error("Error fetching payment history:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
-
 
 export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory}
