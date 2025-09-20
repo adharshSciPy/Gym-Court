@@ -15,7 +15,6 @@ function TrainerSidebar({ activeNav, setActiveNav }) {
     const navItems = [
         { name: "Dashboard", icon: LayoutDashboard },
         { name: "Members", icon: Users },
-        { name: "Trainers", icon: UserRound },
         { name: "Reports", icon: BarChart3 },
         { name: "Settings", icon: Settings },
         { name: "Logout", icon: LogOut },

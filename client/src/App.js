@@ -50,7 +50,7 @@ function App() {
 
           {/* Trainer */}
           <Route
-            path="/Trainerdashboard"
+            path="/Trainerdashboard/:id"
             element={
               <TrainerSidebarSwitching
                 activeNav={activeNav}

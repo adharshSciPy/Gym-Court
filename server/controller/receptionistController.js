@@ -124,42 +124,44 @@ const deleteReceptionist = async (req, res) => {
 const requestPasswordReset = async (req, res) => {
   try {
     const { receptionistEmail } = req.body;
-    if (!receptionistEmail) {
+    if (!receptionistEmail)
       return res.status(400).json({ message: "Email is required" });
-    }
 
-    const receptionist= await Receptionist.findOne({ receptionistEmail });
+    const receptionist = await Receptionist.findOne({ receptionistEmail });
     if (!receptionist) {
-      // Don't reveal whether account exists
+      // Don't reveal existence
       return res.status(200).json({
         message: "If an account exists for this email, an OTP has been sent."
       });
     }
 
-    // 🔹 Check request limit (max 5 per minute)
+    // --- Check request limit and mark old OTPs as used in parallel ---
     const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-    const recentRequests = await PasswordReset.countDocuments({
-      userId:receptionist._id,
-      role: "Receptionist",
-      createdAt: { $gte: oneMinuteAgo }
-    });
+    const [recentRequests] = await Promise.all([
+      PasswordReset.countDocuments({
+        userId: receptionist._id,
+        role: "Receptionist",
+        createdAt: { $gte: oneMinuteAgo }
+      }),
+      PasswordReset.updateMany(
+        { userId: receptionist._id, role: "Receptionist", used: false },
+        { used: true }
+      )
+    ]);
 
     if (recentRequests >= 5) {
       return res.status(429).json({
         message: "Too many OTP requests. Please try again after a minute."
       });
     }
-    await PasswordReset.updateMany(
-      { userId: receptionist._id, role: "Receptionist", used: false },
-      { used: true }
-    );
 
-    // Generate OTP
+    // --- Generate OTP ---
     const otp = generateOtp(6);
-    const otpHash = await hashOtp(otp);
+    const otpHash = hashOtp(otp); // crypto hash is synchronous & fast
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
     console.log(`Generated OTP for ${receptionist.receptionistEmail}: ${otp}`);
+
     await PasswordReset.create({
       userId: receptionist._id,
       role: "Receptionist",
@@ -167,8 +169,9 @@ const requestPasswordReset = async (req, res) => {
       expiresAt,
     });
 
-    // Send OTP by email
-    await sendOtpEmail(receptionist.receptionistEmail, otp, receptionist.userName);
+    // --- Send email async, don't block response ---
+    sendOtpEmail(receptionist.receptionistEmail, otp, receptionist.userName)
+      .catch(err => console.error("Failed to send OTP email:", err));
 
     return res.status(200).json({
       message: "If an account exists for this email, an OTP has been sent."
@@ -178,7 +181,7 @@ const requestPasswordReset = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-const resetPassword = async (req, res) => {
+ const resetPassword = async (req, res) => {
   try {
     const { receptionistEmail, otp, newPassword } = req.body;
 
@@ -198,7 +201,6 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP or email" });
     }
 
-    // 🔹 Consistent with requestPasswordReset (userId + role)
     const resetDoc = await PasswordReset.findOne({
       userId: receptionist._id,
       role: "Receptionist",
@@ -209,29 +211,27 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // Check expiry
     if (resetDoc.expiresAt < new Date()) {
       resetDoc.used = true;
       await resetDoc.save();
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    // Too many attempts
     if (resetDoc.attempts >= OTP_ATTEMPTS_LIMIT) {
       resetDoc.used = true;
       await resetDoc.save();
       return res.status(429).json({ message: "Too many attempts. Request a new OTP." });
     }
 
-    // Compare OTP
-    const ok = await compareOtp(otp, resetDoc.otpHash);
+    // ✅ Compare OTP
+    const ok = compareOtp(otp, resetDoc.otpHash);
     if (!ok) {
       resetDoc.attempts += 1;
       await resetDoc.save();
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    // ✅ Update password
+    // ✅ Update password (auto-hashed via pre-save middleware)
     receptionist.password = newPassword;
     await receptionist.save();
 
