@@ -9,11 +9,7 @@ const formatTime = (date) => {
   const d = new Date(date);
   return d.toISOString().substring(11, 16);
 };
-
 const bookSlot = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const {
       courtId,
@@ -34,7 +30,7 @@ const bookSlot = async (req, res) => {
       modeOfPayment,
     } = req.body;
 
-    // --- all your validations (unchanged) ---
+    // --- Validations ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
 
     if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
@@ -71,11 +67,11 @@ const bookSlot = async (req, res) => {
     }
 
     // --- Court Exists ---
-    const court = await Court.findById(courtId).session(session);
+    const court = await Court.findById(courtId);
     if (!court) return res.status(404).json({ message: "Court not found" });
 
     // --- User Handling ---
-    let user = await User.findOne({ phoneNumber }).session(session);
+    let user = await User.findOne({ phoneNumber });
 
     if (!user) {
       if (!firstName || firstName.length > 50) return res.status(400).json({ message: "First name is required (max 50 chars)" });
@@ -83,8 +79,7 @@ const bookSlot = async (req, res) => {
       if (!whatsAppNumber || !/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
       if (!address || address.length > 200) return res.status(400).json({ message: "Address is required (max 200 chars)" });
 
-      user = await User.create([{ firstName, lastName, phoneNumber, whatsAppNumber, address }], { session });
-      user = user[0];
+      user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
     } else {
       if (firstName && firstName.length > 50) return res.status(400).json({ message: "First name too long" });
       if (lastName && lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
@@ -95,7 +90,7 @@ const bookSlot = async (req, res) => {
       user.lastName = lastName || user.lastName;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
       user.address = address || user.address;
-      await user.save({ session });
+      await user.save();
     }
 
     // --- Prepare slots ---
@@ -118,7 +113,7 @@ const bookSlot = async (req, res) => {
         courtId,
         isBooked: true,
         $or: [{ startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } }],
-      }).session(session).populate("userId");
+      }).populate("userId");
 
       if (overlap) {
         return res.status(400).json({
@@ -156,58 +151,46 @@ const bookSlot = async (req, res) => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    const createdSlots = await Slot.insertMany(slotsToCreate, { session });
+    // --- Create slots ---
+    const createdSlots = await Slot.insertMany(slotsToCreate);
 
+    // Booking
     const bookingStartTime = new Date(start);
     bookingStartTime.setHours(startH, startM, 0, 0);
 
     const bookingEndTime = new Date(end);
     bookingEndTime.setHours(endH, endM, 0, 0);
 
-    // Save booking
-    const booking = await Booking.create(
-      [
-        {
-          courtId,
-          userId: user._id,
-          slotIds: createdSlots.map((s) => s._id),
-          startDate: start,
-          endDate: end,
-          startTime: bookingStartTime,
-          endTime: bookingEndTime,
-          isMultiDay: start.toDateString() !== end.toDateString(),
-          notes,
-          amount,
-          isGst,
-          gst,
-          gstNumber,
-          modeOfPayment,
-        },
-      ],
-      { session }
-    );
+    const booking = await Booking.create({
+      courtId,
+      userId: user._id,
+      slotIds: createdSlots.map((s) => s._id),
+      startDate: start,
+      endDate: end,
+      startTime: bookingStartTime,
+      endTime: bookingEndTime,
+      isMultiDay: start.toDateString() !== end.toDateString(),
+      notes,
+      amount,
+      isGst,
+      gst,
+      gstNumber,
+      modeOfPayment,
+    });
 
-    // Save billing
-    await Billing.create(
-      [
-        {
-          bookingId: booking[0]._id,
-          userId: user._id,
-          courtId,
-          amount,
-          isGst,
-          gst,
-          gstNumber,
-          modeOfPayment,
-        },
-      ],
-      { session }
-    );
+    // Billing
+    await Billing.create({
+      bookingId: booking._id,
+      userId: user._id,
+      courtId,
+      amount,
+      isGst,
+      gst,
+      gstNumber,
+      modeOfPayment,
+    });
 
-    await session.commitTransaction();
-    session.endSession();
-
-    // Format response
+    // --- Format response ---
     const formatTime = (date) =>
       new Date(date).toLocaleTimeString("en-IN", {
         hour: "2-digit",
@@ -226,11 +209,11 @@ const bookSlot = async (req, res) => {
       });
 
     const formattedBooking = {
-      ...booking[0].toObject(),
-      startDate: formatDate(booking[0].startDate),
-      endDate: formatDate(booking[0].endDate),
-      startTime: formatTime(booking[0].startTime),
-      endTime: formatTime(booking[0].endTime),
+      ...booking.toObject(),
+      startDate: formatDate(booking.startDate),
+      endDate: formatDate(booking.endDate),
+      startTime: formatTime(booking.startTime),
+      endTime: formatTime(booking.endTime),
     };
 
     return res.status(201).json({
@@ -238,16 +221,11 @@ const bookSlot = async (req, res) => {
       booking: formattedBooking,
     });
   } catch (err) {
-    await session.abortTransaction();
-    session.endSession();
     console.error("Error in bookSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
-
-
-
-  const bookedSlots = async (req, res) => {
+const bookedSlots = async (req, res) => {
     const { id } = req.params;
     const { date } = req.query;
 
@@ -375,8 +353,7 @@ const bookSlot = async (req, res) => {
       console.error("Error fetching booked slots:", error);
       return res.status(500).json({ message: "Server error", error: error.message });
     }
-  };
-
+};
 const cancelBooking = async (req, res) => {
   try {
     const { id } = req.params; // bookingId
@@ -423,9 +400,6 @@ const cancelBooking = async (req, res) => {
     });
   }
 };
-
-
-
 const renewSlot = async (req, res) => {
   try {
     const {id: bookingId } = req.params;
@@ -627,9 +601,6 @@ const renewSlot = async (req, res) => {
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
-
-
-
 const getAvailableSlots = async (req, res) => {
   try {
     const { courtId } = req.params;
