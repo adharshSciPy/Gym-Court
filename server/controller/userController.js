@@ -1,4 +1,8 @@
 import { User } from "../model/userSchema.js";
+import mongoose from "mongoose";
+import Booking from "../model/bookingSchema.js";
+import Slot from "../model/slotSchema.js";
+import Billing from "../model/billingSchema.js";
 const getAllUsers = async (req, res) => {
   try {
     const { phoneNumber, page = 1, limit = 10 } = req.query;
@@ -72,21 +76,50 @@ const updateUser = async (req, res) => {
   }
 };
 const deleteUser = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { id } = req.params;
-    const user = await User.findById(id);
+
+    const user = await User.findById(id).session(session);
     if (!user) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: "User not found" });
     }
 
-    await User.findByIdAndDelete(id);
+    // Find all bookings of this user
+    const bookings = await Booking.find({ userId: id }).session(session);
+    const bookingIds = bookings.map(b => b._id);
+    const slotIds = bookings.flatMap(b => b.slotIds);
 
-    return res.status(200).json({ message: "User deleted successfully" });
+    // Delete all related data in parallel (faster)
+    await Promise.all([
+      User.deleteOne({ _id: id }).session(session),
+      Booking.deleteMany({ userId: id }).session(session),
+      Billing.deleteMany({ userId: id }).session(session),
+      Slot.deleteMany({ $or: [{ userId: id }, { _id: { $in: slotIds } }] }).session(session),
+    ]);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "User and all related data deleted successfully",
+      deleted: {
+        bookings: bookingIds.length,
+        slots: slotIds.length,
+      }
+    });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error deleting user:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 const getUserById = async (req, res) => {
   const { id } = req.params;
   try {
