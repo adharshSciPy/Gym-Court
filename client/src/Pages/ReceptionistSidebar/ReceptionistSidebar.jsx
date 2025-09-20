@@ -1,4 +1,4 @@
-import styles from "./sidebar.module.css";
+import styles from "../ReceptionistSidebar/ReceptionistSidebar.module.css";
 import React, { useState } from "react";
 import {
   LayoutDashboard,
@@ -7,7 +7,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  DollarSign, Dumbbell
+  DollarSign
 } from "lucide-react";
 
 function Sidebar({ activeNav, setActiveNav }) {
@@ -17,19 +17,17 @@ function Sidebar({ activeNav, setActiveNav }) {
     { name: "Dashboard", icon: LayoutDashboard },
     { name: "Members", icon: Users },
     { name: "Bookings", icon: Calendar },
-    { name: "Gym", icon: Dumbbell },
-    { name: "Reports", icon: BarChart3 },
     { name: "Settings", icon: Settings },
-    { name: "Payments", icon: DollarSign },
+    { name: "Payments", icon:DollarSign },
     { name: "Logout", icon: LogOut },
 
   ];
-
+  
   return (
     <div className={styles.sidebar}>
       <div className={styles.logo}>
         <h1 className={styles.logoText}>Courtly</h1>
-        <p className={styles.logoSubtext}>Admin</p>
+        <p className={styles.logoSubtext}>Receptionist</p>
       </div>
 
       <nav className={styles.nav}>
@@ -41,8 +39,9 @@ function Sidebar({ activeNav, setActiveNav }) {
           return (
             <button
               key={item.name}
-              className={`${styles.navItem} ${isActive ? styles.navItemActive : ""
-                } ${isHovered && !isActive ? styles.navItemHover : ""}`}
+              className={`${styles.navItem} ${
+                isActive ? styles.navItemActive : ""
+              } ${isHovered && !isActive ? styles.navItemHover : ""}`}
               onClick={() => setActiveNav(item.name)}
               onMouseEnter={() => setHoveredNav(item.name)}
               onMouseLeave={() => setHoveredNav(null)}

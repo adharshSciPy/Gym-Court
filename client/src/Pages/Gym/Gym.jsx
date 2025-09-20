@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Search, Edit, Trash2, MessageCircle, Eye } from 'lucide-react';
-import styles from './GymMembers.module.css';
+import styles from './Gym.module.css';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
 import { useParams } from 'react-router-dom';
 
-const GymMembers = () => {
+const Gym = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  // const [activeTab, setActiveTab] = useState('members');
+  const [activeTab, setActiveTab] = useState('members');
   const [userTypeFilter, setUserTypeFilter] = useState('');
   const [members, setMembers] = useState([])
   const [page, setPage] = useState(1);
@@ -106,7 +106,7 @@ const GymMembers = () => {
         <div className={styles.content}>
           <div className={styles.contentContainer}>
             {/* Tabs */}
-            {/* <div className={styles.tabs}>
+            <div className={styles.tabs}>
               <button
                 onClick={() => setActiveTab('members')}
                 className={`${styles.tab} ${activeTab === 'members' ? styles.tabActive : styles.tabInactive
@@ -121,11 +121,11 @@ const GymMembers = () => {
               >
                 Add Members
               </button>
-            </div> */}
+            </div>
 
             {/* Content based on active tab */}
-            {/* {activeTab === 'members' ? (
-              <> */}
+            {activeTab === 'members' ? (
+              <>
             <div className={styles.searchselect}>
               {/* Search Bar */}
               <div className={styles.searchContainer}>
@@ -240,7 +240,7 @@ const GymMembers = () => {
               </button>
             </div>
 
-            {/* </>
+            </>
             ) : (
             
               <div className={styles.formWrapper}>
@@ -349,7 +349,7 @@ const GymMembers = () => {
                   </form>
                 </div>
               </div>
-            )} */}
+            )}
 
           </div>
         </div>
@@ -358,4 +358,4 @@ const GymMembers = () => {
   );
 };
 
-export default GymMembers;
+export default Gym;

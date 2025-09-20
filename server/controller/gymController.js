@@ -4,7 +4,10 @@ import { GymUsers } from "../model/gymUserSchema.js";
 import { Trainer } from "../model/trainerSchema.js";
 import GymBilling from "../model/gymBillingSchema.js";
 
-
+const getFileUrl = (req, folder, filename) => {
+  if (!filename) return null;
+  return `${req.protocol}://${req.get("host")}/uploads/${folder}/${filename}`;
+};
 const createGym = async (req, res) => {
   try {
     const { name, address, phoneNumber } = req.body || {};
@@ -57,8 +60,6 @@ const createGym = async (req, res) => {
     });
   }
 };
-
-
 const isValidPhone = (num) => /^[0-9]{10}$/.test(num);
 
 const registerToGym = async (req, res) => {
@@ -73,7 +74,6 @@ const registerToGym = async (req, res) => {
       whatsAppNumber,
       notes,
       trainerId,
-      dietPdf, // optional
       amount,
       isGst,
       gst,
@@ -114,13 +114,21 @@ if (!["athlete", "non-athlete"].includes(userType)) {
       if (!gstNumber || gstNumber.length > 20)
         return res.status(400).json({ message: "GST number is required and max 20 chars" });
     }
+const dietPdf = req.files?.dietPdf?.[0]?.filename
+  ? `uploads/diets/${req.files.dietPdf[0].filename}`
+  : null;
+
+const profilePicture = req.files?.profilePicture?.[0]?.filename
+  ? `uploads/profiles/${req.files.profilePicture[0].filename}`
+  : null;
+
 
     // --- Check if user exists ---
     let user = await GymUsers.findOne({ phoneNumber }).session(session);
 
     const subscriptionStart = new Date(startDate);
     const subscriptionEnd = new Date(subscriptionStart);
-    subscriptionEnd.setMonth(subscriptionEnd.getMonth() + subscriptionMonths);
+   subscriptionEnd.setMonth(subscriptionEnd.getMonth() + Number(subscriptionMonths));
 
     // --- Overlap validation ---
     if (user && user.subscription) {
@@ -161,6 +169,7 @@ if (!["athlete", "non-athlete"].includes(userType)) {
             notes,
             trainer: trainer._id,
             dietPdf,
+            profilePicture,  
              userType,
             subscription: {
               startDate: subscriptionStart,
@@ -186,7 +195,10 @@ if (!["athlete", "non-athlete"].includes(userType)) {
       user.notes = notes || user.notes;
       user.userType = userType || user.userType;
 
-      if (dietPdf) user.dietPdf = dietPdf;
+  // Update existing user
+if (dietPdf) user.dietPdf = dietPdf;
+if (profilePicture) user.profilePicture = profilePicture;
+
       user.trainer = trainer._id;
 
       // Update subscription
@@ -343,6 +355,251 @@ const getGymUserById = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
+const updateGymUser = async (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    address,
+    phoneNumber,
+    whatsAppNumber,
+    notes,
+    trainerId,
+    dietPdf,
+    userType,
+    subscription,
+  } = req.body;
 
+  try {
+    const user = await GymUsers.findById(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Gym user not found" });
+    }
 
-export{createGym,registerToGym,getAllGymUsers,getGymUserById}
+    // --- Update fields if provided ---
+    if (name) user.name = name;
+    if (address) user.address = address;
+    if (phoneNumber) user.phoneNumber = phoneNumber;
+    if (whatsAppNumber) user.whatsAppNumber = whatsAppNumber;
+    if (notes) user.notes = notes;
+    if (dietPdf) user.dietPdf = dietPdf;
+    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+      user.userType = userType;
+    }
+
+    if (trainerId) {
+      const trainer = await Trainer.findById(trainerId);
+      if (!trainer) {
+        return res.status(404).json({ success: false, message: "Trainer not found" });
+      }
+      user.trainer = trainerId;
+    }
+
+    if (subscription) {
+      const { startDate, endDate, months, status } = subscription;
+      user.subscription = {
+        startDate: startDate || user.subscription.startDate,
+        endDate: endDate || user.subscription.endDate,
+        months: months || user.subscription.months,
+        status: status || user.subscription.status,
+      };
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Gym user updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error updating gym user:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+const deleteGymUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const user = await GymUsers.findByIdAndDelete(id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Gym user not found" });
+    }
+
+    // Optionally, remove user from trainer.users array
+    await Trainer.updateOne(
+      { _id: user.trainer },
+      { $pull: { users: user._id } }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Gym user deleted successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error deleting gym user:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
+const getGymPaymentHistory = async (req, res) => {
+  try {
+    const {
+      search,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 10,
+      latest,
+      userId,
+      status, // active | expired
+    } = req.query;
+
+    const pageNum = parseInt(page, 10) || 1;
+    const limitNum = parseInt(limit, 10) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const matchConditions = {};
+
+    // --- Date Filter (by createdAt) ---
+    if (startDate || endDate) {
+      matchConditions.createdAt = {};
+      if (startDate) matchConditions.createdAt.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchConditions.createdAt.$lte = end;
+      }
+    }
+
+    // --- User Filter ---
+    if (userId) matchConditions.userId = userId;
+
+    // --- Search Filter ---
+    let userMatch = {};
+    if (search) {
+      userMatch = {
+        $or: [
+          { "user.name": { $regex: search, $options: "i" } },
+          { "user.phoneNumber": { $regex: search, $options: "i" } },
+        ],
+      };
+    }
+
+    // --- Determine if we should fetch latest transactions ---
+    const fetchLatest = latest === "true" || !!status; // auto fetch latest if status is provided
+
+    if (fetchLatest) {
+      const aggregationPipeline = [
+        { $match: matchConditions },
+        { $sort: { createdAt: -1 } },
+        {
+          $group: {
+            _id: "$userId",
+            latestTransaction: { $first: "$$ROOT" },
+          },
+        },
+        {
+          $lookup: {
+            from: "gymusers",
+            localField: "latestTransaction.userId",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: "$user" },
+      ];
+
+      if (search) aggregationPipeline.push({ $match: userMatch });
+
+      // Get total count before pagination
+      const totalDocsAgg = await GymBilling.aggregate([
+        ...aggregationPipeline,
+        { $count: "total" },
+      ]);
+      const totalDocs = totalDocsAgg[0]?.total || 0;
+
+      aggregationPipeline.push({ $skip: skip }, { $limit: limitNum });
+
+      let latestTransactions = await GymBilling.aggregate(aggregationPipeline);
+
+      // Compute subscriptionStatus
+      latestTransactions = latestTransactions.map((doc) => {
+        const createdAt = new Date(doc.latestTransaction.createdAt);
+        const expiryDate = new Date(createdAt);
+        expiryDate.setMonth(
+          expiryDate.getMonth() + (doc.latestTransaction.subscriptionMonths || 0)
+        );
+        const computedStatus = expiryDate > new Date() ? "active" : "expired";
+
+        return {
+          id: doc.latestTransaction._id,
+          amount: doc.latestTransaction.amount,
+          isGst: doc.latestTransaction.isGst,
+          gst: doc.latestTransaction.gst,
+          gstNumber: doc.latestTransaction.gstNumber,
+          subscriptionMonths: doc.latestTransaction.subscriptionMonths,
+          modeOfPayment: doc.latestTransaction.modeOfPayment,
+          notes: doc.latestTransaction.notes,
+          createdAt: doc.latestTransaction.createdAt,
+          updatedAt: doc.latestTransaction.updatedAt,
+          subscriptionStatus: computedStatus,
+          user: {
+            _id: doc.user._id,
+            name: doc.user.name,
+            phoneNumber: doc.user.phoneNumber,
+            whatsAppNumber: doc.user.whatsAppNumber,
+          },
+        };
+      });
+
+      // --- Filter by status if provided ---
+      if (status) {
+        latestTransactions = latestTransactions.filter(
+          (t) => t.subscriptionStatus === status
+        );
+      }
+
+      return res.status(200).json({
+        success: true,
+        count: latestTransactions.length,
+        total: totalDocs,
+        message: "Latest transactions per user fetched successfully",
+        data: latestTransactions,
+        pagination: { page: pageNum, limit: limitNum },
+      });
+    }
+
+    // --- Full History (if no status filter) ---
+    let history = await GymBilling.find(matchConditions)
+      .populate("userId", "name phoneNumber whatsAppNumber")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (search) {
+      history = history.filter(
+        (h) =>
+          h.userId?.name?.toLowerCase().includes(search.toLowerCase()) ||
+          h.userId?.phoneNumber?.toString().includes(search)
+      );
+    }
+
+    const totalDocs = history.length;
+    const paginatedHistory = history.slice(skip, skip + limitNum);
+
+    res.status(200).json({
+      success: true,
+      count: paginatedHistory.length,
+      total: totalDocs,
+      pagination: { total: totalDocs, page: pageNum, limit: limitNum },
+      message: userId
+        ? "User's full payment history fetched successfully"
+        : "Gym payment history fetched successfully",
+      data: paginatedHistory,
+    });
+  } catch (error) {
+    console.error("Error fetching payment history:", error);
+    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+  }
+};
+
+export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory}
