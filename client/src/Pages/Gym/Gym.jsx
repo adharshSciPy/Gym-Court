@@ -43,6 +43,78 @@ const Gym = () => {
         setEditModal(false)
     }
 
+    // Form state
+    const [formData, setFormData] = useState({
+        name: "",
+        address: "",
+        phoneNumber: "",
+        whatsAppNumber: "",
+        notes: "",
+        trainerId: "",
+        amount: "",
+        isGst: false,
+        gst: "",
+        gstNumber: "",
+        modeOfPayment: "",
+        subscriptionMonths: 1,
+        startDate: "",
+        userType: "athlete",
+        profilePicture: null,
+        dietPdf: null,
+    });
+
+    const handleInputChange = (e) => {
+        const { name, value, type, checked, files } = e.target;
+
+        if (type === "checkbox") {
+            setFormData({ ...formData, [name]: checked });
+        } else if (type === "file") {
+            setFormData({ ...formData, [name]: files[0] });
+        } else {
+            setFormData({ ...formData, [name]: value });
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const data = new FormData();
+            for (const key in formData) {
+                if (formData[key] !== null && formData[key] !== "") {
+                    data.append(key, formData[key]);
+                }
+            }
+
+            const res = await axios.post(`${baseUrl}/api/v1/gym/user`, data, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            console.log("user register gym", res)
+
+            alert(res.data.message);
+            setFormData({
+                name: "",
+                address: "",
+                phoneNumber: "",
+                whatsAppNumber: "",
+                notes: "",
+                trainerId: "",
+                amount: "",
+                isGst: false,
+                gst: "",
+                gstNumber: "",
+                modeOfPayment: "",
+                subscriptionMonths: 1,
+                startDate: "",
+                userType: "athlete",
+                profilePicture: null,
+                dietPdf: null,
+            });
+        } catch (err) {
+            console.error(err);
+            alert(err.response?.data?.message || "Something went wrong");
+        }
+    };
+
 
     // Fetch members with filters & pagination
     const fetchMembers = async () => {
@@ -323,115 +395,220 @@ const Gym = () => {
                             <div className={styles.formWrapper}>
                                 <div className={styles.formContainer}>
                                     <h2 className={styles.formTitle}>Add Members</h2>
-
-                                    <form className={styles.form}>
-
+                                    <form className={styles.form} onSubmit={handleSubmit}>
+                                        {/* Name */}
                                         <div className={styles.formSection}>
-                                            <label className={styles.sectionLabel}>Enter Member Name</label>
-                                            <div className={styles.formRow}>
-                                                <input
-                                                    type="text"
-                                                    className={styles.formInput}
-                                                    placeholder="First Name"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    className={styles.formInput}
-                                                    placeholder="Last Name"
-                                                />
-                                            </div>
+                                            <label className={styles.sectionLabel}>Full Name</label>
+                                            <input
+                                                type="text"
+                                                className={styles.formInput}
+                                                name="name"
+                                                value={formData.name}
+                                                onChange={handleInputChange}
+                                                placeholder="Full Name"
+                                                required
+                                            />
                                         </div>
 
-
+                                        {/* Phone & WhatsApp */}
                                         <div className={styles.formSection}>
                                             <div className={styles.formRow}>
                                                 <div className={styles.formGroup}>
-                                                    <label className={styles.sectionLabel}>Enter Phone Number</label>
+                                                    <label className={styles.sectionLabel}>Phone Number</label>
                                                     <input
                                                         type="tel"
                                                         className={styles.formInput}
+                                                        name="phoneNumber"
+                                                        value={formData.phoneNumber}
+                                                        onChange={handleInputChange}
                                                         placeholder="eg: +91 9847634893"
+                                                        required
                                                     />
                                                 </div>
                                                 <div className={styles.formGroup}>
-                                                    <label className={styles.sectionLabel}>Enter whatsapp Number</label>
+                                                    <label className={styles.sectionLabel}>WhatsApp Number</label>
                                                     <input
                                                         type="tel"
                                                         className={styles.formInput}
+                                                        name="whatsAppNumber"
+                                                        value={formData.whatsAppNumber}
+                                                        onChange={handleInputChange}
                                                         placeholder="eg: +91 9847634893"
+                                                        required
                                                     />
                                                 </div>
                                             </div>
                                         </div>
 
-
+                                        {/* Address */}
                                         <div className={styles.formSection}>
-                                            <label className={styles.sectionLabel}>Enter Address</label>
+                                            <label className={styles.sectionLabel}>Address</label>
                                             <textarea
-                                                rows={3}
                                                 className={styles.formTextarea}
+                                                name="address"
+                                                value={formData.address}
+                                                onChange={handleInputChange}
+                                                rows={3}
                                                 placeholder="Home/Office"
-                                            ></textarea>
+                                                required
+                                            />
                                         </div>
 
-
+                                        {/* Notes */}
                                         <div className={styles.formSection}>
-                                            <label className={styles.sectionLabel}>Health Note</label>
+                                            <label className={styles.sectionLabel}>Health Notes</label>
                                             <textarea
-                                                rows={3}
                                                 className={styles.formTextarea}
+                                                name="notes"
+                                                value={formData.notes}
+                                                onChange={handleInputChange}
+                                                rows={3}
                                                 placeholder="Enter your health information"
-                                            ></textarea>
+                                            />
                                         </div>
 
-
+                                        {/* User Type */}
                                         <div className={styles.formSection}>
-                                            <label className={styles.sectionLabel}>Assign Trainers</label>
-                                            <select className={styles.formSelect}>
-                                                <option value="">All Trainers</option>
-                                                {Array.isArray(trainers) && trainers.map(trainer => (
-                                                    <option key={trainer._id} value={trainer.trainerName}>
+                                            <label className={styles.sectionLabel}>User Type</label>
+                                            <select
+                                                className={styles.formSelect}
+                                                name="userType"
+                                                value={formData.userType}
+                                                onChange={handleInputChange}
+                                                required
+                                            >
+                                                <option value="athlete">Athlete</option>
+                                                <option value="non-athlete">Non Athlete</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Trainer */}
+                                        <div className={styles.formSection}>
+                                            <label className={styles.sectionLabel}>Assign Trainer</label>
+                                            <select
+                                                className={styles.formSelect}
+                                                name="trainerId"
+                                                value={formData.trainerId}
+                                                onChange={handleInputChange}
+                                                required
+                                            >
+                                                <option value="">Select Trainer</option>
+                                                {trainers.map((trainer) => (
+                                                    <option key={trainer._id} value={trainer._id}>
                                                         {trainer.trainerName}
                                                     </option>
                                                 ))}
                                             </select>
                                         </div>
 
+                                        {/* Subscription */}
+                                        <div className={styles.formSection}>
+                                            <label className={styles.sectionLabel}>Subscription</label>
+                                            <div className={styles.billingRow}>
+                                                <input
+                                                    type="date"
+                                                    name="startDate"
+                                                    value={formData.startDate}
+                                                    onChange={handleInputChange}
+                                                    className={styles.formInput}
+                                                    required
+                                                />
+                                                <input
+                                                    type="number"
+                                                    name="subscriptionMonths"
+                                                    min={1}
+                                                    max={12}
+                                                    value={formData.subscriptionMonths}
+                                                    onChange={handleInputChange}
+                                                    className={styles.formInput}
+                                                    placeholder="Months"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Billing */}
+                                        <div className={styles.formSection}>
+                                            <label className={styles.sectionLabel}>Billing</label>
+                                            <div className={styles.billingRow}>
+                                                <input
+                                                    type="number"
+                                                    name="amount"
+                                                    value={formData.amount}
+                                                    onChange={handleInputChange}
+                                                    className={styles.formInput}
+                                                    placeholder="Amount"
+                                                    required
+                                                />
+                                                <select
+                                                    name="modeOfPayment"
+                                                    className={styles.formSelect}
+                                                    value={formData.modeOfPayment}
+                                                    onChange={handleInputChange}
+                                                    required
+                                                >
+                                                    <option value="">Select</option>
+                                                    <option value="cash">Cash</option>
+                                                    <option value="card">Card</option>
+                                                    <option value="upi">UPI</option>
+                                                </select>
+                                                <div>
+                                                    <label>
+                                                        <input
+                                                            type="checkbox"
+                                                            name="isGst"
+                                                            checked={formData.isGst}
+                                                            onChange={handleInputChange}
+                                                        />{" "}
+                                                        GST
+                                                    </label>
+                                                </div>
+                                                {formData.isGst && (
+                                                    <>
+                                                        <input
+                                                            type="number"
+                                                            name="gst"
+                                                            value={formData.gst}
+                                                            onChange={handleInputChange}
+                                                            className={styles.formInput}
+                                                            placeholder="GST Amount"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            name="gstNumber"
+                                                            value={formData.gstNumber}
+                                                            onChange={handleInputChange}
+                                                            className={styles.formInput}
+                                                            placeholder="GST Number"
+                                                        />
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Files */}
                                         <div className={styles.formSection}>
                                             <label className={styles.sectionLabel}>Profile Picture</label>
                                             <input
                                                 type="file"
+                                                name="profilePicture"
+                                                onChange={handleInputChange}
                                                 className={styles.formInput}
-                                                style={{ width: "64.5rem" }}
+                                            />
+                                        </div>
+                                        <div className={styles.formSection}>
+                                            <label className={styles.sectionLabel}>Diet PDF</label>
+                                            <input
+                                                type="file"
+                                                name="dietPdf"
+                                                onChange={handleInputChange}
+                                                className={styles.formInput}
                                             />
                                         </div>
 
-
-                                        <div className={styles.formSection}>
-                                            <label className={styles.sectionLabel}>Billing</label>
-                                            <div className={styles.billingRow}>
-                                                <input className={styles.formInput} type='date' />
-                                                <input
-                                                    type="number"
-                                                    className={styles.formInput}
-                                                    placeholder="Enter Amount for Booking"
-                                                />
-                                                <select className={styles.formSelect}>
-                                                    <option value="">Select</option>
-                                                    <option value="cash">Cash</option>
-                                                    <option value="card">Card</option>
-                                                    <option value="online">Online</option>
-                                                    <option value="upi">UPI</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
                                         <div className={styles.formButtons}>
-                                            <button
-                                                type="submit"
-                                                className={styles.submitButton}
-                                            >
-                                                Add
+                                            <button type="submit" className={styles.submitButton}>
+                                                Add Member
                                             </button>
                                         </div>
                                     </form>
