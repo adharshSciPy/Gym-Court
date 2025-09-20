@@ -606,6 +606,8 @@ const getGymStatistics = async (req, res) => {
     const now = new Date();
     const lastYear = new Date(now);
     lastYear.setFullYear(lastYear.getFullYear() - 1);
+
+    // --- Overview: total users with subscriptions + status counts ---
     const [overview] = await GymUsers.aggregate([
       {
         $facet: {
@@ -621,6 +623,8 @@ const getGymStatistics = async (req, res) => {
         },
       },
     ]);
+
+    // Revenue overview (from GymBilling)
     const [revenueOverview] = await GymBilling.aggregate([
       {
         $group: {
@@ -630,10 +634,15 @@ const getGymStatistics = async (req, res) => {
       },
     ]);
 
+    // ✅ Trainer count
+    const trainerCount = await Trainer.countDocuments();
+
     const totalBookings = overview.totalBookings[0]?.count || 0;
     const activeSubscriptions = overview.activeSubscriptions[0]?.count || 0;
     const expiredSubscriptions = overview.expiredSubscriptions[0]?.count || 0;
     const totalRevenue = revenueOverview?.total || 0;
+
+    // --- Monthly subscriptions (last 12 months) ---
     const monthlyBookings = await GymUsers.aggregate([
       { $match: { createdAt: { $gte: lastYear } } },
       {
@@ -654,6 +663,8 @@ const getGymStatistics = async (req, res) => {
       month: monthNames[m._id.month - 1],
       bookings: m.bookings,
     }));
+
+    // --- Monthly revenue (last 12 months) ---
     const monthlyRevenue = await GymBilling.aggregate([
       { $match: { createdAt: { $gte: lastYear } } },
       {
@@ -675,6 +686,7 @@ const getGymStatistics = async (req, res) => {
       activeSubscriptions,
       expiredSubscriptions,
       totalRevenue,
+      trainerCount, // ✅ Added trainers count
       monthlyBookings: monthlyData,
       monthlyRevenue: revenueData,
     });
