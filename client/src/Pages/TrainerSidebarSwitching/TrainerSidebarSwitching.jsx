@@ -27,8 +27,6 @@ const TrainerSidebarSwitching = ({ activeNav, setActiveNav }) => {
       return <DashboardPage />;
     case "Members":
       return <GymMembers />;
-    case "Trainers":
-      return <BookingsPage />;
     case "Reports":
       return <ReportsPage />;
     case "Settings":
