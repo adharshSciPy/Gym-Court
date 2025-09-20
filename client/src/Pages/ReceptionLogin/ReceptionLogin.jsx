@@ -60,7 +60,7 @@ function ReceptionLogin() {
         form
       );
       if (res.status === 200) {
-        navigate("/Receptionashboard");
+        navigate("/Receptionistdashboard");
       }
     } catch (error) {
       console.log(error);
