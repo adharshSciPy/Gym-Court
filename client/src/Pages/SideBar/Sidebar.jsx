@@ -7,7 +7,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  DollarSign, Dumbbell
+  DollarSign
 } from "lucide-react";
 
 function Sidebar({ activeNav, setActiveNav }) {
@@ -17,7 +17,6 @@ function Sidebar({ activeNav, setActiveNav }) {
     { name: "Dashboard", icon: LayoutDashboard },
     { name: "Members", icon: Users },
     { name: "Bookings", icon: Calendar },
-    { name: "Gym", icon: Dumbbell },
     { name: "Reports", icon: BarChart3 },
     { name: "Settings", icon: Settings },
     { name: "Payments", icon: DollarSign },

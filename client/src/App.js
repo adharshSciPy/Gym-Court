@@ -8,6 +8,8 @@ import ReceptionDashboard from "./Pages/ReceptionDashboard/ReceptionDashboard.js
 import { useState } from "react";
 import BookingManagement from "./Pages/BookingPage/BookingPage.jsx";
 import ReportPage from "./Pages/ReportPage/ReportPage.jsx";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Trainer
 import TrainerSidebarSwitching from "./Pages/TrainerSidebarSwitching/TrainerSidebarSwitching.jsx";
@@ -20,6 +22,17 @@ function App() {
 
   return (
     <div className="App">
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored" 
+      />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Login />} />

@@ -4,13 +4,14 @@ import ReportsPage from "../ReportPage/ReportPage";
 import BookingsPage from "../BookingPage/BookingPage";
 import SettingsPage from "../SettingsPage/SettingsPage";
 import Sidebar from "../TrainerSidebar/TrainerSidebar";
-import {useNavigate} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import Login from "../Login/Login"
 import GymMembers from "../GymMembers/GymMembers";
+import Gym from "../Gym/Gym"
 
 const TrainerSidebarSwitching = ({ activeNav, setActiveNav }) => {
-  const navigate=useNavigate()
-  const handleLogout=()=>{
+  const navigate = useNavigate()
+  const handleLogout = () => {
     navigate("/")
   }
   const styles = {
@@ -21,23 +22,25 @@ const TrainerSidebarSwitching = ({ activeNav, setActiveNav }) => {
     },
   };
 
- const renderPage = () => {
-  switch (activeNav) {
-    case "Dashboard":
-      return <DashboardPage />;
-    case "Members":
-      return <GymMembers />;
-    case "Reports":
-      return <ReportsPage />;
-    case "Settings":
-      return <SettingsPage />;
-    case "Logout":
-      handleLogout();
-      return <Login />; 
-    default:
-      return <DashboardPage />;
-  }
-};
+  const renderPage = () => {
+    switch (activeNav) {
+      case "Dashboard":
+        return <DashboardPage />;
+      case "Members":
+        return <GymMembers />;
+      case "Gym":
+        return <Gym />;
+      case "Reports":
+        return <ReportsPage />;
+      case "Settings":
+        return <SettingsPage />;
+      case "Logout":
+        handleLogout();
+        return <Login />;
+      default:
+        return <DashboardPage />;
+    }
+  };
 
 
   return (
