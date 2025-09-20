@@ -4,6 +4,8 @@ import styles from './Gym.module.css';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
 import { Modal } from 'antd';
+import { toast } from "react-toastify";
+
 
 
 const Gym = () => {
@@ -98,6 +100,9 @@ const Gym = () => {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             console.log("user register gym", res)
+            if (res.status === 200) {
+                toast.success("Form Submitted Successfully")
+            }
 
             alert(res.data.message);
             setFormData({
@@ -120,7 +125,7 @@ const Gym = () => {
             });
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.message || "Something went wrong");
+            toast.error(err.message)
         }
     };
 
@@ -240,12 +245,14 @@ const Gym = () => {
             console.log("📤 Sending payload:", payload);
 
             const res = await axios.post(`${baseUrl}/api/v1/gym/user`, payload);
-            alert(res.data.message);
+            if (res.status === 200) {
+                toast.success("Form Submit Successfully")
+            }
             fetchMembers();
             handleCancel();
         } catch (err) {
             console.error("❌ Error:", err.response?.data);
-            alert(err.response?.data?.message || "Something went wrong");
+            toast.error(err.message)
         }
     };
 
@@ -254,8 +261,13 @@ const Gym = () => {
         try {
             const res = await axios.delete(`${baseUrl}/api/v1/gym/delete/${id}`)
             fetchMembers()
+            if (res.status === 200) {
+                toast.success("Deleted Successfully")
+            }
         } catch (error) {
             console.log(error)
+            toast.error(err.message)
+
         }
     }
 
