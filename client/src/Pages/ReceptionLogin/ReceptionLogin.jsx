@@ -6,8 +6,8 @@ import axios from "axios";
 import baseUrl from "../../baseUrl";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
-
 function ReceptionLogin() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     receptionistEmail: "",
     password: "",
@@ -15,6 +15,18 @@ function ReceptionLogin() {
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotEmailError, setForgotEmailError] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [newPasswordError, setNewPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -53,6 +65,19 @@ function ReceptionLogin() {
     }
   };
 
+  const handleForgotEmailChange = (e) => {
+    const value = e.target.value;
+    setForgotEmail(value);
+    
+    if (!value) {
+      setForgotEmailError("Email is required.");
+    } else if (!emailRegex.test(value)) {
+      setForgotEmailError("Please enter a valid email address.");
+    } else {
+      setForgotEmailError("");
+    }
+  };
+
   const receptionLogin = async () => {
     try {
       const res = await axios.post(
@@ -67,72 +92,344 @@ function ReceptionLogin() {
     }
   };
 
-  const navigate = useNavigate();
-   const isDisabled = !form.receptionistEmail || !form.password || emailError || passwordError;
+  const handleOtpChange = (e) => {
+    const value = e.target.value;
+    setOtp(value);
+    
+    if (!value) {
+      setOtpError("OTP is required.");
+    } else if (value.length !== 6) {
+      setOtpError("OTP must be 6 digits.");
+    } else if (!/^\d+$/.test(value)) {
+      setOtpError("OTP must contain only numbers.");
+    } else {
+      setOtpError("");
+    }
+  };
+
+  const handleNewPasswordChange = (e) => {
+    const value = e.target.value;
+    setNewPassword(value);
+    
+    if (!value) {
+      setNewPasswordError("New password is required.");
+    } else if (value.length < 6) {
+      setNewPasswordError("Password must be at least 6 characters.");
+    } else if (!/[A-Z]/.test(value)) {
+      setNewPasswordError("Password must contain at least one uppercase letter.");
+    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+      setNewPasswordError("Password must contain at least one special character.");
+    } else {
+      setNewPasswordError("");
+    }
+  };
+
+  const handleConfirmPasswordChange = (e) => {
+    const value = e.target.value;
+    setConfirmPassword(value);
+    
+    if (!value) {
+      setConfirmPasswordError("Please confirm your password.");
+    } else if (value !== newPassword) {
+      setConfirmPasswordError("Passwords do not match.");
+    } else {
+      setConfirmPasswordError("");
+    }
+  };
+
+  const handleSendOtp = async () => {
+    if (!forgotEmail || forgotEmailError) {
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const res = await axios.post(`${baseUrl}/api/v1/receptionist/sent-otp`, {
+        receptionistEmail: forgotEmail
+      });
+      
+      if (res.status === 200) {
+        setMessage("If an account exists for this email, an OTP has been sent.");
+        setShowOtpVerification(true);
+      }
+    } catch (error) {
+      console.log(error);
+      if (error.response?.status === 429) {
+        setMessage("Too many OTP requests. Please try again after a minute.");
+      } else if (error.response?.data?.message) {
+        setMessage(error.response.data.message);
+      } else {
+        setMessage("Failed to send OTP. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!otp || !newPassword || !confirmPassword || otpError || newPasswordError || confirmPasswordError) {
+      return;
+    }
+
+    setIsLoading(true);
+    setMessage("");
+
+    try {
+      const res = await axios.post(`${baseUrl}/api/v1/receptionist/reset-password`, {
+        receptionistEmail: forgotEmail,
+        otp: otp,
+        newPassword: newPassword
+      });
+      
+      if (res.status === 200) {
+        setMessage("Password has been reset successfully! You can now login with your new password.");
+        setTimeout(() => {
+          resetForgotPassword();
+        }, 2000);
+      }
+    } catch (error) {
+      console.log(error);
+      if (error.response?.status === 400) {
+        setMessage(error.response.data.message || "Invalid OTP or email");
+      } else if (error.response?.status === 429) {
+        setMessage("Too many attempts. Request a new OTP.");
+      } else if (error.response?.data?.message) {
+        setMessage(error.response.data.message);
+      } else {
+        setMessage("Failed to reset password. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetForgotPassword = () => {
+    setShowForgotPassword(false);
+    setShowOtpVerification(false);
+    setForgotEmail("");
+    setForgotEmailError("");
+    setOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setOtpError("");
+    setNewPasswordError("");
+    setConfirmPasswordError("");
+    setMessage("");
+  };
+
+  const isDisabled = !form.receptionistEmail || !form.password || emailError || passwordError;
+  const isForgotDisabled = !forgotEmail || forgotEmailError || isLoading;
+  const isResetDisabled = !otp || !newPassword || !confirmPassword || otpError || newPasswordError || confirmPasswordError || isLoading;
+
+  // OTP Verification Screen
+  if (showOtpVerification) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <div className={styles.logo}>
+            <FaFlag className={styles.logoIcon} />
+            <span className={styles.logoText}>Courtly</span>
+          </div>
+          <p className={styles.subtitle}>Verify OTP</p>
+          <h2 className={styles.title}>Reset Receptionist Password</h2>
+
+          <div className={styles.inputDatas}>
+            <div className={styles.inputContainer}>
+              <input
+                type="text"
+                placeholder="Enter 6-digit OTP"
+                value={otp}
+                onChange={handleOtpChange}
+                maxLength="6"
+              />
+              {otpError && (
+                <p className={styles.errorText}>
+                  {otpError}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.inputContainer}>
+              <input
+                type="password"
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={handleNewPasswordChange}
+              />
+              {newPasswordError && (
+                <p className={styles.errorText}>
+                  {newPasswordError}
+                </p>
+              )}
+            </div>
+
+            <div className={styles.inputContainer}>
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={handleConfirmPasswordChange}
+              />
+              {confirmPasswordError && (
+                <p className={styles.errorText}>
+                  {confirmPasswordError}
+                </p>
+              )}
+            </div>
+
+            {message && (
+              <p className={message.includes("successfully") ? styles.successText : styles.errorText}>
+                {message}
+              </p>
+            )}
+
+            <button
+              onClick={handleResetPassword}
+              disabled={isResetDisabled}
+              className={styles.submitButton}
+            >
+              {isLoading ? "Resetting..." : "Reset Password"}
+            </button>
+
+            <button
+              onClick={resetForgotPassword}
+              className={styles.backButton}
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showForgotPassword) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <div className={styles.logo}>
+            <FaFlag className={styles.logoIcon} />
+            <span className={styles.logoText}>Courtly</span>
+          </div>
+          <p className={styles.subtitle}>Reset Password</p>
+          <h2 className={styles.title}>Receptionist Password Recovery</h2>
+
+          <div className={styles.inputDatas}>
+            <div className={styles.inputContainer}>
+              <input
+                type="email"
+                placeholder="Enter your receptionist email"
+                value={forgotEmail}
+                onChange={handleForgotEmailChange}
+              />
+              {forgotEmailError && (
+                <p className={styles.errorText}>
+                  {forgotEmailError}
+                </p>
+              )}
+            </div>
+
+            {message && (
+              <p className={message.includes("sent") ? styles.successText : styles.errorText}>
+                {message}
+              </p>
+            )}
+
+            <button
+              onClick={handleSendOtp}
+              disabled={isForgotDisabled}
+              className={styles.submitButton}
+            >
+              {isLoading ? "Sending..." : "Send OTP"}
+            </button>
+
+            <button
+              onClick={resetForgotPassword}
+              className={styles.backButton}
+            >
+              Back to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
-          <div className={styles.card}>
-            <div className={styles.logo}>
-              <FaFlag className={styles.logoIcon} />
-              <span className={styles.logoText}>Courtly</span>
-            </div>
-            <p className={styles.subtitle}>Hello Receptionist</p>
-            <h2 className={styles.title}>Welcome to Courtly</h2>
-    
-            <div className={styles.inputDatas}>
-              <div className={styles.inputContainer}>
-                <input
-                  type="email"
-                  name="receptionistEmail"
-                  placeholder="Email"
-                  required
-                  value={form.receptionistEmail}
-                  onChange={handleChange}
-                />
-                {emailError && (
-                  <p className={styles.errorText}>
-                    {emailError}
-                  </p>
-                )}
-              </div>
-    
-              <div className={styles.inputContainer}>
-                <div className={styles.inputWrapper}>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Password"
-                    name="password"
-                    required
-                    value={form.password}
-                    onChange={handleChange}
-                    className={styles.passwordInput}
-                  />
-    
-                  <span
-                    onClick={() => setShowPassword(!showPassword)}
-                    className={styles.eyeIcon}
-                  >
-                    {showPassword ? <FaEyeSlash /> : <FaEye />}
-                  </span>
-                </div>
-    
-                {passwordError && (
-                  <p className={styles.errorText}>
-                    {passwordError}
-                  </p>
-                )}
-              </div>
-    
-              <button
-                onClick={receptionLogin}
-                disabled={isDisabled}
-              >
-                Login
-              </button>
-            </div>
-          </div>
+      <div className={styles.card}>
+        <div className={styles.logo}>
+          <FaFlag className={styles.logoIcon} />
+          <span className={styles.logoText}>Courtly</span>
         </div>
+        <p className={styles.subtitle}>Hello Receptionist</p>
+        <h2 className={styles.title}>Welcome to Courtly</h2>
+
+        <div className={styles.inputDatas}>
+          <div className={styles.inputContainer}>
+            <input
+              type="email"
+              name="receptionistEmail"
+              placeholder="Email"
+              required
+              value={form.receptionistEmail}
+              onChange={handleChange}
+            />
+            {emailError && (
+              <p className={styles.errorText}>
+                {emailError}
+              </p>
+            )}
+          </div>
+
+          <div className={styles.inputContainer}>
+            <div className={styles.inputWrapper}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                name="password"
+                required
+                value={form.password}
+                onChange={handleChange}
+                className={styles.passwordInput}
+              />
+
+              <span
+                onClick={() => setShowPassword(!showPassword)}
+                className={styles.eyeIcon}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </span>
+            </div>
+
+            {passwordError && (
+              <p className={styles.errorText}>
+                {passwordError}
+              </p>
+            )}
+          </div>
+
+          <div className={styles.forgotPasswordContainer}>
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              className={styles.forgotPasswordLink}
+            >
+              Forgot Password?
+            </button>
+          </div>
+
+          <button
+            onClick={receptionLogin}
+            disabled={isDisabled}
+          >
+            Login
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

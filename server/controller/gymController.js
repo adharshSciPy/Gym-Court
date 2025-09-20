@@ -601,5 +601,99 @@ const getGymPaymentHistory = async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
+const getGymStatistics = async (req, res) => {
+  try {
+    const now = new Date();
+    const lastYear = new Date(now);
+    lastYear.setFullYear(lastYear.getFullYear() - 1);
 
-export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory}
+    // --- Overview: total users with subscriptions + status counts ---
+    const [overview] = await GymUsers.aggregate([
+      {
+        $facet: {
+          totalBookings: [{ $count: "count" }],
+          activeSubscriptions: [
+            { $match: { "subscription.status": "active" } },
+            { $count: "count" },
+          ],
+          expiredSubscriptions: [
+            { $match: { "subscription.status": "expired" } },
+            { $count: "count" },
+          ],
+        },
+      },
+    ]);
+
+    // Revenue overview (from GymBilling)
+    const [revenueOverview] = await GymBilling.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    // ✅ Trainer count
+    const trainerCount = await Trainer.countDocuments();
+
+    const totalBookings = overview.totalBookings[0]?.count || 0;
+    const activeSubscriptions = overview.activeSubscriptions[0]?.count || 0;
+    const expiredSubscriptions = overview.expiredSubscriptions[0]?.count || 0;
+    const totalRevenue = revenueOverview?.total || 0;
+
+    // --- Monthly subscriptions (last 12 months) ---
+    const monthlyBookings = await GymUsers.aggregate([
+      { $match: { createdAt: { $gte: lastYear } } },
+      {
+        $group: {
+          _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+          bookings: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    const monthNames = [
+      "Jan","Feb","Mar","Apr","May","Jun",
+      "Jul","Aug","Sep","Oct","Nov","Dec"
+    ];
+
+    const monthlyData = monthlyBookings.map(m => ({
+      month: monthNames[m._id.month - 1],
+      bookings: m.bookings,
+    }));
+
+    // --- Monthly revenue (last 12 months) ---
+    const monthlyRevenue = await GymBilling.aggregate([
+      { $match: { createdAt: { $gte: lastYear } } },
+      {
+        $group: {
+          _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+          revenue: { $sum: "$amount" },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    const revenueData = monthlyRevenue.map(r => ({
+      month: monthNames[r._id.month - 1],
+      revenue: r.revenue,
+    }));
+
+    res.json({
+      totalBookings,
+      activeSubscriptions,
+      expiredSubscriptions,
+      totalRevenue,
+      trainerCount, // ✅ Added trainers count
+      monthlyBookings: monthlyData,
+      monthlyRevenue: revenueData,
+    });
+  } catch (error) {
+    console.error("Error fetching gym statistics:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory,getGymStatistics}
