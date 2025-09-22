@@ -15,6 +15,7 @@ const GymMembers = () => {
   const [subscriptionFilter, setSubscriptionFilter] = useState('');
   const [combinedFilter, setCombinedFilter] = useState("");
   const [uploadingMembers, setUploadingMembers] = useState(new Set());
+  const [deletingMembers, setDeletingMembers] = useState(new Set());
   const { id } = useParams()
 
   // File upload refs - one for each member (specifically for diet PDFs)
@@ -166,6 +167,162 @@ const GymMembers = () => {
     }
   };
 
+  // Handle diet plan preview
+  const handlePreviewDietPlan = async (member) => {
+    if (!member.dietPdf) {
+      alert('No diet plan available for this member.');
+      return;
+    }
+
+    try {
+      console.log('=== DIET PLAN DEBUG INFO ===');
+      console.log('Member dietPdf:', member.dietPdf);
+      console.log('Member ID:', member._id);
+      console.log('Member name:', member.name);
+      console.log('Base URL:', baseUrl);
+      console.log('============================');
+
+      // Method 1: If dietPdf is a complete URL, open it directly
+      if (typeof member.dietPdf === 'string' && member.dietPdf.startsWith('http')) {
+        console.log('Opening direct URL:', member.dietPdf);
+        window.open(member.dietPdf, '_blank');
+        return;
+      }
+
+      // Method 2: Try different possible URL structures
+      if (typeof member.dietPdf === 'string') {
+        const possibleUrls = [
+          `${baseUrl}/uploads/diet-plans/${member.dietPdf}`,
+          `${baseUrl}/uploads/${member.dietPdf}`,
+          `${baseUrl}/files/diet-plans/${member.dietPdf}`,
+          `${baseUrl}/static/diet-plans/${member.dietPdf}`,
+          `${baseUrl}/public/uploads/${member.dietPdf}`,
+          `${baseUrl}/${member.dietPdf}`, // If dietPdf already contains the relative path
+        ];
+
+        console.log('Trying URLs:', possibleUrls);
+
+        for (let i = 0; i < possibleUrls.length; i++) {
+          try {
+            console.log(`Testing URL ${i + 1}:`, possibleUrls[i]);
+            const testResponse = await fetch(possibleUrls[i], { method: 'HEAD' });
+            console.log(`URL ${i + 1} response:`, testResponse.status);
+            
+            if (testResponse.ok) {
+              console.log(`✅ Success! Opening URL ${i + 1}:`, possibleUrls[i]);
+              window.open(possibleUrls[i], '_blank');
+              return;
+            }
+          } catch (e) {
+            console.log(`❌ URL ${i + 1} failed:`, e.message);
+            continue;
+          }
+        }
+
+        console.log('❌ All direct URL attempts failed, trying API endpoint...');
+      }
+
+      // Method 3: Fetch from API endpoint
+      console.log('Attempting API call to:', `${baseUrl}/api/v1/trainer/diet-plan/${member._id}`);
+      
+      const response = await axios.get(
+        `${baseUrl}/api/v1/trainer/diet-plan/${member._id}`,
+        {
+          responseType: 'blob',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // If you use auth tokens
+          }
+        }
+      );
+
+      console.log('✅ API response received, creating blob...');
+
+      // Create blob URL and open in new tab
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+
+      // Clean up the blob URL after a delay
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+
+    } catch (error) {
+      console.error('❌ Error previewing diet plan:', error);
+      console.error('Error response:', error.response);
+      
+      if (error.response?.status === 404) {
+        alert(`Diet plan file not found. 
+File: ${member.dietPdf}
+Please check if the file exists on the server or contact support.`);
+      } else if (error.response?.status === 403) {
+        alert('You are not authorized to view this diet plan.');
+      } else if (error.response?.status === 500) {
+        alert(`Server error while loading diet plan. 
+File: ${member.dietPdf}
+Please try again or contact support.`);
+      } else {
+        alert(`Failed to load diet plan. 
+File: ${member.dietPdf}
+Error: ${error.message}
+Please check the browser console for more details.`);
+      }
+    }
+  };
+
+  // Handle diet plan deletion
+  const handleDeleteDietPlan = async (member) => {
+    if (!member.dietPdf) {
+      alert('No diet plan to delete for this member.');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the diet plan for ${member.name}? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    // Set loading state
+    setDeletingMembers(prev => new Set([...prev, member._id]));
+
+    try {
+      const response = await axios.delete(
+        `${baseUrl}/api/v1/trainer/delete-diet-plan/${id}`,
+        {
+          data: { userId: member._id },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // If you use auth tokens
+          }
+        }
+      );
+
+      alert(`Diet plan deleted successfully for ${member.name}`);
+      
+      // Refresh members data to show updated info
+      await fetchMembers();
+
+    } catch (error) {
+      console.error('Error deleting diet plan:', error);
+      
+      if (error.response?.status === 400) {
+        alert(error.response.data.message || 'Invalid request.');
+      } else if (error.response?.status === 403) {
+        alert('You are not authorized to delete this diet plan.');
+      } else if (error.response?.status === 404) {
+        alert('Diet plan not found or member not found.');
+      } else {
+        alert('Failed to delete diet plan. Please try again.');
+      }
+    } finally {
+      // Reset loading state
+      setDeletingMembers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(member._id);
+        return newSet;
+      });
+    }
+  };
+
   return (
     <div className={styles.dashboard}>
       {/* Main Content */}
@@ -253,9 +410,6 @@ const GymMembers = () => {
                             }`}>
                             {member.subscription.status}
                           </span>
-                          {member.subscription.status === "expired"
-                
-                          }
                         </div>
                       </td>
                       <td className={styles.tableCell}>
@@ -263,7 +417,6 @@ const GymMembers = () => {
                           {member.dietPdf ? (
                             <div className={styles.dietPlanAssigned}>
                               <span className={styles.dietPlanBadge}>Assigned</span>
-                              {/* You can add a view/download link here if needed */}
                             </div>
                           ) : (
                             <span className={styles.noDietPlan}>Not Assigned</span>
@@ -272,24 +425,57 @@ const GymMembers = () => {
                       </td>
                       <td className={styles.tableCell}>
                         <div className={styles.actionButtons}>
+                          {/* WhatsApp Message Button */}
                           <button 
                             className={`${styles.actionButton} ${styles.actionButtonMessage}`}
                             onClick={() => openWhatsApp(member.whatsAppNumber, member.name)}
+                            title={`Message ${member.name} on WhatsApp`}
                           >
                             <MessageCircle color='green' className="w-4 h-4" />
                           </button>
+                          
+                          {/* Upload Diet Plan Button */}
                           <button 
                             className={`${styles.actionButton} ${styles.actionButtonUpload}`}
                             onClick={() => handleDietUploadClick(member._id)}
-                            title={`Upload diet plan for ${member.name}`}
+                            title={member.dietPdf ? `Replace diet plan for ${member.name}` : `Upload diet plan for ${member.name}`}
                             disabled={uploadingMembers.has(member._id)}
                           >
                             {uploadingMembers.has(member._id) ? (
                               <div className={styles.uploadingSpinner}></div>
                             ) : (
-                              <Upload color='green' className="w-4 h-4" />
+                              <Upload color='blue' className="w-4 h-4" />
                             )}
-                          </button> 
+                          </button>
+                          
+                          {/* Preview Diet Plan Button - Only show if PDF exists */}
+                          {member.dietPdf && (
+                            <button 
+                              className={`${styles.actionButton} ${styles.actionButtonPreview}`}
+                              onClick={() => handlePreviewDietPlan(member)}
+                              title={`Preview diet plan for ${member.name}`}
+                            >
+                              <Eye color='orange' className="w-4 h-4" />
+                            </button>
+                          )}
+                          
+                          {/* Delete Diet Plan Button - Only show if PDF exists */}
+                          {member.dietPdf && (
+                            <button 
+                              className={`${styles.actionButton} ${styles.actionButtonDelete}`}
+                              onClick={() => handleDeleteDietPlan(member)}
+                              title={`Delete diet plan for ${member.name}`}
+                              disabled={deletingMembers.has(member._id)}
+                            >
+                              {deletingMembers.has(member._id) ? (
+                                <div className={styles.deletingSpinner}></div>
+                              ) : (
+                                <Trash2 color='red' className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          
+                          {/* Hidden file input for PDF upload */}
                           <input
                             ref={el => fileInputRefs.current[member._id] = el}
                             type="file"
