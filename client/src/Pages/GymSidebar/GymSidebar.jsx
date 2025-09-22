@@ -4,6 +4,7 @@ import {
     LayoutDashboard,
     BarChart3,
     LogOut, 
+    DollarSign,
     Dumbbell
 } from "lucide-react";
 function GymSidebar({ activeNav, setActiveNav }) {
@@ -14,6 +15,7 @@ function GymSidebar({ activeNav, setActiveNav }) {
         // { name: "Members", icon: Users },
         { name: "Gym", icon: Dumbbell },
         { name: "Reports", icon: BarChart3 },
+    { name: "Payments", icon: DollarSign },
         // { name: "Settings", icon: Settings },
         { name: "Logout", icon: LogOut },
 

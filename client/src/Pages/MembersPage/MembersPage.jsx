@@ -536,13 +536,13 @@ function MembersPage() {
                 <MessageCircle size={16} style={{ marginRight: '5px' }} />
                 Send WhatsApp
               </button>
-              <button
+              {/* <button
                 type="button"
                 onClick={closeViewPopup}
                 className={styles.cancelButton}
               >
                 Close
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
