@@ -23,6 +23,9 @@ const Gym = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditModal, setEditModal] = useState(false);
     const [userId, setUserId] = useState("")
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteUserId, setDeleteUserId] = useState(null);
+
 
     const showModal = (member) => {
         setUserId(member._id);
@@ -36,17 +39,10 @@ const Gym = () => {
     };
 
 
-    const handleOk = () => {
-        setIsModalOpen(false);
-    };
     const handleCancel = () => {
         setIsModalOpen(false);
     };
 
-    const editModal = (id) => {
-        setUserId(id)
-        setEditModal(true);
-    };
     const edithandleOk = (id) => {
         setEditModal(false);
     };
@@ -91,20 +87,51 @@ const Gym = () => {
         try {
             const data = new FormData();
             for (const key in formData) {
-                if (formData[key] !== null && formData[key] !== "") {
-                    data.append(key, formData[key]);
+                if (
+                    formData[key] !== null &&
+                    formData[key] !== "" &&
+                    !["gst", "gstNumber", "isGst"].includes(key)
+                ) {
+                    // Convert numbers where needed
+                    if (
+                        ["phoneNumber", "whatsAppNumber", "subscriptionMonths", "amount"].includes(key)
+                    ) {
+                        let numValue = Number(formData[key]);
+                        if (isNaN(numValue)) numValue = 0; // fallback
+                        data.append(key, numValue);
+                    } else {
+                        data.append(key, formData[key]);
+                    }
                 }
             }
+
+
+
+            // include GST fields only if isGst is true
+            if (formData.isGst) {
+                const gstValue = Number(formData.gst);
+                if (isNaN(gstValue) || gstValue < 0) {
+                    toast.error("Please enter a valid non-negative GST amount");
+                    return; // stop submission
+                }
+                data.append("gst", gstValue);           // number, not string
+                data.append("gstNumber", formData.gstNumber || "");
+            }
+
+            for (let [key, value] of data.entries()) {
+                console.log(key, typeof (value));
+            }
+
+
 
             const res = await axios.post(`${baseUrl}/api/v1/gym/user`, data, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             console.log("user register gym", res)
-            if (res.status === 200) {
+            if (res.status === 201) {
                 toast.success("Form Submitted Successfully")
             }
 
-            alert(res.data.message);
             setFormData({
                 name: "",
                 address: "",
@@ -123,6 +150,7 @@ const Gym = () => {
                 profilePicture: null,
                 dietPdf: null,
             });
+            fetchMembers();
         } catch (err) {
             console.error(err);
             toast.error(err.message)
@@ -233,14 +261,23 @@ const Gym = () => {
                 phoneNumber: formData.phoneNumber,
                 trainerId: formData.trainerId,
                 amount: formData.amount,
-                isGst: formData.isGst,
-                gst: formData.isGst ? formData.gst : undefined,
-                gstNumber: formData.isGst ? formData.gstNumber : undefined,
                 modeOfPayment: formData.modeOfPayment,
                 subscriptionMonths: formData.subscriptionMonths,
                 startDate: formData.startDate,
                 userType: formData.userType,  // ✅ pass userType
             };
+
+            if (formData.isGst) {
+                const gstValue = Number(formData.gst);
+                if (isNaN(gstValue) || gstValue < 0) {
+                    toast.error("Please enter a valid non-negative GST amount");
+                    return; // stop submission
+                }
+                payload.isGst = true;
+                payload.gst = gstValue;
+                payload.gstNumber = formData.gstNumber || "";
+            }
+
 
             console.log("📤 Sending payload:", payload);
 
@@ -268,6 +305,10 @@ const Gym = () => {
             console.log(error)
             toast.error(error.message)
 
+        } finally {
+            // always close modal after delete attempt
+            setIsDeleteModalOpen(false);
+            setDeleteUserId(null);
         }
     }
 
@@ -336,7 +377,7 @@ const Gym = () => {
                                                 setSubscriptionFilter("");
 
                                                 // Apply filter based on selection
-                                                if (["athlete", "non-athlete"].includes(value)) {
+                                                if (["athlete", "non-athlete", "personal-trainer"].includes(value)) {
                                                     setUserTypeFilter(value);
                                                 } else if (["active", "expired"].includes(value)) {
                                                     setSubscriptionFilter(value);
@@ -345,6 +386,7 @@ const Gym = () => {
                                         >
                                             <option className={styles.selectoption} value="">Select</option>
                                             <option className={styles.selectoption} value="athlete">Athlete</option>
+                                            <option className={styles.selectoption} value="personal-trainer"></option>
                                             <option className={styles.selectoption} value="non-athlete">Non Athlete</option>
                                             <option className={styles.selectoption} value="active">Active Members</option>
                                             <option className={styles.selectoption} value="expired">Inactive Members</option>
@@ -405,7 +447,10 @@ const Gym = () => {
                                                                 <Edit color='#000' className="w-4 h-4" />
                                                             </button> */}
                                                             <button className={`${styles.deleteButton} ${styles.actionButtonDelete}`}
-                                                                onClick={() => handleDelete(member._id)}
+                                                                onClick={() => {
+                                                                    setDeleteUserId(member._id);
+                                                                    setIsDeleteModalOpen(true);
+                                                                }}
                                                             >
                                                                 <Trash2 color='red' className="w-4 h-4" />
                                                             </button>
@@ -543,6 +588,7 @@ const Gym = () => {
                                             >
                                                 <option value="athlete">Athlete</option>
                                                 <option value="non-athlete">Non Athlete</option>
+                                                <option value="personal-trainer">Personal Trainer</option>
                                             </select>
                                         </div>
 
@@ -595,15 +641,27 @@ const Gym = () => {
                                         <div className={styles.formSection}>
                                             <label className={styles.sectionLabel}>Billing</label>
                                             <div className={styles.billingRow}>
-                                                <input
-                                                    type="number"
-                                                    name="amount"
-                                                    value={formData.amount}
-                                                    onChange={handleInputChange}
-                                                    className={styles.formInput}
-                                                    placeholder="Amount"
-                                                    required
-                                                />
+                                                {formData.isGst && (
+                                                    <input
+                                                        type="number"
+                                                        name="amount"
+                                                        value={formData.amount}
+                                                        onChange={handleInputChange}
+                                                        className={styles.formInput}
+                                                        placeholder="Amount"
+                                                        required
+                                                    />
+                                                )}
+                                                {!formData.isGst && (
+                                                    <input
+                                                        type="number"
+                                                        name="amount"
+                                                        value={formData.amount}
+                                                        onChange={handleInputChange}
+                                                        className={styles.formInput}
+                                                        placeholder="Amount"
+                                                    />
+                                                )}
                                                 <select
                                                     name="modeOfPayment"
                                                     className={styles.formSelect}
@@ -636,6 +694,7 @@ const Gym = () => {
                                                             onChange={handleInputChange}
                                                             className={styles.formInput}
                                                             placeholder="GST Amount"
+                                                            min={0}
                                                         />
                                                         <input
                                                             type="text"
@@ -912,6 +971,31 @@ const Gym = () => {
 
 
             </Modal>
+
+            <Modal
+                title="Confirm Delete"
+                open={isDeleteModalOpen}
+                onCancel={() => setIsDeleteModalOpen(false)}
+                footer={[
+                    <button
+                        key="cancel"
+                        className={styles.cancelButton}
+                        onClick={() => setIsDeleteModalOpen(false)}
+                    >
+                        Cancel
+                    </button>,
+                    <button
+                        key="delete"
+                        className={styles.deleteButton}
+                        onClick={() => handleDelete(deleteUserId)}
+                    >
+                        Delete
+                    </button>,
+                ]}
+            >
+                <p>Are you sure you want to delete this member? This action cannot be undone.</p>
+            </Modal>
+
         </div>
     );
 };
