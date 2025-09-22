@@ -408,7 +408,7 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                       <div className="">
                         <input
                           type="text"
-                          placeholder="GST Amount"
+                          placeholder="GST %"
                           value={formData.gst}
                           onChange={(e) =>
                             handleInputChange("gst", e.target.value)
