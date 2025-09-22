@@ -236,37 +236,30 @@ const getUsersByTrainer = async (req, res) => {
 };
 const assignDietPlan = async (req, res) => {
   try {
-    const { id: trainerId } = req.params;
     const { userId } = req.body;
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    // Access uploaded diet PDF (from multer .fields)
     const dietFile = req.files?.dietPdf?.[0];
     if (!dietFile) {
       return res.status(400).json({ message: "Diet PDF is required" });
     }
 
-    // Verify trainer exists
-    const trainer = await Trainer.findById(trainerId);
-    if (!trainer) {
-      return res.status(404).json({ message: "Trainer not found" });
-    }
-
-    // Verify user exists and is assigned to this trainer
+    // ✅ Verify user
     const gymUser = await GymUsers.findById(userId);
     if (!gymUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (gymUser.trainer.toString() !== trainerId) {
-      return res.status(403).json({ message: "You are not assigned to this user" });
+    // ✅ Check max limit
+    if (gymUser.dietPdfs.length >= 10) {
+      return res.status(400).json({ message: "Maximum 10 diet plans allowed" });
     }
 
-    // Store diet PDF path consistent with registerToGym
-    gymUser.dietPdf = `uploads/diets/${dietFile.filename}`;
+    // ✅ Add new diet plan path
+    gymUser.dietPdfs.push(`uploads/diets/${dietFile.filename}`);
     await gymUser.save();
 
     res.json({
@@ -274,7 +267,7 @@ const assignDietPlan = async (req, res) => {
       user: {
         id: gymUser._id,
         name: gymUser.name,
-        dietPdf: gymUser.dietPdf, // now matches registerToGym format
+        dietPdfs: gymUser.dietPdfs,
       },
     });
   } catch (error) {
@@ -282,7 +275,6 @@ const assignDietPlan = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 const requestPasswordReset = async (req, res) => {
   try {

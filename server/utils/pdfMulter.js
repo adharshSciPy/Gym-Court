@@ -53,7 +53,7 @@ const uploadFiles = multer({
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
 }).fields([
-  { name: "dietPdf", maxCount: 1 },
+  { name: "dietPdf", maxCount: 10 },
   { name: "profilePicture", maxCount: 1 },
 ]);
 

@@ -8,7 +8,16 @@ const gymUsersSchema = new Schema(
     whatsAppNumber: { type:Number, required: true, match: /^[0-9]{10}$/ },
     notes: { type: String, maxlength: 300 },
     trainer: { type: Schema.Types.ObjectId, ref: "Trainer", required: true },
-    dietPdf: { type: String },
+   dietPdfs: {
+      type: [String],
+      validate: {
+        validator: function (val) {
+          return val.length <= 10; 
+        },
+        message: "Maximum 10 diet plans are allowed per user",
+      },
+      default: [],
+    },
      profilePicture: { type: String }, 
     userType: { type: String, enum: ["athlete", "non-athlete","personal-trainer"], default: "non-athlete" },
     subscription: {
