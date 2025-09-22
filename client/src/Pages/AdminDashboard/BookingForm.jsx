@@ -7,7 +7,6 @@ import baseUrl from "../../baseUrl";
 import axios from "axios";
 import BookingOverView from "./BookingOverview";
 import { toast } from "react-toastify";
-import { FileArchive } from "lucide-react";
 const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [errors, setErrors] = useState({});

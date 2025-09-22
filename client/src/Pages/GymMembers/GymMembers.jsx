@@ -253,11 +253,9 @@ const GymMembers = () => {
                             }`}>
                             {member.subscription.status}
                           </span>
-                          {member.subscription.status === "expired" && (
-                            <button className={styles.renewButton}>
-                              Renew
-                            </button>
-                          )}
+                          {member.subscription.status === "expired"
+                
+                          }
                         </div>
                       </td>
                       <td className={styles.tableCell}>
@@ -289,7 +287,7 @@ const GymMembers = () => {
                             {uploadingMembers.has(member._id) ? (
                               <div className={styles.uploadingSpinner}></div>
                             ) : (
-                              <Upload color='blue' className="w-4 h-4" />
+                              <Upload color='green' className="w-4 h-4" />
                             )}
                           </button> 
                           <input

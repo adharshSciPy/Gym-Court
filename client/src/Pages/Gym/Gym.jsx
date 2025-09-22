@@ -4,6 +4,9 @@ import styles from './Gym.module.css';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
 import { Modal } from 'antd';
+import { toast } from "react-toastify";
+
+
 
 const Gym = () => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -21,10 +24,18 @@ const Gym = () => {
     const [isEditModal, setEditModal] = useState(false);
     const [userId, setUserId] = useState("")
 
-    const showModal = (id) => {
-        setUserId(id)
+    const showModal = (member) => {
+        setUserId(member._id);
+        setFormData((prev) => ({
+            ...prev,
+            phoneNumber: member.phoneNumber,   // pre-fill phone number
+            trainerId: member.trainer?._id || "", // optional: pre-fill trainer
+            userType: member.userType || "",   // ✅ pre-fill userType
+        }));
         setIsModalOpen(true);
     };
+
+
     const handleOk = () => {
         setIsModalOpen(false);
     };
@@ -89,6 +100,9 @@ const Gym = () => {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             console.log("user register gym", res)
+            if (res.status === 200) {
+                toast.success("Form Submitted Successfully")
+            }
 
             alert(res.data.message);
             setFormData({
@@ -111,7 +125,7 @@ const Gym = () => {
             });
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.message || "Something went wrong");
+            toast.error(err.message)
         }
     };
 
@@ -211,6 +225,52 @@ const Gym = () => {
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
         window.open(url, "_blank");
     };
+
+
+    const handleRenewSubscription = async () => {
+        try {
+            const payload = {
+                phoneNumber: formData.phoneNumber,
+                trainerId: formData.trainerId,
+                amount: formData.amount,
+                isGst: formData.isGst,
+                gst: formData.isGst ? formData.gst : undefined,
+                gstNumber: formData.isGst ? formData.gstNumber : undefined,
+                modeOfPayment: formData.modeOfPayment,
+                subscriptionMonths: formData.subscriptionMonths,
+                startDate: formData.startDate,
+                userType: formData.userType,  // ✅ pass userType
+            };
+
+            console.log("📤 Sending payload:", payload);
+
+            const res = await axios.post(`${baseUrl}/api/v1/gym/user`, payload);
+            if (res.status === 200) {
+                toast.success("Form Submit Successfully")
+            }
+            fetchMembers();
+            handleCancel();
+        } catch (err) {
+            console.error("❌ Error:", err.response?.data);
+            toast.error(err.message)
+        }
+    };
+
+
+    const handleDelete = async (id) => {
+        try {
+            const res = await axios.delete(`${baseUrl}/api/v1/gym/delete/${id}`)
+            fetchMembers()
+            if (res.status === 200) {
+                toast.success("Deleted Successfully")
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+
+        }
+    }
+
 
 
 
@@ -339,13 +399,13 @@ const Gym = () => {
                                                             >
                                                                 <MessageCircle color='green' className="w-4 h-4" />
                                                             </button>
-                                                            <button className={`${styles.editButton} ${styles.actionButtonEdit}`}
+                                                            {/* <button className={`${styles.editButton} ${styles.actionButtonEdit}`}
                                                                 onClick={() => editModal()}
                                                             >
                                                                 <Edit color='#000' className="w-4 h-4" />
-                                                            </button>
+                                                            </button> */}
                                                             <button className={`${styles.deleteButton} ${styles.actionButtonDelete}`}
-
+                                                                onClick={() => handleDelete(member._id)}
                                                             >
                                                                 <Trash2 color='red' className="w-4 h-4" />
                                                             </button>
@@ -360,10 +420,14 @@ const Gym = () => {
                                                                 {member.subscription.status.toUpperCase()}
                                                             </span>
                                                             {member.subscription.status === "expired" && (
-                                                                <button className={styles.renewButton} onClick={() => showModal(member._id)}>
+                                                                <button
+                                                                    className={styles.renewButton}
+                                                                    onClick={() => showModal(member)}
+                                                                >
                                                                     Renew
                                                                 </button>
                                                             )}
+
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -621,40 +685,135 @@ const Gym = () => {
             </div>
             <Modal
                 title="Renew Subscriptions"
-                closable={{ 'aria-label': 'Custom Close Button' }}
+                closable={{ "aria-label": "Custom Close Button" }}
                 open={isModalOpen}
-                onOk={handleOk}
+                onOk={handleRenewSubscription}
                 onCancel={handleCancel}
                 width={1000}
             >
+                {/* Billing Section */}
                 <div className={styles.formSection}>
                     <label className={styles.sectionLabel}>Billing</label>
                     <div className={styles.billingRow}>
-                        <input className={styles.formInput} type='date' />
+                        <input
+                            type="date"
+                            className={styles.formInput}
+                            name="startDate"
+                            value={formData.startDate}
+                            onChange={handleInputChange}
+                            required
+                        />
                         <input
                             type="number"
                             className={styles.formInput}
+                            name="amount"
+                            value={formData.amount}
+                            onChange={handleInputChange}
                             placeholder="Enter Amount for Booking"
+                            required
                         />
-                        <select className={styles.formSelect}>
+                        <select
+                            className={styles.formSelect}
+                            name="modeOfPayment"
+                            value={formData.modeOfPayment}
+                            onChange={handleInputChange}
+                            required
+                        >
                             <option value="">Select</option>
                             <option value="cash">Cash</option>
                             <option value="card">Card</option>
-                            <option value="online">Online</option>
                             <option value="upi">UPI</option>
                         </select>
                     </div>
                 </div>
 
-                <div className={styles.formButtons}>
-                    <button
-                        type="submit"
-                        className={styles.submitButton}
+                {/* Phone & Trainer */}
+                <div className={styles.billingRow}>
+                    <label className={styles.sectionLabel}>Phone Number</label>
+                    <input
+                        type="tel"
+                        className={styles.formInput}
+                        name="phoneNumber"
+                        value={formData.phoneNumber}
+                        onChange={handleInputChange}
+                        placeholder="eg: +91 9847634893"
+                        required
+                    />
+
+
+                    <label className={styles.sectionLabel}>Assign Trainer</label>
+                    <select
+                        className={styles.formSelect}
+                        name="trainerId"
+                        value={formData.trainerId}
+                        onChange={handleInputChange}
+                        required
                     >
-                        Add
-                    </button>
+                        <option value="">Select Trainer</option>
+                        {trainers.map((trainer) => (
+                            <option key={trainer._id} value={trainer._id}>
+                                {trainer.trainerName}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
+                {/* Subscription Months */}
+                <div className={styles.billingRow}>
+                    <label className={styles.sectionLabel}>Subscription Months</label>
+                    <input
+                        type="number"
+                        className={styles.formInput}
+                        name="subscriptionMonths"
+                        min="1"
+                        max="12"
+                        value={formData.subscriptionMonths}
+                        onChange={handleInputChange}
+                    />
+                </div>
+
+                {/* GST Section */}
+                <div className={styles.billingRow}>
+                    <label>
+                        <input
+                            type="checkbox"
+                            name="isGst"
+                            checked={formData.isGst}
+                            onChange={handleInputChange}
+                        />{" "}
+                        Apply GST
+                    </label>
+                </div>
+
+                {formData.isGst && (
+                    <div className={styles.billingRow}>
+                        <input
+                            type="number"
+                            className={styles.formInput}
+                            name="gst"
+                            value={formData.gst}
+                            onChange={handleInputChange}
+                            placeholder="Enter GST %"
+                            required
+                        />
+                        <input
+                            type="text"
+                            className={styles.formInput}
+                            name="gstNumber"
+                            value={formData.gstNumber}
+                            onChange={handleInputChange}
+                            placeholder="Enter GST Number"
+                            required
+                        />
+                    </div>
+                )}
+
+                {/* Submit */}
+                <div className={styles.formButtons}>
+                    <button type="submit" className={styles.submitButton} onClick={handleRenewSubscription}>
+                        Submit
+                    </button>
+                </div>
             </Modal>
 
             <Modal

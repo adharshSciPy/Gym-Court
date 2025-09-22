@@ -1,23 +1,19 @@
-import styles from "./TrainerSidebar.module.css";
 import React, { useState } from "react";
+import styles from "./GymSideBar.module.css";
 import {
     LayoutDashboard,
-    Users,
-    // UserRound,
-    // BarChart3,
-    // Settings,
+    BarChart3,
     LogOut, 
-    // Dumbbell
+    Dumbbell
 } from "lucide-react";
-
-function TrainerSidebar({ activeNav, setActiveNav }) {
+function GymSidebar({ activeNav, setActiveNav }) {
     const [hoveredNav, setHoveredNav] = useState(null);
 
     const navItems = [
         { name: "Dashboard", icon: LayoutDashboard },
-        { name: "Members", icon: Users },
-        // { name: "Gym", icon: Dumbbell },
-        // { name: "Reports", icon: BarChart3 },
+        // { name: "Members", icon: Users },
+        { name: "Gym", icon: Dumbbell },
+        { name: "Reports", icon: BarChart3 },
         // { name: "Settings", icon: Settings },
         { name: "Logout", icon: LogOut },
 
@@ -26,7 +22,7 @@ function TrainerSidebar({ activeNav, setActiveNav }) {
         <div className={styles.sidebar}>
             <div className={styles.logo}>
                 <h1 className={styles.logoText}>Courtly</h1>
-                <p className={styles.logoSubtext}>Trainer</p>
+                <p className={styles.logoSubtext}>Admin</p>
             </div>
 
             <nav className={styles.nav}>
@@ -53,5 +49,4 @@ function TrainerSidebar({ activeNav, setActiveNav }) {
         </div>
     );
 }
-
-export default TrainerSidebar;
+export default GymSidebar
