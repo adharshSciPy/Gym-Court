@@ -266,7 +266,7 @@ const Gym = () => {
             }
         } catch (error) {
             console.log(error)
-            toast.error(err.message)
+            toast.error(error.message)
 
         }
     }
