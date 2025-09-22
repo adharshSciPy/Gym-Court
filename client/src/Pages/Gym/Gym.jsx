@@ -67,7 +67,7 @@ const Gym = () => {
         startDate: "",
         userType: "athlete",
         profilePicture: null,
-        dietPdf: null,
+        // dietPdf: null,
     });
 
     const handleInputChange = (e) => {
@@ -148,7 +148,7 @@ const Gym = () => {
                 startDate: "",
                 userType: "athlete",
                 profilePicture: null,
-                dietPdf: null,
+                // dietPdf: null,
             });
             fetchMembers();
         } catch (err) {
@@ -719,7 +719,7 @@ const Gym = () => {
                                                 className={styles.formInput}
                                             />
                                         </div>
-                                        <div className={styles.formSection}>
+                                        {/* <div className={styles.formSection}>
                                             <label className={styles.sectionLabel}>Diet PDF</label>
                                             <input
                                                 type="file"
@@ -727,7 +727,7 @@ const Gym = () => {
                                                 onChange={handleInputChange}
                                                 className={styles.formInput}
                                             />
-                                        </div>
+                                        </div> */}
 
                                         <div className={styles.formButtons}>
                                             <button type="submit" className={styles.submitButton}>
