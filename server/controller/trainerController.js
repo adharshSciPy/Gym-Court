@@ -8,6 +8,7 @@ import { generateOtp, hashOtp, compareOtp } from "../utils/otp.js";
 import { sendOtpEmail } from "../utils/mailer.js";
 import { PasswordReset } from "../model/passwordResetSchema.js";
 import path from "path";
+import fs from "fs";
 // import jwt from "jsonwebtoken";
 const OTP_EXPIRY_MINUTES = parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10);
 const OTP_ATTEMPTS_LIMIT = parseInt(process.env.OTP_ATTEMPTS_LIMIT || "5", 10);
@@ -237,7 +238,6 @@ const getUsersByTrainer = async (req, res) => {
 const assignDietPlan = async (req, res) => {
   try {
     const { userId } = req.body;
-
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
@@ -247,20 +247,16 @@ const assignDietPlan = async (req, res) => {
       return res.status(400).json({ message: "Diet PDF is required" });
     }
 
-    // ✅ Verify user
-    const gymUser = await GymUsers.findById(userId);
+    // ✅ Update directly without fetching first
+    const gymUser = await GymUsers.findOneAndUpdate(
+      { _id: userId, $expr: { $lt: [{ $size: "$dietPdfs" }, 10] } }, // check max 10
+      { $push: { dietPdfs: `uploads/diets/${dietFile.filename}` } },
+      { new: true }
+    );
+
     if (!gymUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(400).json({ message: "User not found or max 10 diet plans reached" });
     }
-
-    // ✅ Check max limit
-    if (gymUser.dietPdfs.length >= 10) {
-      return res.status(400).json({ message: "Maximum 10 diet plans allowed" });
-    }
-
-    // ✅ Add new diet plan path
-    gymUser.dietPdfs.push(`uploads/diets/${dietFile.filename}`);
-    await gymUser.save();
 
     res.json({
       message: "Diet plan assigned successfully",
@@ -272,6 +268,52 @@ const assignDietPlan = async (req, res) => {
     });
   } catch (error) {
     console.error("Error assigning diet plan:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const deleteDietPlan = async (req, res) => {
+  try {
+    const { userId, index } = req.body;
+
+    if (userId == null || index == null) {
+      return res.status(400).json({ message: "User ID and index are required" });
+    }
+
+    // ✅ Find user
+    const gymUser = await GymUsers.findById(userId);
+    if (!gymUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // ✅ Check if index is valid
+    if (index < 0 || index >= gymUser.dietPdfs.length) {
+      return res.status(404).json({ message: "Invalid diet plan index" });
+    }
+
+    // ✅ Get file path to delete
+    const filePath = gymUser.dietPdfs[index];
+
+    // ✅ Remove from array
+    gymUser.dietPdfs.splice(index, 1);
+    await gymUser.save();
+
+    // ✅ Delete physical file
+    const absolutePath = path.join(process.cwd(), filePath);
+    if (fs.existsSync(absolutePath)) {
+      fs.unlinkSync(absolutePath);
+    }
+
+    res.json({
+      message: "Diet plan deleted successfully",
+      user: {
+        id: gymUser._id,
+        name: gymUser.name,
+        dietPdfs: gymUser.dietPdfs,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting diet plan:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -401,4 +443,4 @@ const resetPassword = async (req, res) => {
   }
 };
 
-export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer,getUsersByTrainer,assignDietPlan,requestPasswordReset,resetPassword};
+export { registerTrainer, trainerLogin,getAllTrainers ,deleteTrainer,getUsersByTrainer,assignDietPlan,requestPasswordReset,resetPassword,deleteDietPlan};

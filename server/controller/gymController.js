@@ -418,21 +418,33 @@ const updateGymUser = async (req, res) => {
   }
 };
 const deleteGymUser = async (req, res) => {
-  const { id } = req.params;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const user = await GymUsers.findByIdAndDelete(id);
+    const { id } = req.params;
+    
+    const user = await GymUsers.findById(id).session(session);
     if (!user) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ success: false, message: "Gym user not found" });
     }
- await GymBilling.deleteMany({ userId: user._id }).session(session);
 
-    // --- Delete the user itself ---
+    // Delete billing info
+    await GymBilling.deleteMany({ userId: user._id }).session(session);
+
+    // Delete the user
     await GymUsers.findByIdAndDelete(user._id).session(session);
-    // Optionally, remove user from trainer.users array
+
+    // Remove from trainer.users array
     await Trainer.updateOne(
       { _id: user.trainer },
       { $pull: { users: user._id } }
-    );
+    ).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(200).json({
       success: true,
@@ -440,10 +452,13 @@ const deleteGymUser = async (req, res) => {
       data: user,
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error deleting gym user:", error);
     res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
+
 
 const getGymPaymentHistory = async (req, res) => {
   try {
@@ -699,5 +714,6 @@ const getGymStatistics = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory,getGymStatistics}
