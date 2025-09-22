@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
-  BarChart3,
   Settings,
   LogOut,
   DollarSign

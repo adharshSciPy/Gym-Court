@@ -6,9 +6,10 @@ import baseUrl from "../../baseUrl";
 
 function TrainerDashboard() {
   const { id } = useParams();
-  const [trainer, setTrainer] = useState(null);
   const [clients, setClients] = useState([]);
-  const getClients = async () => {
+
+  useEffect(() => {
+    const getClients = async () => {
     try {
       const response = await axios.get(
         `${baseUrl}/api/v1/trainer/assigned-users/${id}`
@@ -22,10 +23,8 @@ function TrainerDashboard() {
       console.log(error);
     }
   };
-  useEffect(() => {
     getClients();
-  }, []);
-console.log(clients);
+  }, [ id]);
 
   return (
     <div className={styles.pageContainer}>

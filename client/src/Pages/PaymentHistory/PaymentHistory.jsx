@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Search, MessageCircle, File, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./PaymentHistory.module.css";
 import baseUrl from "../../baseUrl";
@@ -41,61 +41,57 @@ function PaymentHistory() {
     }
   };
 
-  const getPaymentHistory = async () => {
-    try {
-      setLoading(true);
-      
-      // Build query parameters
-      const params = new URLSearchParams();
-      
-      if (searchTerm.trim()) {
-        params.append('search', searchTerm.trim());
-      }
-      
-      if (startDate) {
-        params.append('startDate', startDate);
-      }
-      
-      if (endDate) {
-        params.append('endDate', endDate);
-      }
-      
-      if (selectedCourt) {
-        params.append('courtId', selectedCourt);
-      }
-      
-      params.append('page', currentPage.toString());
-      params.append('limit', itemsPerPage.toString());
+// 1. Make getPaymentHistory stable
+const getPaymentHistory = useCallback(async () => {
+  try {
+    setLoading(true);
 
-      const queryString = params.toString();
-      
-      const url = `${baseUrl}/api/v1/billings/payment-history${queryString ? `?${queryString}` : ''}`;
-      
-      
-      const res = await axios.get(url);
-      
-      if (res.status === 200) {
-        setBillData(res.data.billings || []);
-        setTotalPages(res.data.totalPages || 1);
-        setTotalRecords(res.data.totalRecords || 0);
-      }
-    } catch (error) {
-      console.log("Error fetching payment history:", error);
-      setBillData([]);
-      setTotalPages(1);
-      setTotalRecords(0);
-    } finally {
-      setLoading(false);
+    const params = new URLSearchParams();
+
+    if (searchTerm.trim()) params.append("search", searchTerm.trim());
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+    if (selectedCourt) params.append("courtId", selectedCourt);
+
+    params.append("page", currentPage.toString());
+    params.append("limit", itemsPerPage.toString());
+
+    const url = `${baseUrl}/api/v1/billings/payment-history${
+      params.toString() ? `?${params.toString()}` : ""
+    }`;
+
+    const res = await axios.get(url);
+
+    if (res.status === 200) {
+      setBillData(res.data.billings || []);
+      setTotalPages(res.data.totalPages || 1);
+      setTotalRecords(res.data.totalRecords || 0);
     }
-  };
+  } catch (error) {
+    console.log("Error fetching payment history:", error);
+    setBillData([]);
+    setTotalPages(1);
+    setTotalRecords(0);
+  } finally {
+    setLoading(false);
+  }
+}, [searchTerm, startDate, endDate, selectedCourt, currentPage, itemsPerPage]);
 
-  // Debounced version of getPaymentHistory for search
-  const debouncedGetPaymentHistory = useCallback(
-    debounce(() => {
-      getPaymentHistory();
-    }, 500),
-    [searchTerm, startDate, endDate, selectedCourt, currentPage, itemsPerPage]
-  );
+// 2. Memoize the debounced function
+const debouncedGetPaymentHistory = useMemo(
+  () => debounce(getPaymentHistory, 500),
+  [getPaymentHistory]
+);
+
+// 3. Call inside useEffect
+useEffect(() => {
+  debouncedGetPaymentHistory();
+
+  return () => {
+    debouncedGetPaymentHistory.cancel?.();
+  };
+}, [debouncedGetPaymentHistory]);
+
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
@@ -150,13 +146,7 @@ function PaymentHistory() {
     setCurrentPage(1); // Reset to first page when filtering
   };
 
-  const clearFilters = () => {
-    setSearchTerm("");
-    setStartDate("");
-    setEndDate("");
-    setSelectedCourt("");
-    setCurrentPage(1);
-  };
+ 
 
   // Action handlers
   const handleDelete = (memberId) => {
@@ -177,15 +167,13 @@ function PaymentHistory() {
   }, []);
 
   // Fetch payment history when filters change
-  useEffect(() => {
-    debouncedGetPaymentHistory();
-    
-    // Cleanup function to cancel debounced calls
-    return () => {
-      debouncedGetPaymentHistory.cancel?.();
-    };
-  }, [searchTerm, startDate, endDate, selectedCourt, currentPage]);
+useEffect(() => {
+  debouncedGetPaymentHistory();
 
+  return () => {
+    debouncedGetPaymentHistory.cancel?.();
+  };
+}, [debouncedGetPaymentHistory]);
   return (
     <div className={styles.container}>
       <div className={styles.searchContainer}>

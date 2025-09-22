@@ -1,8 +1,6 @@
 import React from "react";
 import DashboardPage from "../GymDashboard/GymDashboard";
 import ReportsPage from "../GymReport/GymReport";
-import BookingsPage from "../BookingPage/BookingPage";
-import SettingsPage from "../SettingsPage/SettingsPage";
 import Sidebar from "../GymSidebar/GymSidebar";
 import { useNavigate } from "react-router-dom"
 import Login from "../Login/Login"
