@@ -1,7 +1,6 @@
 import React from "react";
 import DashboardPage from "../TrainerDashboard/TrainerDashboard";
 import ReportsPage from "../ReportPage/ReportPage";
-import BookingsPage from "../BookingPage/BookingPage";
 import SettingsPage from "../SettingsPage/SettingsPage";
 import Sidebar from "../TrainerSidebar/TrainerSidebar";
 import { useNavigate } from "react-router-dom"

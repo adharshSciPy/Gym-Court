@@ -7,7 +7,6 @@ import baseUrl from "../../baseUrl";
 import axios from "axios";
 import BookingOverView from "./BookingOverview";
 import { toast } from "react-toastify";
-import { FileArchive } from "lucide-react";
 const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [errors, setErrors] = useState({});
@@ -409,7 +408,7 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                       <div className="">
                         <input
                           type="text"
-                          placeholder="GST Amount"
+                          placeholder="GST %"
                           value={formData.gst}
                           onChange={(e) =>
                             handleInputChange("gst", e.target.value)

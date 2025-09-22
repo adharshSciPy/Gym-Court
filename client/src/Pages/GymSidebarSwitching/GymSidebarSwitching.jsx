@@ -1,19 +1,18 @@
 import React from "react";
 import DashboardPage from "../GymDashboard/GymDashboard";
 import ReportsPage from "../GymReport/GymReport";
-import BookingsPage from "../BookingPage/BookingPage";
-import SettingsPage from "../SettingsPage/SettingsPage";
 import Sidebar from "../GymSidebar/GymSidebar";
-import { useNavigate } from "react-router-dom"
-import Login from "../Login/Login"
+import { useNavigate } from "react-router-dom";
+import Login from "../Login/Login";
 import GymMembers from "../GymMembers/GymMembers";
-import Gym from "../Gym/Gym"
+import Gym from "../Gym/Gym";
+import PaymentHistory from "../GymPaymentHistory/GymPaymentHistory";
 
 const GymSidebarSwitching = ({ activeNav, setActiveNav }) => {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const handleLogout = () => {
-    navigate("/")
-  }
+    navigate("/");
+  };
   const styles = {
     container: {
       fontFamily: "system-ui, -apple-system, sans-serif",
@@ -32,8 +31,8 @@ const GymSidebarSwitching = ({ activeNav, setActiveNav }) => {
         return <Gym />;
       case "Reports":
         return <ReportsPage />;
-    //   case "Settings":
-    //     return <SettingsPage />;
+      case "Payments":
+        return <PaymentHistory />;
       case "Logout":
         handleLogout();
         return <Login />;
@@ -41,7 +40,6 @@ const GymSidebarSwitching = ({ activeNav, setActiveNav }) => {
         return <DashboardPage />;
     }
   };
-
 
   return (
     <div style={styles.container}>
@@ -51,4 +49,4 @@ const GymSidebarSwitching = ({ activeNav, setActiveNav }) => {
   );
 };
 
-export default GymSidebarSwitching
+export default GymSidebarSwitching;

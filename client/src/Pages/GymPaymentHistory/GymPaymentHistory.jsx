@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { Search, MessageCircle, File, Eye, ChevronLeft, ChevronRight } from "lucide-react";
-import styles from "./PaymentHistory.module.css";
+import styles from "./GymPaymentHistory.module.css";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
 
-function PaymentHistory() {
+function GymPaymentHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [billData, setBillData] = useState([]);
   const [startDate, setStartDate] = useState("");
@@ -56,14 +56,15 @@ const getPaymentHistory = useCallback(async () => {
     params.append("page", currentPage.toString());
     params.append("limit", itemsPerPage.toString());
 
-    const url = `${baseUrl}/api/v1/billings/payment-history${
+    const url = `${baseUrl}/api/v1/gym/payment-history${
       params.toString() ? `?${params.toString()}` : ""
     }`;
 
     const res = await axios.get(url);
-
+    console.log(res);
+    
     if (res.status === 200) {
-      setBillData(res.data.billings || []);
+      setBillData(res.data.data || []);
       setTotalPages(res.data.totalPages || 1);
       setTotalRecords(res.data.totalRecords || 0);
     }
@@ -240,7 +241,7 @@ useEffect(() => {
             <tr className={styles.headerRow}>
               <th className={styles.th}>Name</th>
               <th className={styles.th}>Booking Date</th>
-              <th className={styles.th}>Ended Date</th>
+              <th className={styles.th}>Subscription</th>
               <th className={styles.th}>Payment Method</th>
               <th className={styles.th}>Amount</th>
               <th className={styles.th}>Actions</th>
@@ -251,19 +252,16 @@ useEffect(() => {
               billData.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
                   <td className={styles.td}>
-                    {member.userId?.firstName || ""} {member.userId?.lastName || ""}
+                    {member.userId?.name || ""} {member.userId?.lastName || ""}
                   </td>
                   <td className={styles.td}>
-                    {member.bookingId?.startDate ? 
-                      new Date(member.bookingId.startDate).toLocaleDateString() : 
+                    {member.createdAt ? 
+                      new Date(member.createdAt).toLocaleDateString() : 
                       ""
                     }
                   </td>
                   <td className={styles.td}>
-                    {member.bookingId?.endDate ? 
-                      new Date(member.bookingId.endDate).toLocaleDateString() : 
-                      ""
-                    }
+                    {member.subscriptionMonths}
                   </td>
                   <td className={styles.td}>{member.modeOfPayment || ""}</td>
                   
@@ -353,4 +351,4 @@ useEffect(() => {
   );
 }
 
-export default PaymentHistory;
+export default GymPaymentHistory
