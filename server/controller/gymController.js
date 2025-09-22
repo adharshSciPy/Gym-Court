@@ -296,7 +296,7 @@ const getAllGymUsers = async (req, res) => {
     }
 
     // --- Filter by userType ---
-    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+    if (userType && ["athlete", "non-athlete","personal-trainer"].includes(userType)) {
       query.userType = userType;
     }
 
@@ -424,7 +424,10 @@ const deleteGymUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "Gym user not found" });
     }
+ await GymBilling.deleteMany({ userId: user._id }).session(session);
 
+    // --- Delete the user itself ---
+    await GymUsers.findByIdAndDelete(user._id).session(session);
     // Optionally, remove user from trainer.users array
     await Trainer.updateOne(
       { _id: user.trainer },
