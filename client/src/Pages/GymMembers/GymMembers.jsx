@@ -5,6 +5,7 @@ import axios from "axios"
 import baseUrl from "../../baseUrl"
 import { useParams } from 'react-router-dom';
 
+
 const GymMembers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState('');
@@ -15,6 +16,7 @@ const GymMembers = () => {
   const [subscriptionFilter, setSubscriptionFilter] = useState('');
   const [combinedFilter, setCombinedFilter] = useState("");
   const [uploadingMembers, setUploadingMembers] = useState(new Set());
+  const [deletingMembers, setDeletingMembers] = useState(new Set());
   const { id } = useParams()
 
   // File upload refs - one for each member (specifically for diet PDFs)
@@ -166,6 +168,137 @@ const GymMembers = () => {
     }
   };
 
+  // Handle diet plan preview
+const handlePreviewDietPlan = async (member) => {
+  console.log("Member data:", member);
+
+  if (!member.dietPdf) {
+    alert('No diet plan available for this member.');
+    return;
+  }
+
+  try {
+    // Construct the full URL to the PDF file
+    const pdfUrl = `http://localhost:8000/${member.dietPdf}`;
+    
+    console.log("PDF URL:", pdfUrl);
+    
+    const newWindow = window.open(pdfUrl, '_blank');
+    
+    // Handle case where popup was blocked
+    if (!newWindow) {
+      alert('Please allow popups for this site to view the PDF.');
+    }
+    
+  } catch (error) {
+    console.error('Error opening PDF:', error);
+    alert('Error opening diet plan. Please try again.');
+  }
+};
+
+// Alternative version that downloads the PDF if opening fails
+const handlePreviewDietPlanWithFallback = async (member) => {
+  console.log("Member data:", member);
+
+  if (!member.dietPdf) {
+    alert('No diet plan available for this member.');
+    return;
+  }
+
+  try {
+    let blob;
+    
+    if (typeof member.dietPdf === 'string') {
+      const base64Data = member.dietPdf.replace(/^data:application\/pdf;base64,/, '');
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      blob = new Blob([bytes], { type: 'application/pdf' });
+    } else {
+      blob = new Blob([member.dietPdf], { type: 'application/pdf' });
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, '_blank');
+    
+    if (!newWindow) {
+      // Fallback: download the PDF
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `diet-plan-${member.name || 'member'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error with PDF:', error);
+    alert('Error processing diet plan. Please try again.');
+  }
+};
+  // Handle diet plan deletion
+  const handleDeleteDietPlan = async (member) => {
+    if (!member.dietPdf) {
+      alert('No diet plan to delete for this member.');
+      return;
+    } 
+
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete the diet plan for ${member.name}? This action cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    // Set loading state
+    setDeletingMembers(prev => new Set([...prev, member._id]));
+
+    try {
+      const response = await axios.delete(
+        `${baseUrl}/api/v1/trainer/delete-diet-plan/${id}`,
+        {
+          data: { userId: member._id },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // If you use auth tokens
+          }
+        }
+      );
+
+      alert(`Diet plan deleted successfully for ${member.name}`);
+      
+      // Refresh members data to show updated info
+      await fetchMembers();
+
+    } catch (error) {
+      console.error('Error deleting diet plan:', error);
+      
+      if (error.response?.status === 400) {
+        alert(error.response.data.message || 'Invalid request.');
+      } else if (error.response?.status === 403) {
+        alert('You are not authorized to delete this diet plan.');
+      } else if (error.response?.status === 404) {
+        alert('Diet plan not found or member not found.');
+      } else {
+        alert('Failed to delete diet plan. Please try again.');
+      }
+    } finally {
+      // Reset loading state
+      setDeletingMembers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(member._id);
+        return newSet;
+      });
+    }
+  };
+
   return (
     <div className={styles.dashboard}>
       {/* Main Content */}
@@ -253,9 +386,6 @@ const GymMembers = () => {
                             }`}>
                             {member.subscription.status}
                           </span>
-                          {member.subscription.status === "expired"
-                
-                          }
                         </div>
                       </td>
                       <td className={styles.tableCell}>
@@ -263,7 +393,6 @@ const GymMembers = () => {
                           {member.dietPdf ? (
                             <div className={styles.dietPlanAssigned}>
                               <span className={styles.dietPlanBadge}>Assigned</span>
-                              {/* You can add a view/download link here if needed */}
                             </div>
                           ) : (
                             <span className={styles.noDietPlan}>Not Assigned</span>
@@ -272,24 +401,57 @@ const GymMembers = () => {
                       </td>
                       <td className={styles.tableCell}>
                         <div className={styles.actionButtons}>
+                          {/* WhatsApp Message Button */}
                           <button 
                             className={`${styles.actionButton} ${styles.actionButtonMessage}`}
                             onClick={() => openWhatsApp(member.whatsAppNumber, member.name)}
+                            title={`Message ${member.name} on WhatsApp`}
                           >
                             <MessageCircle color='green' className="w-4 h-4" />
                           </button>
+                          
+                          {/* Upload Diet Plan Button */}
                           <button 
                             className={`${styles.actionButton} ${styles.actionButtonUpload}`}
                             onClick={() => handleDietUploadClick(member._id)}
-                            title={`Upload diet plan for ${member.name}`}
+                            title={member.dietPdf ? `Replace diet plan for ${member.name}` : `Upload diet plan for ${member.name}`}
                             disabled={uploadingMembers.has(member._id)}
                           >
                             {uploadingMembers.has(member._id) ? (
                               <div className={styles.uploadingSpinner}></div>
                             ) : (
-                              <Upload color='green' className="w-4 h-4" />
+                              <Upload color='blue' className="w-4 h-4" />
                             )}
-                          </button> 
+                          </button>
+                          
+                          {/* Preview Diet Plan Button - Only show if PDF exists */}
+                          {member.dietPdf && (
+                            <button 
+                              className={`${styles.actionButton} ${styles.actionButtonPreview}`}
+                              onClick={() => handlePreviewDietPlan(member)}
+                              title={`Preview diet plan for ${member.name}`}
+                            >
+                              <Eye color='orange' className="w-4 h-4" />
+                            </button>
+                          )}
+                          
+                          {/* Delete Diet Plan Button - Only show if PDF exists */}
+                          {member.dietPdf && (
+                            <button 
+                              className={`${styles.actionButton} ${styles.actionButtonDelete}`}
+                              onClick={() => handleDeleteDietPlan(member)}
+                              title={`Delete diet plan for ${member.name}`}
+                              disabled={deletingMembers.has(member._id)}
+                            >
+                              {deletingMembers.has(member._id) ? (
+                                <div className={styles.deletingSpinner}></div>
+                              ) : (
+                                <Trash2 color='red' className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          
+                          {/* Hidden file input for PDF upload */}
                           <input
                             ref={el => fileInputRefs.current[member._id] = el}
                             type="file"

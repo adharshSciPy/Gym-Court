@@ -499,6 +499,9 @@
 .modalActions .whatsappButton {
   background-color: #25d366;
   color: white;
+  width: max-content;
+    padding: 10px 16px;
+    margin-bottom: 20px;
 }
 
 .modalActions .whatsappButton:hover {

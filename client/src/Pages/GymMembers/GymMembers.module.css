@@ -181,32 +181,78 @@
   background-color: #059669;
 }
 
-/* Action Buttons */
+/* Action Buttons - Updated and Enhanced */
 .actionButtons {
   display: flex;
+  gap: 8px;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
 }
 
+/* Base action button styling */
 .actionButton {
-  padding: 0.5rem;
-  color: #6b7280;
-  background: none;
+  padding: 6px 8px;
   border: none;
-  border-radius: 0.25rem;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  min-width: 32px;
+  height: 32px;
 }
 
 .actionButton:hover {
-  background-color: #f3f4f6;
+  transform: translateY(-1px);
 }
 
-.actionButtonMessage:hover {
-  color: #16a34a;
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.actionButton:disabled:hover {
+  background: transparent;
+}
+
+/* WhatsApp Message Button */
+.actionButtonMessage {
   background-color: #dcfce7;
 }
 
+.actionButtonMessage:hover {
+  background-color: #bbf7d0;
+}
+
+/* Upload Button */
+.actionButtonUpload {
+  background-color: #dbeafe;
+}
+
+.actionButtonUpload:hover {
+  background-color: #bfdbfe;
+}
+
+/* Preview Button - New */
+.actionButtonPreview {
+  background-color: #fed7aa;
+}
+
+.actionButtonPreview:hover {
+  background-color: #fdba74;
+}
+
+/* Delete Button - New */
+.actionButtonDelete {
+  background-color: #fecaca;
+}
+
+.actionButtonDelete:hover {
+  background-color: #fca5a5;
+}
 
 .searchselect {
   display: flex;
@@ -326,37 +372,7 @@ select option {
   color: #111827;
 }
 
-
-/* Add this to your existing GymMembers.module.css */
-
-.actionButtonUpload {
-  background-color: #e3f2fd;
-  border-radius: 6px;
-  padding: 6px 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-}
-
-.actionButtonUpload:hover {
-  background-color: #bbdefb;
-  transform: translateY(-1px);
-}
-
-.actionButtonUpload:active {
-  transform: translateY(0);
-}
-
-/* Make sure action buttons are displayed in a row */
-.actionButtons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
+/* Diet Plan Status Styles */
 .dietPlanStatus {
   display: flex;
   align-items: center;
@@ -365,15 +381,15 @@ select option {
 
 .dietPlanAssigned {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 8px;
 }
 
 .dietPlanBadge {
   background-color: #10b981;
   color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -384,13 +400,19 @@ select option {
   font-style: italic;
 }
 
-.uploadingSpinner {
+/* Loading Spinners */
+.uploadingSpinner,
+.deletingSpinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #f3f4f6;
-  border-top: 2px solid #3b82f6;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+.deletingSpinner {
+  border-top-color: #e74c3c;
 }
 
 @keyframes spin {
@@ -398,10 +420,7 @@ select option {
   100% { transform: rotate(360deg); }
 }
 
-
-
-
-
+/* Responsive Design */
 @media (max-width: 1024px) {
   .contentContainer {
     padding: 1.5rem;
@@ -431,6 +450,17 @@ select option {
 
   .header {
     padding: 1rem;
+  }
+
+  .actionButtons {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  
+  .actionButton {
+    min-width: 28px;
+    height: 28px;
+    padding: 4px 6px;
   }
 }
 
