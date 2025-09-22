@@ -92,8 +92,8 @@ const registerToGym = async (req, res) => {
     if (!trainerId) return res.status(400).json({ message: "Trainer must be assigned" });
     const trainer = await Trainer.findById(trainerId).session(session);
     if (!trainer) return res.status(404).json({ message: "Trainer not found" });
-if (!["athlete", "non-athlete"].includes(userType)) {
-  return res.status(400).json({ message: "Invalid userType. Must be 'athlete' or 'non-athlete'" });
+if (!["athlete", "non-athlete","personal-trainer"].includes(userType)) {
+  return res.status(400).json({ message: "Invalid userType. Must be 'athlete' or 'non-athlete' or 'personal-trainer'" });
 }
     if (subscriptionMonths < 1 || subscriptionMonths > 12) {
       return res.status(400).json({ message: "Subscription months must be between 1 and 12" });
@@ -111,6 +111,7 @@ if (!["athlete", "non-athlete"].includes(userType)) {
     if (isGst) {
       if (!gst || isNaN(gst) || gst < 0)
         return res.status(400).json({ message: "GST must be a valid non-negative number" });
+
       if (!gstNumber || gstNumber.length > 20)
         return res.status(400).json({ message: "GST number is required and max 20 chars" });
     }
@@ -295,7 +296,7 @@ const getAllGymUsers = async (req, res) => {
     }
 
     // --- Filter by userType ---
-    if (userType && ["athlete", "non-athlete"].includes(userType)) {
+    if (userType && ["athlete", "non-athlete","personal-trainer"].includes(userType)) {
       query.userType = userType;
     }
 
@@ -423,7 +424,10 @@ const deleteGymUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "Gym user not found" });
     }
+ await GymBilling.deleteMany({ userId: user._id }).session(session);
 
+    // --- Delete the user itself ---
+    await GymUsers.findByIdAndDelete(user._id).session(session);
     // Optionally, remove user from trainer.users array
     await Trainer.updateOne(
       { _id: user.trainer },
