@@ -5,6 +5,7 @@ import axios from "axios"
 import baseUrl from "../../baseUrl"
 import { useParams } from 'react-router-dom';
 
+
 const GymMembers = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [userTypeFilter, setUserTypeFilter] = useState('');
@@ -168,112 +169,87 @@ const GymMembers = () => {
   };
 
   // Handle diet plan preview
-  const handlePreviewDietPlan = async (member) => {
-    if (!member.dietPdf) {
-      alert('No diet plan available for this member.');
-      return;
+const handlePreviewDietPlan = async (member) => {
+  console.log("Member data:", member);
+
+  if (!member.dietPdf) {
+    alert('No diet plan available for this member.');
+    return;
+  }
+
+  try {
+    // Construct the full URL to the PDF file
+    const pdfUrl = `http://localhost:8000/${member.dietPdf}`;
+    
+    console.log("PDF URL:", pdfUrl);
+    
+    const newWindow = window.open(pdfUrl, '_blank');
+    
+    // Handle case where popup was blocked
+    if (!newWindow) {
+      alert('Please allow popups for this site to view the PDF.');
+    }
+    
+  } catch (error) {
+    console.error('Error opening PDF:', error);
+    alert('Error opening diet plan. Please try again.');
+  }
+};
+
+// Alternative version that downloads the PDF if opening fails
+const handlePreviewDietPlanWithFallback = async (member) => {
+  console.log("Member data:", member);
+
+  if (!member.dietPdf) {
+    alert('No diet plan available for this member.');
+    return;
+  }
+
+  try {
+    let blob;
+    
+    if (typeof member.dietPdf === 'string') {
+      const base64Data = member.dietPdf.replace(/^data:application\/pdf;base64,/, '');
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      blob = new Blob([bytes], { type: 'application/pdf' });
+    } else {
+      blob = new Blob([member.dietPdf], { type: 'application/pdf' });
     }
 
-    try {
-      console.log('=== DIET PLAN DEBUG INFO ===');
-      console.log('Member dietPdf:', member.dietPdf);
-      console.log('Member ID:', member._id);
-      console.log('Member name:', member.name);
-      console.log('Base URL:', baseUrl);
-      console.log('============================');
-
-      // Method 1: If dietPdf is a complete URL, open it directly
-      if (typeof member.dietPdf === 'string' && member.dietPdf.startsWith('http')) {
-        console.log('Opening direct URL:', member.dietPdf);
-        window.open(member.dietPdf, '_blank');
-        return;
-      }
-
-      // Method 2: Try different possible URL structures
-      if (typeof member.dietPdf === 'string') {
-        const possibleUrls = [
-          `${baseUrl}/uploads/diet-plans/${member.dietPdf}`,
-          `${baseUrl}/uploads/${member.dietPdf}`,
-          `${baseUrl}/files/diet-plans/${member.dietPdf}`,
-          `${baseUrl}/static/diet-plans/${member.dietPdf}`,
-          `${baseUrl}/public/uploads/${member.dietPdf}`,
-          `${baseUrl}/${member.dietPdf}`, // If dietPdf already contains the relative path
-        ];
-
-        console.log('Trying URLs:', possibleUrls);
-
-        for (let i = 0; i < possibleUrls.length; i++) {
-          try {
-            console.log(`Testing URL ${i + 1}:`, possibleUrls[i]);
-            const testResponse = await fetch(possibleUrls[i], { method: 'HEAD' });
-            console.log(`URL ${i + 1} response:`, testResponse.status);
-            
-            if (testResponse.ok) {
-              console.log(`✅ Success! Opening URL ${i + 1}:`, possibleUrls[i]);
-              window.open(possibleUrls[i], '_blank');
-              return;
-            }
-          } catch (e) {
-            console.log(`❌ URL ${i + 1} failed:`, e.message);
-            continue;
-          }
-        }
-
-        console.log('❌ All direct URL attempts failed, trying API endpoint...');
-      }
-
-      // Method 3: Fetch from API endpoint
-      console.log('Attempting API call to:', `${baseUrl}/api/v1/trainer/diet-plan/${member._id}`);
-      
-      const response = await axios.get(
-        `${baseUrl}/api/v1/trainer/diet-plan/${member._id}`,
-        {
-          responseType: 'blob',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}` // If you use auth tokens
-          }
-        }
-      );
-
-      console.log('✅ API response received, creating blob...');
-
-      // Create blob URL and open in new tab
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      window.open(url, '_blank');
-
-      // Clean up the blob URL after a delay
-      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
-
-    } catch (error) {
-      console.error('❌ Error previewing diet plan:', error);
-      console.error('Error response:', error.response);
-      
-      if (error.response?.status === 404) {
-        alert(`Diet plan file not found. 
-File: ${member.dietPdf}
-Please check if the file exists on the server or contact support.`);
-      } else if (error.response?.status === 403) {
-        alert('You are not authorized to view this diet plan.');
-      } else if (error.response?.status === 500) {
-        alert(`Server error while loading diet plan. 
-File: ${member.dietPdf}
-Please try again or contact support.`);
-      } else {
-        alert(`Failed to load diet plan. 
-File: ${member.dietPdf}
-Error: ${error.message}
-Please check the browser console for more details.`);
-      }
+    const url = window.URL.createObjectURL(blob);
+    const newWindow = window.open(url, '_blank');
+    
+    if (!newWindow) {
+      // Fallback: download the PDF
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `diet-plan-${member.name || 'member'}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
-  };
-
+    
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 1000);
+    
+  } catch (error) {
+    console.error('Error with PDF:', error);
+    alert('Error processing diet plan. Please try again.');
+  }
+};
   // Handle diet plan deletion
   const handleDeleteDietPlan = async (member) => {
     if (!member.dietPdf) {
       alert('No diet plan to delete for this member.');
       return;
-    }
+    } 
 
     const confirmDelete = window.confirm(
       `Are you sure you want to delete the diet plan for ${member.name}? This action cannot be undone.`
