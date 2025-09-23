@@ -27,6 +27,8 @@ const Gym = () => {
     const [deleteUserId, setDeleteUserId] = useState(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [viewMember, setViewMember] = useState({})
+    const [order, setOrder] = useState("");
+
 
 
     const showModal = (member) => {
@@ -194,6 +196,7 @@ const Gym = () => {
             if (userTypeFilter) params.userType = userTypeFilter;
             if (subscriptionFilter) params.status = subscriptionFilter;
             if (trainerFilter) params.trainerName = trainerFilter;
+            if (order) params.order = order;
 
             const res = await axios.get(`${baseUrl}/api/v1/gym/all-users`,
                 { params }
@@ -232,7 +235,7 @@ const Gym = () => {
     // Refetch when page, searchTerm, or userTypeFilter changes
     useEffect(() => {
         fetchMembers();
-    }, [page, searchTerm, userTypeFilter, subscriptionFilter, trainerFilter]);
+    }, [page, searchTerm, userTypeFilter, subscriptionFilter, trainerFilter, order]);
 
 
     const formatDate = (dateString) => {
@@ -403,13 +406,17 @@ const Gym = () => {
                                                 // Reset both filters first
                                                 setUserTypeFilter("");
                                                 setSubscriptionFilter("");
+                                                setOrder("");
 
                                                 // Apply filter based on selection
                                                 if (["athlete", "non-athlete", "personal-trainer"].includes(value)) {
                                                     setUserTypeFilter(value);
                                                 } else if (["active", "expired"].includes(value)) {
                                                     setSubscriptionFilter(value);
+                                                } else if (value === "asc") {
+                                                    setOrder("asc"); // 🔹 new state for sorting
                                                 }
+
                                             }}
                                         >
                                             <option className={styles.selectoption} value="">Select</option>
@@ -418,6 +425,7 @@ const Gym = () => {
                                             <option className={styles.selectoption} value="personal-trainer">Personal Trainer</option>
                                             <option className={styles.selectoption} value="active">Active Members</option>
                                             <option className={styles.selectoption} value="expired">Inactive Members</option>
+                                            <option className={styles.selectoption} value="asc">Oldest First</option>
                                         </select>
                                     </div>
                                     <div className={styles.selectmembers}>
@@ -1137,6 +1145,30 @@ const Gym = () => {
                                             >
                                                 PDF {idx + 1}
                                             </a>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const res = await axios.delete(`${baseUrl}/api/v1/trainer/delete-diet-plan`, {
+                                                            data: { userId: viewMember._id, index: idx },
+                                                        });
+
+                                                        toast.success(res.data.message);
+
+                                                        // Update state to remove deleted PDF
+                                                        setViewMember((prev) => ({
+                                                            ...prev,
+                                                            dietPdfs: prev.dietPdfs.filter((_, i) => i !== idx),
+                                                        }));
+                                                    } catch (err) {
+                                                        toast.error(
+                                                            err.response?.data?.message || "Failed to delete PDF"
+                                                        );
+                                                    }
+                                                }}
+                                                className="ml-2 text-red-500 hover:text-red-700"
+                                            >
+                                                <Trash2 className={styles.deletediet}/>
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
