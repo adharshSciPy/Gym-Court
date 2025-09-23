@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Search, X, MessageCircle, Eye, Trash2, Calendar, Clock, CreditCard, User, Phone } from "lucide-react";
+import {
+  Search,
+  X,
+  MessageCircle,
+  Eye,
+  Trash2,
+  Calendar,
+  Clock,
+  CreditCard,
+  User,
+  Phone,
+} from "lucide-react";
 import styles from "./MembersPage.module.css";
 import axios from "axios";
 import baseUrl from "../../baseUrl";
@@ -185,7 +196,9 @@ function MembersPage() {
 
   const onDelete = async () => {
     try {
-      const res = await axios.delete(`${baseUrl}/api/v1/user/delete/${selectedMember._id}`);
+      const res = await axios.delete(
+        `${baseUrl}/api/v1/user/delete/${selectedMember._id}`
+      );
       if (res.status === 200) {
         toast.success("Member deleted successfully");
       }
@@ -213,13 +226,31 @@ function MembersPage() {
 
       if (member.status === "expired") {
         // Expired subscription message
-        message = `Hello ${member.firstName || 'Member'},\n\nYour subscription has expired on ${member.endDate || 'N/A'}.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${member.courtName || 'N/A'}\nLast booking period: ${member.startDate || 'N/A'} to ${member.endDate || 'N/A'}\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
+        message = `Hello ${
+          member.firstName || "Member"
+        },\n\nYour subscription has expired on ${
+          member.endDate || "N/A"
+        }.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${
+          member.courtName || "N/A"
+        }\nLast booking period: ${member.startDate || "N/A"} to ${
+          member.endDate || "N/A"
+        }\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
       } else if (member.status === "upcoming") {
         // Active subscription message
-        message = `Hello ${member.firstName || 'Member'},\n\nYour subscription is active until ${member.endDate || 'N/A'}.\n\nCourt: ${member.courtName || 'N/A'}\nBooking period: ${member.startDate || 'N/A'} to ${member.endDate || 'N/A'}\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
+        message = `Hello ${
+          member.firstName || "Member"
+        },\n\nYour subscription is active until ${
+          member.endDate || "N/A"
+        }.\n\nCourt: ${member.courtName || "N/A"}\nBooking period: ${
+          member.startDate || "N/A"
+        } to ${
+          member.endDate || "N/A"
+        }\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
       } else {
         // General message
-        message = `Hello ${member.firstName || 'Member'},\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
+        message = `Hello ${
+          member.firstName || "Member"
+        },\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
       }
 
       const encodedMessage = encodeURIComponent(message);
@@ -249,10 +280,10 @@ function MembersPage() {
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
-      return new Date(dateString).toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+      return new Date(dateString).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
       });
     } catch {
       return dateString;
@@ -262,7 +293,6 @@ function MembersPage() {
   // Format time for display
   const formatTime = (timeString) => {
     if (!timeString) return "N/A";
-
 
     const [hourStr, minuteStr] = timeString.split(":");
     if (!hourStr || !minuteStr) return timeString;
@@ -276,7 +306,6 @@ function MembersPage() {
       .toString()
       .padStart(2, "0")} ${ampm}`;
   };
-
 
   return (
     <div className={styles.container}>
@@ -321,7 +350,9 @@ function MembersPage() {
             <tbody>
               {filteredMembers.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
-                  <td className={styles.td}>{member.firstName || "N/A"}{" "}{member.lastName}</td>
+                  <td className={styles.td}>
+                    {member.firstName || "N/A"} {member.lastName}
+                  </td>
                   <td className={styles.td}>{member.phoneNumber || "N/A"}</td>
                   <td className={styles.td}>
                     {member.whatsAppNumber || "N/A"}
@@ -331,10 +362,11 @@ function MembersPage() {
                   <td className={styles.td}>{member.courtName || "N/A"}</td>
                   <td className={styles.td}>
                     <span
-                      className={`${styles.status} ${member.status === "upcoming"
-                        ? styles.statusActive
-                        : styles.statusExpired
-                        }`}
+                      className={`${styles.status} ${
+                        member.status === "expired"
+                          ? styles.statusExpired
+                          : styles.statusActive
+                      }`}
                     >
                       {member.status || "N/A"}
                     </span>
@@ -385,7 +417,7 @@ function MembersPage() {
           <div className={`${styles.modalContent} ${styles.viewModalContent}`}>
             <div className={styles.modalHeader}>
               <h2>
-                <User size={20} style={{ marginRight: '8px' }} />
+                <User size={20} style={{ marginRight: "8px" }} />
                 Member Details
               </h2>
               <button
@@ -412,14 +444,14 @@ function MembersPage() {
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Phone Number:</span>
                     <span className={styles.detailValue}>
-                      <Phone size={14} style={{ marginRight: '4px' }} />
+                      <Phone size={14} style={{ marginRight: "4px" }} />
                       {selectedMember.phoneNumber || "N/A"}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>WhatsApp Number:</span>
                     <span className={styles.detailValue}>
-                      <MessageCircle size={14} style={{ marginRight: '4px' }} />
+                      <MessageCircle size={14} style={{ marginRight: "4px" }} />
                       {selectedMember.whatsAppNumber || "N/A"}
                     </span>
                   </div>
@@ -445,37 +477,42 @@ function MembersPage() {
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Start Date:</span>
                     <span className={styles.detailValue}>
-                      <Calendar size={14} style={{ marginRight: '4px' }} />
+                      <Calendar size={14} style={{ marginRight: "4px" }} />
                       {formatDate(selectedMember.startDate)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>End Date:</span>
                     <span className={styles.detailValue}>
-                      <Calendar size={14} style={{ marginRight: '4px' }} />
+                      <Calendar size={14} style={{ marginRight: "4px" }} />
                       {formatDate(selectedMember.endDate)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Start Time:</span>
                     <span className={styles.detailValue}>
-                      <Clock size={14} style={{ marginRight: '4px' }} />
+                      <Clock size={14} style={{ marginRight: "4px" }} />
                       {formatTime(selectedMember.startTime)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>End Time:</span>
                     <span className={styles.detailValue}>
-                      <Clock size={14} style={{ marginRight: '4px' }} />
+                      <Clock size={14} style={{ marginRight: "4px" }} />
                       {formatTime(selectedMember.endTime)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
-                    <span className={styles.detailLabel}>Subscription Status:</span>
-                    <span className={`${styles.detailValue} ${styles.statusBadge} ${selectedMember.status === "upcoming"
-                      ? styles.statusActive
-                      : styles.statusExpired
-                      }`}>
+                    <span className={styles.detailLabel}>
+                      Subscription Status:
+                    </span>
+                    <span
+                      className={`${styles.detailValue} ${styles.statusBadge} ${
+                        selectedMember.status === "upcoming"
+                          ? styles.statusActive
+                          : styles.statusExpired
+                      }`}
+                    >
                       {selectedMember.status || "N/A"}
                     </span>
                   </div>
@@ -489,8 +526,8 @@ function MembersPage() {
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Amount:</span>
                     <span className={styles.detailValue}>
-                      <CreditCard size={14} style={{ marginRight: '4px' }} />
-                      ₹{selectedMember.amount || "N/A"}
+                      <CreditCard size={14} style={{ marginRight: "4px" }} />₹
+                      {selectedMember.amount || "N/A"}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
@@ -535,9 +572,9 @@ function MembersPage() {
               <button
                 className={`${styles.actionButton} ${styles.whatsappButton}`}
                 onClick={() => handleWhatsApp(selectedMember)}
-                style={{ marginRight: '10px' }}
+                style={{ marginRight: "10px" }}
               >
-                <MessageCircle size={16} style={{ marginRight: '5px' }} />
+                <MessageCircle size={16} style={{ marginRight: "5px" }} />
                 Send WhatsApp
               </button>
               {/* <button
@@ -558,7 +595,9 @@ function MembersPage() {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h2>
-                Renew Booking for {selectedMember?.firstName + selectedMember?.lastName || "Member"}
+                Renew Booking for{" "}
+                {selectedMember?.firstName + selectedMember?.lastName ||
+                  "Member"}
               </h2>
               <button
                 className={styles.closeButton}
@@ -569,10 +608,7 @@ function MembersPage() {
               </button>
             </div>
 
-            <form
-              onSubmit={handleRenewalSubmit}
-              className={styles.renewalForm}
-            >
+            <form onSubmit={handleRenewalSubmit} className={styles.renewalForm}>
               <div className={styles.formGrid}>
                 {/* Court Dropdown */}
                 <div className={styles.formGroup}>
@@ -744,7 +780,6 @@ function MembersPage() {
                     <option value="cash">Cash</option>
                     {/* <option value="card">Card</option> */}
                     <option value="upi">UPI</option>
-
                   </select>
                 </div>
               </div>
@@ -774,12 +809,21 @@ function MembersPage() {
         <div className={styles.overlay || styles.modalOverlay}>
           <div className={styles.popup || styles.modalContent}>
             <h3>Are you sure?</h3>
-            <p>This action cannot be undone. Do you want to delete {selectedMember?.firstName}?</p>
+            <p>
+              This action cannot be undone. Do you want to delete{" "}
+              {selectedMember?.firstName}?
+            </p>
             <div className={styles.actions || styles.modalActions}>
-              <button onClick={onCancel} className={styles.cancelBtn || styles.cancelButton}>
+              <button
+                onClick={onCancel}
+                className={styles.cancelBtn || styles.cancelButton}
+              >
                 Cancel
               </button>
-              <button onClick={onDelete} className={styles.deleteBtn || styles.deleteButton}>
+              <button
+                onClick={onDelete}
+                className={styles.deleteBtn || styles.deleteButton}
+              >
                 Delete
               </button>
             </div>

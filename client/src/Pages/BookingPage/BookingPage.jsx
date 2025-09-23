@@ -237,9 +237,9 @@ useEffect(() => {
                   <td className={styles.td}>
                     <span
                       className={`${styles.status} ${
-                        member.status === "upcoming"
-                          ? styles.statusActive
-                          : styles.statusExpired
+                        member.status === "expired"
+                         ?styles.statusExpired
+                        :styles.statusActive
                       }`}
                     >
                       {member.status}
