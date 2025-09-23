@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";  
+import React, { useCallback, useEffect, useState } from "react";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./MemberTable.module.css";
 import axios from "axios";
@@ -172,83 +172,83 @@ const MemberTable = (selectedCourtNumber) => {
     setEndDate(value);
     setCurrentPage(1);
   };
-const fetchBookingHistory = useCallback(
-  async (page = 1, search = "") => {
-    setLoading(true);
-    try {
-      const params = {
-        courtId: selectedCourtNumber.selectedCourtNumber,
-        page,
-        limit: itemsPerPage,
-      };
+  const fetchBookingHistory = useCallback(
+    async (page = 1, search = "") => {
+      setLoading(true);
+      try {
+        const params = {
+          courtId: selectedCourtNumber.selectedCourtNumber,
+          page,
+          limit: itemsPerPage,
+        };
 
-      if (search.trim().length >= 3) {
-        params.search = search.trim();
+        if (search.trim().length >= 3) {
+          params.search = search.trim();
+        }
+
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+
+        const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
+          params,
+        });
+
+        setBookingHistory(res.data.bookings);
+        setTotalPages(
+          res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
+        );
+        setTotalRecords(res.data.total || res.data.bookings.length);
+      } catch (error) {
+        console.error(error);
+        setBookingHistory([]);
+      } finally {
+        setLoading(false);
       }
-
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-
-      const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
-        params,
-      });
-
-      setBookingHistory(res.data.bookings);
-      setTotalPages(
-        res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
-      );
-      setTotalRecords(res.data.total || res.data.bookings.length);
-    } catch (error) {
-      console.error(error);
-      setBookingHistory([]);
-    } finally {
-      setLoading(false);
-    }
-  },
-  [selectedCourtNumber, startDate, endDate, itemsPerPage] // ✅ dependencies
-);
+    },
+    [selectedCourtNumber, startDate, endDate, itemsPerPage] // ✅ dependencies
+  );
 
   useEffect(() => {
-    
-      setCurrentPage(1);
-        const fetchBookingHistory = async (page = 1, search) => {
-    setLoading(true);
-    try {
-      const params = {
-        courtId: selectedCourtNumber.selectedCourtNumber,
-        page: page,
-        limit: itemsPerPage,
-      };
-      if (search && search.trim().length >= 2) {
-        params.search = search.trim();
-      }
 
-      if (startDate) {
-        params.startDate = startDate;
-      }
-      if (endDate) {
-        params.endDate = endDate;
-      }
+    setCurrentPage(1);
+    const fetchBookingHistory = async (page = 1, search) => {
+      setLoading(true);
+      try {
+        const params = {
+          courtId: selectedCourtNumber.selectedCourtNumber,
+          page: page,
+          limit: itemsPerPage,
+        };
+        if (search && search.trim().length >= 2) {
+          params.search = search.trim();
+        }
 
-      const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
-        params: params,
-      });
+        if (startDate) {
+          params.startDate = startDate;
+        }
+        if (endDate) {
+          params.endDate = endDate;
+        }
 
-      setBookingHistory(res.data.bookings);
-      setTotalPages(
-        res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
-      );
-      setTotalRecords(res.data.total || res.data.bookings.length);
-    } catch (error) {
-      console.log(error);
-      setBookingHistory([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchBookingHistory(1, searchTerm);
-    
-  }, [searchTerm,endDate,startDate,selectedCourtNumber,itemsPerPage]);
+        const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
+          params: params,
+        });
+
+        setBookingHistory(res.data.bookings);
+        setTotalPages(
+          res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
+        );
+        setTotalRecords(res.data.total || res.data.bookings.length);
+      } catch (error) {
+        console.log(error);
+        setBookingHistory([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookingHistory(1, searchTerm);
+
+  }, [searchTerm, endDate, startDate, selectedCourtNumber, itemsPerPage]);
 
 
   useEffect(() => {
@@ -259,18 +259,26 @@ const fetchBookingHistory = useCallback(
     }, 500);
 
     return () => clearTimeout(delayedSearch);
-  }, [searchTerm,fetchBookingHistory,selectedCourtNumber]);
+  }, [searchTerm, fetchBookingHistory, selectedCourtNumber]);
 
   useEffect(() => {
     if (selectedCourtNumber) {
       fetchBookingHistory(1, searchTerm, startDate, endDate);
     }
-  }, [startDate, endDate,fetchBookingHistory,searchTerm,selectedCourtNumber]);
+  }, [startDate, endDate, fetchBookingHistory, searchTerm, selectedCourtNumber]);
+
   useEffect(() => {
     if (selectedCourtNumber) {
       fetchBookingHistory(currentPage, searchTerm);
     }
-  }, [currentPage,fetchBookingHistory,searchTerm,selectedCourtNumber]);
+
+    const intervalId = setInterval(() => {
+      fetchBookingHistory(currentPage, searchTerm);
+    }, 120000); // 2 minutes in milliseconds
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
+  }, [currentPage, fetchBookingHistory, searchTerm, selectedCourtNumber]);
 
   const generatePageNumbers = () => {
     const pages = [];
@@ -379,11 +387,10 @@ const fetchBookingHistory = useCallback(
                   >{`${member.startTime}-${member.endTime}`}</td>
                   <td className={styles.td}>
                     <span
-                      className={`${styles.status} ${
-                        member.status === "upcoming"
-                          ? styles.statusActive
-                          : styles.statusExpired
-                      }`}
+                      className={`${styles.status} ${member.status === "upcoming"
+                        ? styles.statusActive
+                        : styles.statusExpired
+                        }`}
                     >
                       {member.status}
                     </span>
@@ -436,9 +443,8 @@ const fetchBookingHistory = useCallback(
 
           <div className={styles.paginationControls}>
             <button
-              className={`${styles.paginationButton} ${
-                currentPage === 1 ? styles.disabled : ""
-              }`}
+              className={`${styles.paginationButton} ${currentPage === 1 ? styles.disabled : ""
+                }`}
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
@@ -450,9 +456,8 @@ const fetchBookingHistory = useCallback(
               {generatePageNumbers().map((page, index) => (
                 <button
                   key={index}
-                  className={`${styles.pageButton} ${
-                    page === currentPage ? styles.activePage : ""
-                  } ${page === "..." ? styles.ellipsis : ""}`}
+                  className={`${styles.pageButton} ${page === currentPage ? styles.activePage : ""
+                    } ${page === "..." ? styles.ellipsis : ""}`}
                   onClick={() => page !== "..." && handlePageChange(page)}
                   disabled={page === "..."}
                 >
@@ -462,9 +467,8 @@ const fetchBookingHistory = useCallback(
             </div>
 
             <button
-              className={`${styles.paginationButton} ${
-                currentPage === totalPages ? styles.disabled : ""
-              }`}
+              className={`${styles.paginationButton} ${currentPage === totalPages ? styles.disabled : ""
+                }`}
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >

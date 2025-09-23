@@ -43,8 +43,18 @@ function MembersPage() {
 
   // Fetch members on component mount
   useEffect(() => {
+    // Initial fetch
     getMembers();
+
+    // Polling every 2 minutes (120000 ms)
+    const intervalId = setInterval(() => {
+      getMembers();
+    }, 120000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
+
 
   // Fetch all members/bookings
   const getMembers = async () => {
@@ -226,31 +236,22 @@ function MembersPage() {
 
       if (member.status === "expired") {
         // Expired subscription message
-        message = `Hello ${
-          member.firstName || "Member"
-        },\n\nYour subscription has expired on ${
-          member.endDate || "N/A"
-        }.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${
-          member.courtName || "N/A"
-        }\nLast booking period: ${member.startDate || "N/A"} to ${
-          member.endDate || "N/A"
-        }\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
+        message = `Hello ${member.firstName || "Member"
+          },\n\nYour subscription has expired on ${member.endDate || "N/A"
+          }.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${member.courtName || "N/A"
+          }\nLast booking period: ${member.startDate || "N/A"} to ${member.endDate || "N/A"
+          }\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
       } else if (member.status === "upcoming") {
         // Active subscription message
-        message = `Hello ${
-          member.firstName || "Member"
-        },\n\nYour subscription is active until ${
-          member.endDate || "N/A"
-        }.\n\nCourt: ${member.courtName || "N/A"}\nBooking period: ${
-          member.startDate || "N/A"
-        } to ${
-          member.endDate || "N/A"
-        }\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
+        message = `Hello ${member.firstName || "Member"
+          },\n\nYour subscription is active until ${member.endDate || "N/A"
+          }.\n\nCourt: ${member.courtName || "N/A"}\nBooking period: ${member.startDate || "N/A"
+          } to ${member.endDate || "N/A"
+          }\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
       } else {
         // General message
-        message = `Hello ${
-          member.firstName || "Member"
-        },\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
+        message = `Hello ${member.firstName || "Member"
+          },\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
       }
 
       const encodedMessage = encodeURIComponent(message);
@@ -362,11 +363,10 @@ function MembersPage() {
                   <td className={styles.td}>{member.courtName || "N/A"}</td>
                   <td className={styles.td}>
                     <span
-                      className={`${styles.status} ${
-                        member.status === "expired"
+                      className={`${styles.status} ${member.status === "expired"
                           ? styles.statusExpired
                           : styles.statusActive
-                      }`}
+                        }`}
                     >
                       {member.status || "N/A"}
                     </span>
@@ -507,11 +507,10 @@ function MembersPage() {
                       Subscription Status:
                     </span>
                     <span
-                      className={`${styles.detailValue} ${styles.statusBadge} ${
-                        selectedMember.status === "upcoming"
+                      className={`${styles.detailValue} ${styles.statusBadge} ${selectedMember.status === "upcoming"
                           ? styles.statusActive
                           : styles.statusExpired
-                      }`}
+                        }`}
                     >
                       {selectedMember.status || "N/A"}
                     </span>
