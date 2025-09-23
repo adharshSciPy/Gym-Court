@@ -11,7 +11,7 @@ function Login() {
   return (
     <div className={styles.container}>
       {/* Floating icons */}
-      <div className={styles.icons}>
+      {/* <div className={styles.icons}>
         <GiShuttlecock className={styles.icon} style={{ top: "10%", left: "5%" }} />
         <FaDumbbell className={styles.icon} style={{ top: "15%", left: "20%" }} />
         <GiShuttlecock className={styles.icon} style={{ top: "30%", left: "10%" }} />
@@ -20,7 +20,7 @@ function Login() {
         <FaDumbbell className={styles.icon} style={{ bottom: "10%", right: "10%" }} />
         <GiShuttlecock className={styles.icon} style={{ bottom: "5%", left: "5%" }} />
         <FaDumbbell className={styles.icon} style={{ top: "60%", right: "5%" }} />
-      </div>
+      </div> */}
 
       {/* Center card */}
       <div className={styles.card}>
