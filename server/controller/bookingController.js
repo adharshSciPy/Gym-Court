@@ -5,7 +5,7 @@ import Court from "../model/courtSchema.js";
 import mongoose from "mongoose";
 const getLatestBookings = async (req, res) => {
   try {
-    const { search, startDate, endDate, page = 1, limit = 10 } = req.query;
+    const { search, startDate, endDate, page = 1, limit = 10, order } = req.query;
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -25,21 +25,24 @@ const getLatestBookings = async (req, res) => {
       matchConditions.endDate = { $gte: start };
     }
 
+    // --- Sorting option ---
+    const sortDirection = order === "asc" ? 1 : -1; // default: newest first
+    const sortOption = { startDate: sortDirection, startTime: sortDirection, createdAt: sortDirection };
+
     // --- Aggregation pipeline ---
     const pipeline = [
       { $match: matchConditions },
 
-      // Sort by newest first
-      { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
+      // Sort by startDate/startTime/createdAt
+      { $sort: sortOption },
 
-  // Group by userId → latest booking per user
-{ 
-  $group: { 
-    _id: "$userId", 
-    latestBooking: { $first: "$$ROOT" } 
-  } 
-},
-
+      // Group by userId → latest booking per user
+      {
+        $group: {
+          _id: "$userId",
+          latestBooking: { $first: "$$ROOT" },
+        },
+      },
 
       // Lookup user
       {
@@ -115,7 +118,7 @@ const getLatestBookings = async (req, res) => {
     // --- Total count for pagination ---
     const countPipeline = [
       { $match: matchConditions },
-      { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
+      { $sort: sortOption },
       { $group: { _id: { userId: "$userId", courtId: "$courtId" } } },
       ...(search
         ? [
@@ -202,6 +205,7 @@ const getLatestBookings = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 
 const getFullBookingHistory = async (req, res) => {

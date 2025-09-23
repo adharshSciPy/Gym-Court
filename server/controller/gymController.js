@@ -259,7 +259,8 @@ const getAllGymUsers = async (req, res) => {
       search,
       status,
       trainerName,
-      userType, // NEW: filter by athlete / non-athlete
+      userType,
+       order, 
     } = req.query;
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
@@ -299,11 +300,15 @@ const getAllGymUsers = async (req, res) => {
     if (userType && ["athlete", "non-athlete","personal-trainer"].includes(userType)) {
       query.userType = userType;
     }
-
+  let sortOption = { createdAt: -1 }; 
+    if (order === "asc") {
+      sortOption = { createdAt: 1 }; 
+    }
     // --- Fetch users and total count in parallel ---
     const [users, total] = await Promise.all([
       GymUsers.find(query)
         .populate("trainer", "trainerName trainerEmail phoneNumber")
+           .sort(sortOption)
         .skip(skip)
         .limit(parseInt(limit, 10))
         .lean(),
