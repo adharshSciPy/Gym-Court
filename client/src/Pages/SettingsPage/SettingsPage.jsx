@@ -2,64 +2,67 @@ import React, { useState, useEffect } from "react";
 import styles from "./SettingPage.module.css";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
-import { Trash2 } from "lucide-react"
+import { Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
 
 function SettingsPage() {
-
   const [trainersData, setTrainersData] = useState([]);
   const [receptionsData, setReceptionsData] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [deleteType, setDeleteType] = useState("");
 
-
   const fetchTrainers = async () => {
     try {
       const trainerdetails = await axios.get(`${baseUrl}/api/v1/trainer/all-trainers`);
-      setTrainersData(trainerdetails.data.trainers)
+      setTrainersData(trainerdetails.data.trainers);
     } catch (error) {
-      console.log(error)
+      console.error("Error fetching trainers:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch trainers");
     }
-  }
+  };
 
   const fetchReceptionist = async () => {
     try {
       const receptionsdetails = await axios.get(`${baseUrl}/api/v1/receptionist/all-receptionists`);
-      setReceptionsData(receptionsdetails.data.receptionists)
+      setReceptionsData(receptionsdetails.data.receptionists);
     } catch (error) {
-      console.log(error)
+      console.error("Error fetching receptionists:", error);
+      toast.error(error.response?.data?.message || "Failed to fetch receptionists");
     }
-  }
+  };
 
   useEffect(() => {
     fetchReceptionist();
     fetchTrainers();
-  }, [])
+  }, []);
 
   const deleteTrainer = async (id) => {
     try {
-      const trainerRes = await axios.delete(`${baseUrl}/api/v1/trainer/delete/${id}`)
-      console.log("deleteTrainer", trainerRes)
-      fetchTrainers()
+      const trainerRes = await axios.delete(`${baseUrl}/api/v1/trainer/delete/${id}`);
+      console.log("deleteTrainer", trainerRes);
+      toast.success("Trainer deleted successfully");
+      fetchTrainers();
     } catch (error) {
-      console.log(error)
+      console.error("Error deleting trainer:", error);
+      toast.error(error.response?.data?.message || "Failed to delete trainer");
     }
-  }
+  };
 
   const deleteReception = async (id) => {
     try {
-      const receptionRes = await axios.delete(`${baseUrl}/api/v1/receptionist/delete/${id}`)
-      console.log("deleteReception", receptionRes)
-      fetchReceptionist()
+      const receptionRes = await axios.delete(`${baseUrl}/api/v1/receptionist/delete/${id}`);
+      console.log("deleteReception", receptionRes);
+      toast.success("Receptionist deleted successfully");
+      fetchReceptionist();
     } catch (error) {
-      console.log(error)
+      console.error("Error deleting receptionist:", error);
+      toast.error(error.response?.data?.message || "Failed to delete receptionist");
     }
-  }
-
+  };
 
   const [activeTab, setActiveTab] = useState("receptionist");
 
-  // two separate states because the field names differ
   const [receptionistData, setReceptionistData] = useState({
     userName: "",
     receptionistEmail: "",
@@ -77,7 +80,6 @@ function SettingsPage() {
 
   const [errors, setErrors] = useState({});
 
-  // ---------- Validation ----------
   const validateField = (name, value, tab) => {
     let error = "";
 
@@ -96,8 +98,7 @@ function SettingsPage() {
     if (name === "password") {
       if (!value.trim()) error = "Password is required";
       else if (tab === "trainer" ? value.length < 8 : value.length < 6) {
-        error = `Password must be at least ${tab === "trainer" ? 8 : 6
-          } characters`;
+        error = `Password must be at least ${tab === "trainer" ? 8 : 6} characters`;
       }
     }
 
@@ -128,19 +129,17 @@ function SettingsPage() {
     }));
   };
 
-  // ---------- Submit ----------
   const handleSubmit = async (e) => {
     e.preventDefault();
     const tab = activeTab;
 
     const data = tab === "receptionist" ? receptionistData : trainerData;
 
-    // validate all
     const hasErrors = Object.keys(data).some(
       (key) => validateField(key, data[key], tab) !== ""
     );
     if (hasErrors) {
-      alert("Please fix the errors before submitting");
+      toast.error("Please fix the errors before submitting");
       return;
     }
 
@@ -152,11 +151,10 @@ function SettingsPage() {
     try {
       const res = await axios.post(endpoint, data);
       console.log(res.data);
-      alert(`${tab === "receptionist" ? "Receptionist" : "Trainer"} added successfully!`);
+      toast.success(`${tab === "receptionist" ? "Receptionist" : "Trainer"} added successfully`);
       fetchReceptionist();
       fetchTrainers();
 
-      // reset
       setReceptionistData({
         userName: "",
         receptionistEmail: "",
@@ -173,11 +171,10 @@ function SettingsPage() {
       setErrors({});
     } catch (err) {
       console.error("Submission error:", err);
-      alert("Error submitting the form");
+      toast.error(err.response?.data?.message || `Failed to add ${tab === "receptionist" ? "receptionist" : "trainer"}`);
     }
   };
 
-  // ---------- Disable button ----------
   const disableReceptionist =
     !receptionistData.userName.trim() ||
     receptionistData.userName.length < 4 ||
@@ -189,48 +186,39 @@ function SettingsPage() {
     !trainerData.trainerName.trim() ||
     trainerData.trainerName.length < 4 ||
     !/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(trainerData.trainerEmail) ||
-    trainerData.password.length < 8 || // <-- 8 chars
+    trainerData.password.length < 8 ||
     !/^\d{10}$/.test(trainerData.phoneNumber) ||
     (trainerData.experience && isNaN(trainerData.experience));
 
   const isDisabled = activeTab === "receptionist" ? disableReceptionist : disableTrainer;
 
-  // Converts ISO date string to DD/MM/YYYY
   function formatDate(isoDate) {
     if (!isoDate) return "";
 
     const date = new Date(isoDate);
     const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-based
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
 
     return `${day}/${month}/${year}`;
   }
 
-
-
-
-
-  // ---------- JSX ----------
   return (
-    <div style={{overflow: "hidden"}} >
+    <div style={{ overflow: "hidden" }}>
       <div className={styles.container}>
         <h2 className={styles.heading}>Settings</h2>
 
-        {/* Tabs */}
         <div className={styles.tabs}>
           <button
             type="button"
-            className={`${styles.tabBtn} ${activeTab === "receptionist" ? styles.active : ""
-              }`}
+            className={`${styles.tabBtn} ${activeTab === "receptionist" ? styles.active : ""}`}
             onClick={() => setActiveTab("receptionist")}
           >
             Receptionist
           </button>
           <button
             type="button"
-            className={`${styles.tabBtn} ${activeTab === "trainer" ? styles.active : ""
-              }`}
+            className={`${styles.tabBtn} ${activeTab === "trainer" ? styles.active : ""}`}
             onClick={() => setActiveTab("trainer")}
           >
             Trainer
@@ -383,9 +371,8 @@ function SettingsPage() {
       <div className={styles.listItems}>
         {activeTab === "receptionist" ? (
           <>
-            <h3>Added Receiptionist</h3>
+            <h3>Added Receptionists</h3>
             <div className={styles.table}>
-
               <div className={styles.tableData}>
                 <table>
                   <thead>
@@ -406,19 +393,19 @@ function SettingsPage() {
                         <td>{formatDate(value.createdAt)}</td>
                         <td>{value.phoneNumber}</td>
                         <td>{value.receptionistEmail}</td>
-                        <td><Trash2
-                          color="red"
-                          onClick={() => {
-                            setDeleteId(value._id);
-                            setDeleteType("receptionist");
-                            setShowModal(true);
-                          }}
-                        />
+                        <td>
+                          <Trash2
+                            color="red"
+                            onClick={() => {
+                              setDeleteId(value._id);
+                              setDeleteType("receptionist");
+                              setShowModal(true);
+                            }}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-
                 </table>
               </div>
             </div>
@@ -427,7 +414,6 @@ function SettingsPage() {
           <>
             <h3>Added Trainers</h3>
             <div className={styles.table}>
-
               <div className={styles.tableData}>
                 <table>
                   <thead>
@@ -450,19 +436,19 @@ function SettingsPage() {
                         <td>{value.phoneNumber}</td>
                         <td>{value.trainerEmail}</td>
                         <td>{value.experience}</td>
-                        <td><Trash2
-                          color="red"
-                          onClick={() => {
-                            setDeleteId(value._id);
-                            setDeleteType("trainer");
-                            setShowModal(true);
-                          }}
-                        />
+                        <td>
+                          <Trash2
+                            color="red"
+                            onClick={() => {
+                              setDeleteId(value._id);
+                              setDeleteType("trainer");
+                              setShowModal(true);
+                            }}
+                          />
                         </td>
                       </tr>
                     ))}
                   </tbody>
-
                 </table>
               </div>
             </div>
@@ -499,7 +485,6 @@ function SettingsPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
