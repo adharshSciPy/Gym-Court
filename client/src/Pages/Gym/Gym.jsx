@@ -25,6 +25,8 @@ const Gym = () => {
     const [userId, setUserId] = useState("")
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deleteUserId, setDeleteUserId] = useState(null);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [viewMember, setViewMember] = useState({})
 
 
     const showModal = (member) => {
@@ -38,10 +40,36 @@ const Gym = () => {
         setIsModalOpen(true);
     };
 
+    const viewModal = (id) => {
+        setIsViewModalOpen(true)
+
+
+        const viewMember = async (id) => {
+            try {
+                const viewDetails = await axios.get(`${baseUrl}/api/v1/gym/single-user/${id}`);
+                setViewMember(viewDetails.data.data)
+                console.log("view", viewDetails)
+            } catch (error) {
+                console.log(error)
+            }
+        }
+        viewMember(id)
+    }
+
+    const getFileUrl = (fileName) => {
+        return `${baseUrl}/${fileName}`;
+    };
+
+
+
 
     const handleCancel = () => {
         setIsModalOpen(false);
     };
+
+    const handleViewCancel = () => {
+        setIsViewModalOpen(false)
+    }
 
     const edithandleOk = (id) => {
         setEditModal(false);
@@ -453,6 +481,11 @@ const Gym = () => {
                                                                 }}
                                                             >
                                                                 <Trash2 color='red' className="w-4 h-4" />
+                                                            </button>
+                                                            <button className={`${styles.actionButton} ${styles.actionButtonView}`}
+                                                                onClick={() => viewModal(member._id)}
+                                                            >
+                                                                <Eye className="w-4 h-4" />
                                                             </button>
                                                         </div>
                                                     </td>
@@ -995,6 +1028,89 @@ const Gym = () => {
             >
                 <p>Are you sure you want to delete this member? This action cannot be undone.</p>
             </Modal>
+
+            <Modal
+                title="Member Profile"
+                open={isViewModalOpen}
+                onCancel={handleViewCancel}
+                footer={null}
+                centered
+                width={500}
+            >
+                <div className="flex flex-col items-center">
+                    {/* Profile Header */}
+                    <div className="flex items-center gap-4 w-full border-b pb-4">
+                        {/* Profile Picture */}
+                        {viewMember.profilePicture ? (
+                            <img
+                                src={getFileUrl(viewMember.profilePicture)}
+                                alt={viewMember.name}
+                                className={styles.modalimage}
+                            />
+                        ) : (
+                            <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                                No Image
+                            </div>
+                        )}
+
+                        {/* User Info */}
+                        <div>
+                            <h2 className="text-lg font-semibold"><strong>Name:</strong> {viewMember.name}</h2>
+                            <p className="text-gray-600"><strong>UserType:</strong> {viewMember.userType ? viewMember.userType.charAt(0).toUpperCase() + viewMember.userType.slice(1).toLowerCase() : ""}</p>
+                            <p className="text-gray-500 text-sm"><strong>Location:</strong> {viewMember.address}</p>
+                        </div>
+                    </div>
+
+                    {/* Details Section */}
+                    <div className="w-full mt-4 space-y-2 text-gray-700">
+                        <p><strong>Phone:</strong> {viewMember.phoneNumber}</p>
+                        <p><strong>WhatsApp:</strong> {viewMember.whatsAppNumber}</p>
+                        {viewMember.notes && <p><strong>Notes:</strong> {viewMember.notes}</p>}
+                        {viewMember.trainer && (
+                            <p>
+                                <strong>Trainer:</strong> {viewMember.trainer.trainerName} ({viewMember.trainer.phoneNumber})
+                            </p>
+                        )}
+                        {viewMember.subscription && (
+                            <p>
+                                <strong>Subscription:</strong>{" "}
+                                {new Date(viewMember.subscription.startDate).toLocaleDateString()} -{" "}
+                                {new Date(viewMember.subscription.endDate).toLocaleDateString()} {" "}
+                                <span
+                                    className={
+                                        viewMember.subscription.status === "active"
+                                            ? styles.successstatus
+                                            : styles.expiredstatus
+                                    }
+                                >
+                                    {viewMember.subscription.status.charAt(0).toUpperCase() + viewMember.subscription.status.slice(1).toLowerCase()}
+                                </span>
+                            </p>
+                        )}
+                        {viewMember.dietPdfs && viewMember.dietPdfs.length > 0 && (
+                            <div>
+                                <strong>Diet PDFs:</strong>
+                                <ul className="list-disc ml-5 mt-1">
+                                    {viewMember.dietPdfs.map((pdf, idx) => (
+                                        <li key={idx}>
+                                            <a
+                                                href={getFileUrl(pdf)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 hover:underline"
+                                            >
+                                                PDF {idx + 1}
+                                            </a>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
+
+
 
         </div>
     );

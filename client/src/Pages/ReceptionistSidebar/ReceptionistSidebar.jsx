@@ -17,7 +17,7 @@ function Sidebar({ activeNav, setActiveNav }) {
     { name: "Members", icon: Users },
     { name: "Bookings", icon: Calendar },
     { name: "Settings", icon: Settings },
-    { name: "Payments", icon:DollarSign },
+    // { name: "Payments", icon:DollarSign },
     { name: "Logout", icon: LogOut },
 
   ];
