@@ -613,14 +613,14 @@ select option {
   color: red;
 }
 
-.fileupload{
+.fileupload {
   background-color: #10b981;
   margin-bottom: 15px;
 }
 
-
-
-
+.deletediet {
+  color: red;
+}
 
 /* Responsive Design */
 @media (min-width: 768px) {
