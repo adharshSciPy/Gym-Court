@@ -426,7 +426,15 @@ function TrainerLogin() {
                         )}
                     </div>
 
-                    <div className={styles.forgotPasswordContainer}>
+                   
+
+                    <button
+                        onClick={trainerLogin}
+                        disabled={isDisabled}
+                    >
+                        {isLoading ? "Logging in..." : "Login"}
+                    </button>
+                     <div className={styles.forgotPasswordContainer}>
                         <button
                             type="button"
                             onClick={() => {
@@ -438,13 +446,6 @@ function TrainerLogin() {
                             Forgot Password?
                         </button>
                     </div>
-
-                    <button
-                        onClick={trainerLogin}
-                        disabled={isDisabled}
-                    >
-                        {isLoading ? "Logging in..." : "Login"}
-                    </button>
                 </div>
             </div>
         </div>

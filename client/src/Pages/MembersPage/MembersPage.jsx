@@ -36,15 +36,25 @@ function MembersPage() {
     endTime: "",
     amount: "",
     isGst: false,
-    gstValue: "",
+    gst: "",
     gstNumber: "",
     modeOfPayment: "cash",
   });
 
   // Fetch members on component mount
   useEffect(() => {
+    // Initial fetch
     getMembers();
+
+    // Polling every 2 minutes (120000 ms)
+    const intervalId = setInterval(() => {
+      getMembers();
+    }, 120000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId);
   }, []);
+
 
   // Fetch all members/bookings
   const getMembers = async () => {
@@ -108,7 +118,7 @@ function MembersPage() {
 
     if (
       renewalData.isGst &&
-      (!renewalData.gstValue || !renewalData.gstNumber)
+      (!renewalData.gst || !renewalData.gstNumber)
     ) {
       setError("GST value and number are required when GST is enabled.");
       return;
@@ -123,7 +133,7 @@ function MembersPage() {
 
       // Remove GST fields if GST is not applicable
       if (!renewalData.isGst) {
-        delete renewalPayload.gstValue;
+        delete renewalPayload.gst;
         delete renewalPayload.gstNumber;
       }
 
@@ -133,7 +143,7 @@ function MembersPage() {
       );
       console.log(response);
 
-      alert("Renewal successful!");
+      toast.success("Renewal successful!");
       setShowRenewalPopup(false);
       getMembers(); // Refresh member list
     } catch (error) {
@@ -155,7 +165,7 @@ function MembersPage() {
       endTime: "",
       amount: "",
       isGst: false,
-      gstValue: "",
+      gst: "",
       gstNumber: "",
       modeOfPayment: "cash",
     });
@@ -180,7 +190,7 @@ function MembersPage() {
       endTime: member.endTime || "",
       amount: member.amount || "",
       isGst: member.isGst || false,
-      gstValue: member.gstValue || "",
+      gst: member.gst || "",
       gstNumber: member.gstNumber || "",
       modeOfPayment: member.modeOfPayment || "cash",
     });
@@ -226,37 +236,28 @@ function MembersPage() {
 
       if (member.status === "expired") {
         // Expired subscription message
-        message = `Hello ${
-          member.firstName || "Member"
-        },\n\nYour subscription has expired on ${
-          member.endDate || "N/A"
-        }.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${
-          member.courtName || "N/A"
-        }\nLast booking period: ${member.startDate || "N/A"} to ${
-          member.endDate || "N/A"
-        }\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
+        message = `Hello ${member.firstName || "Member"
+          },\n\nYour subscription has expired on ${member.endDate || "N/A"
+          }.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${member.courtName || "N/A"
+          }\nLast booking period: ${member.startDate || "N/A"} to ${member.endDate || "N/A"
+          }\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
       } else if (member.status === "upcoming") {
         // Active subscription message
-        message = `Hello ${
-          member.firstName || "Member"
-        },\n\nYour subscription is active until ${
-          member.endDate || "N/A"
-        }.\n\nCourt: ${member.courtName || "N/A"}\nBooking period: ${
-          member.startDate || "N/A"
-        } to ${
-          member.endDate || "N/A"
-        }\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
+        message = `Hello ${member.firstName || "Member"
+          },\n\nYour subscription is active until ${member.endDate || "N/A"
+          }.\n\nCourt: ${member.courtName || "N/A"}\nBooking period: ${member.startDate || "N/A"
+          } to ${member.endDate || "N/A"
+          }\n\nEnjoy your sessions! Contact us if you have any questions.\n\nThank you!`;
       } else {
         // General message
-        message = `Hello ${
-          member.firstName || "Member"
-        },\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
+        message = `Hello ${member.firstName || "Member"
+          },\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
       }
 
       const encodedMessage = encodeURIComponent(message);
       window.open(`https://wa.me/${phone}?text=${encodedMessage}`, "_blank");
     } else {
-      alert("No WhatsApp number available.");
+      toast.error("No WhatsApp number available.");
     }
   };
 
@@ -269,12 +270,15 @@ function MembersPage() {
   console.log(selectedMember);
 
   // Filter members based on search term
-  const filteredMembers = members.filter(
-    (member) =>
-      member.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phoneNumber?.includes(searchTerm) ||
-      member.whatsAppNumber?.includes(searchTerm)
+ const filteredMembers = members.filter((member) => {
+  const phone = member.phoneNumber?.toString() || "";
+  const whatsapp = member.whatsAppNumber?.toString() || "";
+  return (
+    member.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    phone.includes(searchTerm) ||
+    whatsapp.includes(searchTerm)
   );
+});
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -291,21 +295,21 @@ function MembersPage() {
   };
 
   // Format time for display
-  const formatTime = (timeString) => {
-    if (!timeString) return "N/A";
+  // const formatTime = (timeString) => {
+  //   if (!timeString) return "N/A";
 
-    const [hourStr, minuteStr] = timeString.split(":");
-    if (!hourStr || !minuteStr) return timeString;
+  //   const [hourStr, minuteStr] = timeString.split(":");
+  //   if (!hourStr || !minuteStr) return timeString;
 
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    hour = hour % 12 || 12;
+  //   let hour = parseInt(hourStr, 10);
+  //   const minute = parseInt(minuteStr, 10);
+  //   const ampm = hour >= 12 ? "PM" : "AM";
+  //   hour = hour % 12 || 12;
 
-    return `${hour.toString().padStart(2, "0")}:${minute
-      .toString()
-      .padStart(2, "0")} ${ampm}`;
-  };
+  //   return `${hour.toString().padStart(2, "0")}:${minute
+  //     .toString()
+  //     .padStart(2, "0")} ${ampm}`;
+  // };
 
   return (
     <div className={styles.container}>
@@ -362,11 +366,10 @@ function MembersPage() {
                   <td className={styles.td}>{member.courtName || "N/A"}</td>
                   <td className={styles.td}>
                     <span
-                      className={`${styles.status} ${
-                        member.status === "expired"
+                      className={`${styles.status} ${member.status === "expired"
                           ? styles.statusExpired
                           : styles.statusActive
-                      }`}
+                        }`}
                     >
                       {member.status || "N/A"}
                     </span>
@@ -492,14 +495,14 @@ function MembersPage() {
                     <span className={styles.detailLabel}>Start Time:</span>
                     <span className={styles.detailValue}>
                       <Clock size={14} style={{ marginRight: "4px" }} />
-                      {formatTime(selectedMember.startTime)}
+                      {(selectedMember.startTime)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>End Time:</span>
                     <span className={styles.detailValue}>
                       <Clock size={14} style={{ marginRight: "4px" }} />
-                      {formatTime(selectedMember.endTime)}
+                      {(selectedMember.endTime)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
@@ -507,11 +510,10 @@ function MembersPage() {
                       Subscription Status:
                     </span>
                     <span
-                      className={`${styles.detailValue} ${styles.statusBadge} ${
-                        selectedMember.status === "upcoming"
+                      className={`${styles.detailValue} ${styles.statusBadge} ${selectedMember.status === "upcoming"
                           ? styles.statusActive
                           : styles.statusExpired
-                      }`}
+                        }`}
                     >
                       {selectedMember.status || "N/A"}
                     </span>
@@ -547,7 +549,7 @@ function MembersPage() {
                       <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>GST Value:</span>
                         <span className={styles.detailValue}>
-                          {selectedMember.gstValue || "N/A"}%
+                          {selectedMember.gst || "N/A"}%
                         </span>
                       </div>
                       <div className={styles.detailItem}>
@@ -734,12 +736,12 @@ function MembersPage() {
                 {/* GST Value */}
                 {renewalData.isGst && (
                   <div className={styles.formGroup}>
-                    <label htmlFor="gstValue">GST Value (%)</label>
+                    <label htmlFor="gst">GST Value (%)</label>
                     <input
                       type="number"
-                      id="gstValue"
-                      name="gstValue"
-                      value={renewalData.gstValue}
+                      id="gst"
+                      name="gst"
+                      value={renewalData.gst}
                       onChange={handleRenewalInputChange}
                       className={styles.formInput}
                       min="0"

@@ -159,8 +159,39 @@ function PaymentHistory() {
     alert(`Delete member with ID: ${memberId}`);
   };
 
-  const handleWhatsApp = (memberName) => {
-    alert(`Open WhatsApp for ${memberName}`);
+  // helper (put near top of file or in utils)
+  const normalizeWhatsApp = (raw) => {
+    if (raw === undefined || raw === null) return null;
+
+    // If it's an object like { number: '...' } try to get the number field
+    if (typeof raw === "object") {
+      if (raw.number) raw = raw.number;
+      else return null;
+    }
+
+    // convert to string and strip non-digits
+    const digits = String(raw).trim().replace(/\D/g, "");
+
+    if (!digits) return null;
+
+    // If number looks local (10 digits) assume India (91) — change as needed
+    if (digits.length === 10) return "91" + digits;
+
+    // otherwise return as-is (already contains country code)
+    return digits;
+  };
+
+  // open whatsapp with optional pre-filled message
+  const openWhatsApp = (rawNumber, name = "") => {
+    const phone = normalizeWhatsApp(rawNumber);
+    if (!phone) {
+      alert("No valid WhatsApp number provided.");
+      return;
+    }
+
+    const message = `Hi ${name || "there"}, I wanted to check in about your membership.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
   };
 
   const handleView = (member) => {
@@ -182,37 +213,104 @@ function PaymentHistory() {
     };
   }, [debouncedGetPaymentHistory]);
 
+
   const handleDownload = (member) => {
     const doc = new jsPDF();
 
+    // ✅ Always use Unicode for ₹
+    const formatCurrency = (num) => {
+      if (num == null || isNaN(num)) return "INR 0";
+      return `INR ${Number(num).toLocaleString("en-IN")}`;
+    };
+
+
     const fullName = `${member.userId?.firstName || ""} ${member.userId?.lastName || ""}`;
+    const phoneNumber = member.userId?.phoneNumber || "";
+    const whatsAppNumber = member.userId?.whatsAppNumber || "";
     const bookingDate = member.bookingId?.startDate
       ? new Date(member.bookingId.startDate).toLocaleDateString()
       : "";
     const endDate = member.bookingId?.endDate
       ? new Date(member.bookingId.endDate).toLocaleDateString()
       : "";
+    const courtName = member.courtId?.courtName || "";
     const paymentMethod = member.modeOfPayment || "";
-    const amount = member.amount || "";
+    const amount = member.amount || 0;
+    const gst = member.gst || 0;
+    const gstNumber = member.gstNumber || "";
+    const isGst = member.isGst || false;
+
+    const totalAmount = amount + gst;
+
+    // ====== PDF Styles ======
+    const pageWidth = doc.internal.pageSize.getWidth();
 
     // Title
-    doc.setFontSize(18);
-    doc.text("Payment Bill", 105, 20, { align: "center" });
+    doc.setFontSize(20);
+    doc.setTextColor("#007bff");
+    doc.setFont("helvetica", "bold");
+    doc.text("Payment Bill", pageWidth / 2, 20, { align: "center" });
 
-    // User Details
+    // Separator line
+    doc.setDrawColor("#007bff");
+    doc.setLineWidth(0.5);
+    doc.line(20, 25, pageWidth - 20, 25);
+
+    // User Details Section
     doc.setFontSize(12);
-    doc.text(`Name: ${fullName}`, 20, 40);
-    doc.text(`Booking Date: ${bookingDate}`, 20, 50);
-    doc.text(`Ended Date: ${endDate}`, 20, 60);
-    doc.text(`Payment Method: ${paymentMethod}`, 20, 70);
-    doc.text(`Amount Paid: ₹${amount}`, 20, 80);
+    doc.setTextColor("#333");
+    doc.setFont("helvetica", "normal");
 
-    // Optional: Add a table for extra info
-    // doc.autoTable({ head: [['Field', 'Value']], body: [['Name', fullName], ['Amount', amount]] });
+    let startY = 40;
+    const lineHeight = 10;
+
+    // Background box
+    doc.setFillColor("#f8f9fa");
+    doc.roundedRect(15, startY - 5, pageWidth - 30, lineHeight * 9 + 10, 6, 6, "F");
+
+    const addField = (label, value) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor("#666");
+      doc.text(label, 20, startY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor("#333");
+      doc.text(String(value), 70, startY);
+      startY += lineHeight;
+    };
+
+    addField("Name:", fullName);
+    addField("Phone:", phoneNumber);
+    addField("WhatsApp:", whatsAppNumber);
+    addField("Court:", courtName);
+    addField("Booking Date:", bookingDate);
+    addField("End Date:", endDate);
+    addField("Payment Method:", paymentMethod);
+    addField("Base Amount:", formatCurrency(amount));
+
+    if (isGst) {
+      addField("GST:", formatCurrency(gst));
+      addField("GST Number:", gstNumber);
+    }
+
+    // ✅ Highlight Total
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor("#007bff");
+    doc.text("Total Paid:", 20, startY);
+    doc.text(formatCurrency(totalAmount), 70, startY);
+
+    // Footer
+    doc.setFontSize(10);
+    doc.setTextColor("#999");
+    doc.setFont("helvetica", "italic");
+    doc.text("Thank you for your payment!", pageWidth / 2, startY + lineHeight * 2, { align: "center" });
 
     // Save PDF
     doc.save(`${fullName.replace(" ", "_")}_Bill.pdf`);
   };
+
+
+
+
 
 
   return (
@@ -313,7 +411,7 @@ function PaymentHistory() {
                     <div className={styles.actionButtons}>
                       <button
                         className={`${styles.actionButton} ${styles.whatsappButton}`}
-                        onClick={() => handleWhatsApp(member.userId?.firstName)}
+                        onClick={() => openWhatsApp(member.userId.whatsAppNumber, member.name)}
                         title="WhatsApp"
                       >
                         <MessageCircle size={16} />
@@ -403,9 +501,9 @@ function PaymentHistory() {
             <p><strong>Name:</strong> {selectedMember.userId?.firstName} {selectedMember.userId?.lastName}</p>
             <p><strong>Booking Date:</strong> {selectedMember.bookingId?.startDate ? new Date(selectedMember.bookingId.startDate).toLocaleDateString() : ""}</p>
             <p><strong>End Date:</strong> {selectedMember.bookingId?.endDate ? new Date(selectedMember.bookingId.endDate).toLocaleDateString() : ""}</p>
-            <p><strong>Payment Method:</strong> {selectedMember.modeOfPayment}</p>
+            <p><strong>Payment Method:</strong> {selectedMember.modeOfPayment.charAt(0).toUpperCase() + selectedMember.modeOfPayment.slice(1).toLowerCase()}</p>
             <p><strong>Amount:</strong> ₹{selectedMember.amount}</p>
-            <p><strong>Court:</strong> {selectedMember.bookingId?.courtId?.courtName || ""}</p>
+            <p><strong>Court:</strong> {selectedMember.courtId?.courtName || ""}</p>
           </div>
         </Modal>
       )}

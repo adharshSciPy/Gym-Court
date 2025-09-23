@@ -25,20 +25,22 @@ const getLatestBookings = async (req, res) => {
       matchConditions.endDate = { $gte: start };
     }
 
-    // --- Aggregation pipeline ---
     const pipeline = [
       { $match: matchConditions },
 
-      // Sort by newest first
-      { $sort: { startDate: -1, startTime: -1, createdAt: -1 } },
+      // Always pick latest booking first
+      { $sort: { createdAt: -1 } },
 
-      // Group by userId → latest booking per user
+      // Group by userId → take latest booking per user
       {
         $group: {
           _id: "$userId",
           latestBooking: { $first: "$$ROOT" },
         },
       },
+
+      // Sort by booking creation (last user first)
+      { $sort: { "latestBooking.createdAt": -1 } },
 
       // Lookup user
       {
@@ -62,7 +64,15 @@ const getLatestBookings = async (req, res) => {
       },
       { $unwind: "$court" },
 
-      // Search filter
+      // Convert number fields to string for regex search
+      {
+        $addFields: {
+          phoneNumberStr: { $toString: "$user.phoneNumber" },
+          whatsAppNumberStr: { $toString: "$user.whatsAppNumber" },
+        },
+      },
+
+      // Optional search filter
       ...(search
         ? [
             {
@@ -70,8 +80,8 @@ const getLatestBookings = async (req, res) => {
                 $or: [
                   { "user.firstName": { $regex: search, $options: "i" } },
                   { "user.lastName": { $regex: search, $options: "i" } },
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
-                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                  { phoneNumberStr: { $regex: search, $options: "i" } },
+                  { whatsAppNumberStr: { $regex: search, $options: "i" } },
                   { "court.courtName": { $regex: search, $options: "i" } },
                 ],
               },
@@ -79,7 +89,7 @@ const getLatestBookings = async (req, res) => {
           ]
         : []),
 
-      // Project required fields
+      // Final projection
       {
         $project: {
           bookingId: "$latestBooking._id",
@@ -100,15 +110,15 @@ const getLatestBookings = async (req, res) => {
           isGst: "$latestBooking.isGst",
           gst: "$latestBooking.gst",
           gstNumber: "$latestBooking.gstNumber",
+          createdAt: "$latestBooking.createdAt",
         },
       },
 
-      // Pagination
       { $skip: skip },
       { $limit: limitNum },
     ];
 
-    const latestBookings = await Booking.aggregate(pipeline);
+    let latestBookings = await Booking.aggregate(pipeline);
 
     const now = new Date();
 
@@ -163,7 +173,7 @@ const getLatestBookings = async (req, res) => {
           : null,
         startTime: startIST,
         endTime: endIST,
-        status, // dynamically calculated
+        status,
       };
     });
 
@@ -183,7 +193,6 @@ const getLatestBookings = async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 };
-
 const getFullBookingHistory = async (req, res) => {
   try {
     const { courtId, status, startDate, endDate, search, page = 1, limit = 10 } = req.query;
@@ -250,6 +259,14 @@ const getFullBookingHistory = async (req, res) => {
         },
       },
 
+      // Convert number fields to string for search
+      {
+        $addFields: {
+          phoneNumberStr: { $toString: "$user.phoneNumber" },
+          whatsAppNumberStr: { $toString: "$user.whatsAppNumber" },
+        },
+      },
+
       // Search filter
       ...(search
         ? [
@@ -258,8 +275,8 @@ const getFullBookingHistory = async (req, res) => {
                 $or: [
                   { "user.firstName": { $regex: search, $options: "i" } },
                   { "user.lastName": { $regex: search, $options: "i" } },
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
-                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                  { phoneNumberStr: { $regex: search, $options: "i" } },
+                  { whatsAppNumberStr: { $regex: search, $options: "i" } },
                   { "court.courtName": { $regex: search, $options: "i" } },
                 ],
               },
@@ -277,15 +294,14 @@ const getFullBookingHistory = async (req, res) => {
     // --- Count for pagination ---
     const countPipeline = [
       { $match: matchConditions },
+      { $lookup: { from: "users", localField: "userId", foreignField: "_id", as: "user" } },
+      { $unwind: "$user" },
       {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "user",
+        $addFields: {
+          phoneNumberStr: { $toString: "$user.phoneNumber" },
+          whatsAppNumberStr: { $toString: "$user.whatsAppNumber" },
         },
       },
-      { $unwind: "$user" },
       ...(search
         ? [
             {
@@ -293,8 +309,8 @@ const getFullBookingHistory = async (req, res) => {
                 $or: [
                   { "user.firstName": { $regex: search, $options: "i" } },
                   { "user.lastName": { $regex: search, $options: "i" } },
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
-                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                  { phoneNumberStr: { $regex: search, $options: "i" } },
+                  { whatsAppNumberStr: { $regex: search, $options: "i" } },
                 ],
               },
             },
@@ -364,5 +380,6 @@ const getFullBookingHistory = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 export{getLatestBookings,getFullBookingHistory}

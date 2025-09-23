@@ -14,8 +14,8 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    phoneNumber: 0,
-    whatsAppNumber: 0,
+    phoneNumber: "",
+    whatsAppNumber: "",
     address: "",
     startDate: "",
     endDate: "",
@@ -91,57 +91,71 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   };
 
   const handleSubmit = async () => {
-    console.log(formData);
-    try {
-      if (validateForm()) {
-        const res = await axios.post(`${baseUrl}/api/v1/slot/book`, formData);
-        console.log(res);
-        console.log("Form submitted successfully", formData);
-        if (res.status === 201) {
-          toast.success("Booking Successful");
-        }
-        setFormData({
-          firstName: "",
-          lastName: "",
-          phoneNumber: 0,
-          whatsAppNumber: 0,
-          address: "",
-          startDate: "",
-          endDate: "",
-          startTime: "",
-          endTime: "",
-          amount: 0,
-          isGst: false,
-          gst: 0,
-          gstNumber: "",
-          modeOfPayment: "cash",
-          courtId: selectedCourtNumber,
-        });
-      } else {
-        console.log("Validation failed");
+  console.log(formData);
+
+  try {
+    if (validateForm()) {
+      // convert phone numbers to Number
+      const payload = {
+        ...formData,
+        phoneNumber: Number(formData.phoneNumber),
+        whatsAppNumber: Number(formData.whatsAppNumber),
+      };
+
+      const res = await axios.post(`${baseUrl}/api/v1/slot/book`, payload);
+      console.log(res);
+      console.log("Form submitted successfully", payload);
+
+      if (res.status === 201) {
+        toast.success("Booking Successful");
       }
-    } catch (error) {
-      console.log(error);
+
       setFormData({
-          firstName: "",
-          lastName: "",
-          phoneNumber: 0,
-          whatsAppNumber: 0,
-          address: "",
-          startDate: "",
-          endDate: "",
-          startTime: "",
-          endTime: "",
-          amount: 0,
-          isGst: false,
-          gst: 0,
-          gstNumber: "",
-          modeOfPayment: "cash",
-          courtId: selectedCourtNumber,
-        });
-      toast.error("Booking Failed. Please try again." + error?.response?.data?.message || error.message);
+        firstName: "",
+        lastName: "",
+        phoneNumber: "",
+        whatsAppNumber: "",
+        address: "",
+        startDate: "",
+        endDate: "",
+        startTime: "",
+        endTime: "",
+        amount: 0,
+        isGst: false,
+        gst: 0,
+        gstNumber: "",
+        modeOfPayment: "cash",
+        courtId: selectedCourtNumber,
+      });
+    } else {
+      console.log("Validation failed");
     }
-  };
+  } catch (error) {
+    console.log(error);
+    setFormData({
+      firstName: "",
+      lastName: "",
+      phoneNumber: "",
+      whatsAppNumber: "",
+      address: "",
+      startDate: "",
+      endDate: "",
+      startTime: "",
+      endTime: "",
+      amount: 0,
+      isGst: false,
+      gst: 0,
+      gstNumber: "",
+      modeOfPayment: "cash",
+      courtId: selectedCourtNumber,
+    });
+    toast.error(
+      "Booking Failed. Please try again. " +
+        (error?.response?.data?.message || error.message)
+    );
+  }
+};
+
 
   return (
     <div className={styles.bookingContainer}>
@@ -214,8 +228,8 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Enter Phone Number</label>
                   <input
-                    type="number"
-                    placeholder="Eg: +91XXXXXXXXX"
+                    type="tel"
+                    placeholder="Eg:9847634XXX"
                     value={formData.phoneNumber}
                     onChange={(e) =>
                       handleInputChange("phoneNumber", e.target.value)
@@ -234,8 +248,8 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                     Enter WhatsApp Number
                   </label>
                   <input
-                    type="number"
-                    placeholder="Eg: +91XXXXXXXXX"
+                    type="tel"
+                    placeholder="Eg:9847634XXX"
                     value={formData.whatsAppNumber}
                     onChange={(e) =>
                       handleInputChange("whatsAppNumber", e.target.value)

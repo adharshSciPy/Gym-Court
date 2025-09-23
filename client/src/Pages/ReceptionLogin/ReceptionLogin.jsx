@@ -423,7 +423,15 @@ function ReceptionLogin() {
             )}
           </div>
 
-          <div className={styles.forgotPasswordContainer}>
+         
+
+          <button
+            onClick={receptionLogin}
+            disabled={isDisabled}
+          >
+            {isLoading ? "Logging in..." : "Login"}
+          </button>
+           <div className={styles.forgotPasswordContainer}>
             <button
               type="button"
               onClick={() => {
@@ -435,13 +443,6 @@ function ReceptionLogin() {
               Forgot Password?
             </button>
           </div>
-
-          <button
-            onClick={receptionLogin}
-            disabled={isDisabled}
-          >
-            {isLoading ? "Logging in..." : "Login"}
-          </button>
         </div>
       </div>
     </div>

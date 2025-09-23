@@ -28,37 +28,37 @@ const BookingManagement = () => {
   // };
 
   const fetchBookingHistory = useCallback(
-  async (page = 1, search = "") => {
-    setLoading(true);
-    try {
-      const params = {
-        page,
-        limit: itemsPerPage,
-      };
+    async (page = 1, search = "") => {
+      setLoading(true);
+      try {
+        const params = {
+          page,
+          limit: itemsPerPage,
+        };
 
-      if (search.trim()) params.search = search;
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      if (selectedCourt) params.courtId = selectedCourt;
+        if (search.trim()) params.search = search;
+        if (startDate) params.startDate = startDate;
+        if (endDate) params.endDate = endDate;
+        if (selectedCourt) params.courtId = selectedCourt;
 
-      const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
-        params,
-      });
+        const res = await axios.get(`${baseUrl}/api/v1/bookings/full-booking`, {
+          params,
+        });
 
-      setBookingHistory(res.data.bookings || []);
-      setTotalPages(
-        res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
-      );
-      setTotalRecords(res.data.total || res.data.bookings?.length || 0);
-    } catch (error) {
-      console.log(error);
-      setBookingHistory([]);
-    } finally {
-      setLoading(false);
-    }
-  },
-  [itemsPerPage, startDate, endDate, selectedCourt] // ✅ dependencies
-);
+        setBookingHistory(res.data.bookings || []);
+        setTotalPages(
+          res.data.totalPages || Math.ceil(res.data.total / itemsPerPage)
+        );
+        setTotalRecords(res.data.total || res.data.bookings?.length || 0);
+      } catch (error) {
+        console.log(error);
+        setBookingHistory([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [itemsPerPage, startDate, endDate, selectedCourt] // ✅ dependencies
+  );
 
   // ✅ Fetch courts for dropdown
   const getAllCourt = async () => {
@@ -129,25 +129,32 @@ const BookingManagement = () => {
   }, []);
 
   // Load data initially & when selectedCourt changes
- useEffect(() => {
-  fetchBookingHistory(1, searchTerm);
-  setCurrentPage(1);
-}, [selectedCourt, fetchBookingHistory, searchTerm]);
-
-useEffect(() => {
-  fetchBookingHistory(currentPage, searchTerm);
-}, [currentPage, fetchBookingHistory, searchTerm]);
-
-useEffect(() => {
-  const delay = setTimeout(() => {
+  useEffect(() => {
     fetchBookingHistory(1, searchTerm);
-  }, 500);
-  return () => clearTimeout(delay);
-}, [searchTerm, fetchBookingHistory]);
+    setCurrentPage(1);
+  }, [selectedCourt, fetchBookingHistory, searchTerm]);
 
-useEffect(() => {
-  fetchBookingHistory(1, searchTerm);
-}, [startDate, endDate, fetchBookingHistory, searchTerm]);
+  useEffect(() => {
+    fetchBookingHistory(currentPage, searchTerm);
+    // Set interval to fetch every 2 minutes (120000 ms)
+    const intervalId = setInterval(() => {
+      fetchBookingHistory(currentPage, searchTerm);
+    }, 120000);
+
+    // Cleanup on unmount
+    return () => clearInterval(intervalId);
+  }, [currentPage, fetchBookingHistory, searchTerm]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      fetchBookingHistory(1, searchTerm);
+    }, 500);
+    return () => clearTimeout(delay);
+  }, [searchTerm, fetchBookingHistory]);
+
+  useEffect(() => {
+    fetchBookingHistory(1, searchTerm);
+  }, [startDate, endDate, fetchBookingHistory, searchTerm]);
 
   return (
     <div className={styles.container}>
@@ -180,7 +187,7 @@ useEffect(() => {
 
           {/* Court Dropdown */}
           <select
-            style={{padding:"8px",borderRadius:"8px", marginLeft:"10px",border:"none"}}
+            style={{ padding: "8px", borderRadius: "8px", marginLeft: "10px", border: "none" }}
             value={selectedCourt}
             onChange={(e) => setSelectedCourt(e.target.value)}
           >
@@ -236,11 +243,10 @@ useEffect(() => {
                   </td>
                   <td className={styles.td}>
                     <span
-                      className={`${styles.status} ${
-                        member.status === "expired"
-                         ?styles.statusExpired
-                        :styles.statusActive
-                      }`}
+                      className={`${styles.status} ${member.status === "expired"
+                          ? styles.statusExpired
+                          : styles.statusActive
+                        }`}
                     >
                       {member.status}
                     </span>
@@ -248,23 +254,23 @@ useEffect(() => {
                   <td className={styles.td}>{member.court?.courtName}</td>
                   {/* <td className={styles.td}>
                     <div className={styles.actionButtons}> */}
-                      {/* <button
+                  {/* <button
                         className={`${styles.actionButton} ${styles.whatsappButton}`}
                         onClick={() => handleWhatsApp(member.user?.whatsAppNumber,"this is a renew message")}
                       >
                         <MessageCircle size={16} />
                       </button> */}
-                      {/* <button
+                  {/* <button
                         className={styles.actionButton}
                         onClick={() => handleView(member.user?.firstName)}
                       >
                         <Eye size={16} />
                       </button> */}
-                      {/* {member.status === "expired" && (
+                  {/* {member.status === "expired" && (
                         <button className={styles.renewButton}>Renew</button>
                       )} */}
-                    {/* </div>
-                  </td> */} 
+                  {/* </div>
+                  </td> */}
                 </tr>
               ))
             )}
@@ -282,9 +288,8 @@ useEffect(() => {
           </div>
           <div className={styles.paginationControls}>
             <button
-              className={`${styles.paginationButton} ${
-                currentPage === 1 ? styles.disabled : ""
-              }`}
+              className={`${styles.paginationButton} ${currentPage === 1 ? styles.disabled : ""
+                }`}
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
@@ -294,9 +299,8 @@ useEffect(() => {
               {generatePageNumbers().map((page, index) => (
                 <button
                   key={index}
-                  className={`${styles.pageButton} ${
-                    page === currentPage ? styles.activePage : ""
-                  } ${page === "..." ? styles.ellipsis : ""}`}
+                  className={`${styles.pageButton} ${page === currentPage ? styles.activePage : ""
+                    } ${page === "..." ? styles.ellipsis : ""}`}
                   onClick={() => page !== "..." && handlePageChange(page)}
                   disabled={page === "..."}
                 >
@@ -305,9 +309,8 @@ useEffect(() => {
               ))}
             </div>
             <button
-              className={`${styles.paginationButton} ${
-                currentPage === totalPages ? styles.disabled : ""
-              }`}
+              className={`${styles.paginationButton} ${currentPage === totalPages ? styles.disabled : ""
+                }`}
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
