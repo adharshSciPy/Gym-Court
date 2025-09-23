@@ -155,13 +155,13 @@ function GymPaymentHistory() {
 
 
   // Action handlers
-  const handleDelete = (memberId) => {
-    alert(`Delete member with ID: ${memberId}`);
-  };
+  // const handleDelete = (memberId) => {
+  //   alert(`Delete member with ID: ${memberId}`);
+  // };
 
-  const handleWhatsApp = (memberName) => {
-    alert(`Open WhatsApp for ${memberName}`);
-  };
+  // const handleWhatsApp = (memberName) => {
+  //   alert(`Open WhatsApp for ${memberName}`);
+  // };
 
   const handleView = (member) => {
     setSelectedMember(member);

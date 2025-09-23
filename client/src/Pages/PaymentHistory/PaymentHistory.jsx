@@ -6,6 +6,7 @@ import axios from "axios";
 import { Modal } from "antd"
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+import { toast } from "react-toastify";
 
 function PaymentHistory() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -155,9 +156,9 @@ function PaymentHistory() {
 
 
   // Action handlers
-  const handleDelete = (memberId) => {
-    alert(`Delete member with ID: ${memberId}`);
-  };
+  // const handleDelete = (memberId) => {
+  //   alert(`Delete member with ID: ${memberId}`);
+  // };
 
   // helper (put near top of file or in utils)
   const normalizeWhatsApp = (raw) => {
@@ -185,7 +186,7 @@ function PaymentHistory() {
   const openWhatsApp = (rawNumber, name = "") => {
     const phone = normalizeWhatsApp(rawNumber);
     if (!phone) {
-      alert("No valid WhatsApp number provided.");
+      toast.error("No valid WhatsApp number provided.");
       return;
     }
 
