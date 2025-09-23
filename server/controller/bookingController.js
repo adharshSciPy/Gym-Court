@@ -198,44 +198,12 @@ const getFullBookingHistory = async (req, res) => {
       matchConditions.courtId = new mongoose.Types.ObjectId(courtId);
     }
 
-    // --- Status filter ---
-    if (status && status !== "all") {
-      const statuses = status.split(",").map((s) => s.trim());
-      const statusConditions = [];
-
-      for (let s of statuses) {
-        switch (s) {
-          case "cancelled":
-            statusConditions.push({ status: "cancelled" });
-            break;
-          case "upcoming":
-            statusConditions.push({ startDate: { $gt: now }, status: { $ne: "cancelled" } });
-            break;
-          case "active":
-            statusConditions.push({
-              startDate: { $lte: now },
-              endDate: { $gte: now },
-              status: { $ne: "cancelled" },
-            });
-            break;
-          case "expired":
-            statusConditions.push({ endDate: { $lt: now }, status: { $ne: "cancelled" } });
-            break;
-        }
-      }
-
-      if (statusConditions.length) {
-        matchConditions.$or = statusConditions;
-      }
-    }
-
     // --- Date filter ---
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
       matchConditions.endDate = { ...matchConditions.endDate, $gte: start };
     }
-
     if (endDate) {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
@@ -261,22 +229,6 @@ const getFullBookingHistory = async (req, res) => {
       },
       { $unwind: "$user" },
 
-      // Search filter
-      ...(search
-        ? [
-            {
-              $match: {
-                $or: [
-                  { "user.firstName": { $regex: search, $options: "i" } },
-                  { "user.lastName": { $regex: search, $options: "i" } },
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
-                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
-                ],
-              },
-            },
-          ]
-        : []),
-
       // Join court
       {
         $lookup: {
@@ -297,6 +249,23 @@ const getFullBookingHistory = async (req, res) => {
           as: "slots",
         },
       },
+
+      // Search filter
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { "user.firstName": { $regex: search, $options: "i" } },
+                  { "user.lastName": { $regex: search, $options: "i" } },
+                  { "user.phoneNumber": { $regex: search, $options: "i" } },
+                  { "user.whatsAppNumber": { $regex: search, $options: "i" } },
+                  { "court.courtName": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
 
       { $sort: { createdAt: -1 } },
       { $skip: skip },
@@ -333,11 +302,10 @@ const getFullBookingHistory = async (req, res) => {
         : []),
       { $count: "total" },
     ];
-
     const totalDocs = await Booking.aggregate(countPipeline);
     const totalCount = totalDocs.length > 0 ? totalDocs[0].total : 0;
 
-    // --- Format date/time ---
+    // --- Format date/time and calculate dynamic status ---
     const formatTime = (date) =>
       date
         ? new Date(date).toLocaleTimeString("en-IN", {
@@ -359,18 +327,30 @@ const getFullBookingHistory = async (req, res) => {
           })
         : null;
 
-    const formattedBookings = bookings.map((b) => ({
-      ...b,
-      startDate: formatDate(b.startDate),
-      endDate: formatDate(b.endDate),
-      startTime: formatTime(b.startTime),
-      endTime: formatTime(b.endTime),
-      slots: b.slots.map((s) => ({
-        ...s,
-        startTime: formatTime(s.startTime),
-        endTime: formatTime(s.endTime),
-      })),
-    }));
+    const formattedBookings = bookings.map((b) => {
+      let bookingStatus;
+      if (b.startTime && b.endTime) {
+        if (now < b.startTime) bookingStatus = "upcoming";
+        else if (now >= b.startTime && now <= b.endTime) bookingStatus = "active";
+        else bookingStatus = "expired";
+      } else {
+        bookingStatus = "upcoming"; // fallback
+      }
+
+      return {
+        ...b,
+        startDate: formatDate(b.startDate),
+        endDate: formatDate(b.endDate),
+        startTime: formatTime(b.startTime),
+        endTime: formatTime(b.endTime),
+        status: bookingStatus,
+        slots: b.slots.map((s) => ({
+          ...s,
+          startTime: formatTime(s.startTime),
+          endTime: formatTime(s.endTime),
+        })),
+      };
+    });
 
     return res.status(200).json({
       message: "Booking history fetched successfully",
@@ -384,4 +364,5 @@ const getFullBookingHistory = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 export{getLatestBookings,getFullBookingHistory}
