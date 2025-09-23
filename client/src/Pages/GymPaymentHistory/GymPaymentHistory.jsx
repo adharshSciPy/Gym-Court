@@ -182,36 +182,120 @@ function GymPaymentHistory() {
     };
   }, [debouncedGetPaymentHistory]);
 
+
   const handleDownload = (member) => {
     const doc = new jsPDF();
 
-    const fullName = member.userId?.name.charAt(0).toUpperCase() + member.userId?.name.slice(1).toLowerCase() || "";
+    // Extract details
+    const fullName =
+      member.userId?.name?.charAt(0).toUpperCase() +
+      member.userId?.name?.slice(1).toLowerCase() || "";
     const phoneNumber = member.userId?.phoneNumber || "";
     const whatsAppNumber = member.userId?.whatsAppNumber || "";
     const subscriptionMonths = member.subscriptionMonths || "";
-    const paymentMethod = member.modeOfPayment.charAt(0).toUpperCase() + member.modeOfPayment.slice(1).toLowerCase() || "";
-    const amount = member.amount || "";
+    const paymentMethod = member.modeOfPayment
+      ? member.modeOfPayment.charAt(0).toUpperCase() +
+      member.modeOfPayment.slice(1).toLowerCase()
+      : "";
+    const amount = member.amount || 0;
+    const gst = member.gst || 0;
+    const isGst = member.isGst || false;
     const paymentDate = member.createdAt
-      ? new Date(member.createdAt).toLocaleDateString()
+      ? new Date(member.createdAt).toLocaleDateString("en-IN")
       : "";
 
-    // Title
-    doc.setFontSize(18);
-    doc.text("Gym Payment Bill", 105, 20, { align: "center" });
+    // Currency formatter (₹ symbol with commas)
+    const formatCurrency = (num) => {
+      return `INR ${Number(num).toLocaleString("en-IN")}`;
+    };
 
-    // User Details
-    doc.setFontSize(12);
-    doc.text(`Name: ${fullName}`, 20, 40);
-    doc.text(`Phone: ${phoneNumber}`, 20, 50);
-    doc.text(`WhatsApp: ${whatsAppNumber}`, 20, 60);
-    doc.text(`Subscription Months: ${subscriptionMonths}`, 20, 70);
-    doc.text(`Payment Method: ${paymentMethod}`, 20, 80);
-    doc.text(`Amount Paid: ₹${amount}`, 20, 90);
-    doc.text(`Payment Date: ${paymentDate}`, 20, 100);
+    const totalAmount = isGst ? amount + gst : amount;
+
+    // ====== PDF Styles ======
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const startY = 40;
+    const lineHeight = 10;
+
+    // Title
+    doc.setFontSize(16);
+    doc.setTextColor("#007bff");
+    doc.setFont("helvetica", "bold");
+    doc.text("Gym Payment Bill", pageWidth / 2, 20, { align: "center" });
+
+    // Separator line
+    doc.setDrawColor("#007bff");
+    doc.setLineWidth(0.5);
+    doc.line(20, 25, pageWidth - 20, 25);
+
+    // Detail box background
+    doc.setFillColor("#f8f9fa");
+    doc.roundedRect(
+      15,
+      startY - 5,
+      pageWidth - 30,
+      lineHeight * (isGst ? 9 : 7) + 10,
+      6,
+      6,
+      "F"
+    );
+
+    // Function to draw label and value with spacing
+    const drawItem = (
+      label,
+      value,
+      y,
+      labelColor = "#666",
+      valueColor = "#333",
+      boldValue = false
+    ) => {
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(labelColor);
+      doc.text(`${label}:`, 20, y);
+
+      doc.setFont("helvetica", boldValue ? "bold" : "normal");
+      doc.setTextColor(valueColor);
+      doc.text(`${value}`, 85, y); // shifted for alignment
+    };
+
+    // Add details
+    drawItem("Name", fullName, startY);
+    drawItem("Phone", phoneNumber, startY + lineHeight);
+    drawItem("WhatsApp", whatsAppNumber, startY + lineHeight * 2);
+    drawItem("Subscription Months", subscriptionMonths, startY + lineHeight * 3);
+    drawItem("Payment Method", paymentMethod, startY + lineHeight * 4);
+    drawItem("Base Amount", formatCurrency(amount), startY + lineHeight * 5);
+
+    if (isGst) {
+      drawItem("GST", formatCurrency(gst), startY + lineHeight * 6);
+      drawItem("Total Paid", formatCurrency(totalAmount), startY + lineHeight * 7, "#007bff", "#007bff", true);
+      drawItem("Payment Date", paymentDate, startY + lineHeight * 8);
+    } else {
+      drawItem("Total Paid", formatCurrency(totalAmount), startY + lineHeight * 6, "#007bff", "#007bff", true);
+      drawItem("Payment Date", paymentDate, startY + lineHeight * 7);
+    }
+
+    // Footer
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor("#999");
+    doc.text(
+      "Thank you for your payment!",
+      pageWidth / 2,
+      startY + lineHeight * (isGst ? 10 : 9),
+      { align: "center" }
+    );
 
     // Save PDF
     doc.save(`${fullName.replace(" ", "_")}_Gym_Bill.pdf`);
   };
+
+
+
+
+
+
+
 
   // helper (put near top of file or in utils)
   const normalizeWhatsApp = (raw) => {
