@@ -5,7 +5,9 @@ import Court from "../model/courtSchema.js";
 import mongoose from "mongoose";
 const getLatestBookings = async (req, res) => {
   try {
-    const { search, startDate, endDate, page = 1, limit = 10, order } = req.query;
+    const { search, startDate, endDate, page = 1, limit = 10, order, userOrder } = req.query;
+    // `order` → booking sorting (newest booking vs oldest booking)
+    // `userOrder` → user sorting (newest user vs oldest user)
 
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 10;
@@ -25,15 +27,15 @@ const getLatestBookings = async (req, res) => {
       matchConditions.endDate = { $gte: start };
     }
 
-    // --- Sorting option ---
-    const sortDirection = order === "asc" ? 1 : -1; // default: newest first
+    // --- Sorting option for bookings ---
+    const sortDirection = order === "asc" ? 1 : -1; // default: newest booking first
     const sortOption = { startDate: sortDirection, startTime: sortDirection, createdAt: sortDirection };
 
     // --- Aggregation pipeline ---
     const pipeline = [
       { $match: matchConditions },
 
-      // Sort by startDate/startTime/createdAt
+      // Sort bookings
       { $sort: sortOption },
 
       // Group by userId → latest booking per user
@@ -83,6 +85,17 @@ const getLatestBookings = async (req, res) => {
           ]
         : []),
 
+      // --- Extra sorting by user createdAt ---
+      ...(userOrder
+        ? [
+            {
+              $sort: {
+                "user.createdAt": userOrder === "asc" ? 1 : -1, // newest user first / oldest user first
+              },
+            },
+          ]
+        : []),
+
       // Project required fields
       {
         $project: {
@@ -105,6 +118,7 @@ const getLatestBookings = async (req, res) => {
           isGst: "$latestBooking.isGst",
           gst: "$latestBooking.gst",
           gstNumber: "$latestBooking.gstNumber",
+          userCreatedAt: "$user.createdAt", // keep this for debugging
         },
       },
 
@@ -115,33 +129,10 @@ const getLatestBookings = async (req, res) => {
 
     const latestBookings = await Booking.aggregate(pipeline);
 
-    // --- Total count for pagination ---
+    // Count pipeline can ignore userOrder since it’s just counting
     const countPipeline = [
       { $match: matchConditions },
-      { $sort: sortOption },
       { $group: { _id: { userId: "$userId", courtId: "$courtId" } } },
-      ...(search
-        ? [
-            {
-              $lookup: {
-                from: "users",
-                localField: "_id.userId",
-                foreignField: "_id",
-                as: "user",
-              },
-            },
-            { $unwind: "$user" },
-            {
-              $match: {
-                $or: [
-                  { "user.firstName": { $regex: search, $options: "i" } },
-                  { "user.lastName": { $regex: search, $options: "i" } },
-                  { "user.phoneNumber": { $regex: search, $options: "i" } },
-                ],
-              },
-            },
-          ]
-        : []),
       { $count: "total" },
     ];
 
