@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Search, Edit, Trash2, MessageCircle, Eye } from "lucide-react";
+import { Search, Trash2, MessageCircle, Eye } from "lucide-react";
 import styles from "./Gym.module.css";
 import axios from "axios";
 import baseUrl from "../../baseUrl";
 import { Modal } from "antd";
 import { toast } from "react-toastify";
+
 
 const Gym = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,7 +30,7 @@ const Gym = () => {
 
   const showModal = (member) => {
     setUserId(member._id);
-    setFormData((prev) => ({
+    setFormData((prev) => ({ 
       ...prev,
       phoneNumber: member.phoneNumber, // pre-fill phone number
       trainerId: member.trainer?._id || "", // optional: pre-fill trainer

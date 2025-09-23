@@ -291,21 +291,21 @@ function MembersPage() {
   };
 
   // Format time for display
-  const formatTime = (timeString) => {
-    if (!timeString) return "N/A";
+  // const formatTime = (timeString) => {
+  //   if (!timeString) return "N/A";
 
-    const [hourStr, minuteStr] = timeString.split(":");
-    if (!hourStr || !minuteStr) return timeString;
+  //   const [hourStr, minuteStr] = timeString.split(":");
+  //   if (!hourStr || !minuteStr) return timeString;
 
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr, 10);
-    const ampm = hour >= 12 ? "PM" : "AM";
-    hour = hour % 12 || 12;
+  //   let hour = parseInt(hourStr, 10);
+  //   const minute = parseInt(minuteStr, 10);
+  //   const ampm = hour >= 12 ? "PM" : "AM";
+  //   hour = hour % 12 || 12;
 
-    return `${hour.toString().padStart(2, "0")}:${minute
-      .toString()
-      .padStart(2, "0")} ${ampm}`;
-  };
+  //   return `${hour.toString().padStart(2, "0")}:${minute
+  //     .toString()
+  //     .padStart(2, "0")} ${ampm}`;
+  // };
 
   return (
     <div className={styles.container}>
@@ -492,14 +492,14 @@ function MembersPage() {
                     <span className={styles.detailLabel}>Start Time:</span>
                     <span className={styles.detailValue}>
                       <Clock size={14} style={{ marginRight: "4px" }} />
-                      {formatTime(selectedMember.startTime)}
+                      {(selectedMember.startTime)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>End Time:</span>
                     <span className={styles.detailValue}>
                       <Clock size={14} style={{ marginRight: "4px" }} />
-                      {formatTime(selectedMember.endTime)}
+                      {(selectedMember.endTime)}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
