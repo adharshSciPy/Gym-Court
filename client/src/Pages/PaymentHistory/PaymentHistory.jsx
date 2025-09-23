@@ -213,18 +213,34 @@ function PaymentHistory() {
     };
   }, [debouncedGetPaymentHistory]);
 
+
   const handleDownload = (member) => {
     const doc = new jsPDF();
 
+    // ✅ Always use Unicode for ₹
+    const formatCurrency = (num) => {
+      if (num == null || isNaN(num)) return "INR 0";
+      return `INR ${Number(num).toLocaleString("en-IN")}`;
+    };
+
+
     const fullName = `${member.userId?.firstName || ""} ${member.userId?.lastName || ""}`;
+    const phoneNumber = member.userId?.phoneNumber || "";
+    const whatsAppNumber = member.userId?.whatsAppNumber || "";
     const bookingDate = member.bookingId?.startDate
       ? new Date(member.bookingId.startDate).toLocaleDateString()
       : "";
     const endDate = member.bookingId?.endDate
       ? new Date(member.bookingId.endDate).toLocaleDateString()
       : "";
+    const courtName = member.courtId?.courtName || "";
     const paymentMethod = member.modeOfPayment || "";
-    const amount = member.amount || "";
+    const amount = member.amount || 0;
+    const gst = member.gst || 0;
+    const gstNumber = member.gstNumber || "";
+    const isGst = member.isGst || false;
+
+    const totalAmount = amount + gst;
 
     // ====== PDF Styles ======
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -235,7 +251,7 @@ function PaymentHistory() {
     doc.setFont("helvetica", "bold");
     doc.text("Payment Bill", pageWidth / 2, 20, { align: "center" });
 
-    // Draw a separator line
+    // Separator line
     doc.setDrawColor("#007bff");
     doc.setLineWidth(0.5);
     doc.line(20, 25, pageWidth - 20, 25);
@@ -245,57 +261,54 @@ function PaymentHistory() {
     doc.setTextColor("#333");
     doc.setFont("helvetica", "normal");
 
-    const startY = 40;
+    let startY = 40;
     const lineHeight = 10;
 
-    // Detail box background
+    // Background box
     doc.setFillColor("#f8f9fa");
-    doc.roundedRect(15, startY - 5, pageWidth - 30, lineHeight * 5 + 10, 6, 6, "F");
+    doc.roundedRect(15, startY - 5, pageWidth - 30, lineHeight * 9 + 10, 6, 6, "F");
 
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor("#666");
-    doc.text("Name:", 20, startY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor("#333");
-    doc.text(fullName, 60, startY);
+    const addField = (label, value) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor("#666");
+      doc.text(label, 20, startY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor("#333");
+      doc.text(String(value), 70, startY);
+      startY += lineHeight;
+    };
 
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor("#666");
-    doc.text("Booking Date:", 20, startY + lineHeight);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor("#333");
-    doc.text(bookingDate, 60, startY + lineHeight);
+    addField("Name:", fullName);
+    addField("Phone:", phoneNumber);
+    addField("WhatsApp:", whatsAppNumber);
+    addField("Court:", courtName);
+    addField("Booking Date:", bookingDate);
+    addField("End Date:", endDate);
+    addField("Payment Method:", paymentMethod);
+    addField("Base Amount:", formatCurrency(amount));
 
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor("#666");
-    doc.text("Ended Date:", 20, startY + lineHeight * 2);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor("#333");
-    doc.text(endDate, 60, startY + lineHeight * 2);
+    if (isGst) {
+      addField("GST:", formatCurrency(gst));
+      addField("GST Number:", gstNumber);
+    }
 
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor("#666");
-    doc.text("Payment Method:", 20, startY + lineHeight * 3);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor("#333");
-    doc.text(paymentMethod, 60, startY + lineHeight * 3);
-
+    // ✅ Highlight Total
     doc.setFont("helvetica", "bold");
     doc.setTextColor("#007bff");
-    doc.text("Amount Paid:", 20, startY + lineHeight * 4);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor("#007bff");
-    doc.text(`₹${amount}`, 60, startY + lineHeight * 4);
+    doc.text("Total Paid:", 20, startY);
+    doc.text(formatCurrency(totalAmount), 70, startY);
 
     // Footer
     doc.setFontSize(10);
     doc.setTextColor("#999");
     doc.setFont("helvetica", "italic");
-    doc.text("Thank you for your payment!", pageWidth / 2, startY + lineHeight * 6, { align: "center" });
+    doc.text("Thank you for your payment!", pageWidth / 2, startY + lineHeight * 2, { align: "center" });
 
     // Save PDF
     doc.save(`${fullName.replace(" ", "_")}_Bill.pdf`);
   };
+
+
 
 
 
