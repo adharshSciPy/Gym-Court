@@ -133,7 +133,7 @@ function MembersPage() {
       );
       console.log(response);
 
-      alert("Renewal successful!");
+      toast.success("Renewal successful!");
       setShowRenewalPopup(false);
       getMembers(); // Refresh member list
     } catch (error) {
@@ -256,7 +256,7 @@ function MembersPage() {
       const encodedMessage = encodeURIComponent(message);
       window.open(`https://wa.me/${phone}?text=${encodedMessage}`, "_blank");
     } else {
-      alert("No WhatsApp number available.");
+      toast.error("No WhatsApp number available.");
     }
   };
 
