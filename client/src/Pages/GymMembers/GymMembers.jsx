@@ -65,7 +65,7 @@ const GymMembers = () => {
   // Manual refresh for modal data
   const refreshModalData = async () => {
     if (!viewMember._id) return;
-    
+
     setRefreshingModal(true);
     try {
       await fetchSingleMember(viewMember._id);
@@ -79,7 +79,13 @@ const GymMembers = () => {
 
   // Refetch when page, searchTerm, or userTypeFilter changes
   useEffect(() => {
-    fetchMembers();
+    const interval = setInterval(() => {
+    
+      fetchMembers();
+    }, 120000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
   }, [page, searchTerm, userTypeFilter, subscriptionFilter]);
 
   const formatDate = (dateString) => {
@@ -191,21 +197,21 @@ const GymMembers = () => {
 
       console.log("Upload response:", response.data);
       toast.success(`Diet plan uploaded successfully for ${member.name}`);
-      
+
       // Refresh members data to show updated info
       await fetchMembers();
-      
+
       // If modal is open for this member, refresh the modal data
       if (isViewModalOpen && viewMember._id === member._id) {
         setTimeout(async () => {
           await fetchSingleMember(member._id);
         }, 500);
       }
-      
+
     } catch (error) {
       console.error('Full error details:', error);
       console.error('Error response:', error.response);
-      
+
       // Handle different error scenarios
       if (error.response?.status === 400) {
         toast.error(error.response.data.message || 'Invalid request. Please check your inputs.');
@@ -249,7 +255,7 @@ const GymMembers = () => {
       const response = await axios.delete(
         `${baseUrl}/api/v1/trainer/delete-diet-plan`,
         {
-          data: { 
+          data: {
             userId: memberId,
             index: pdfIndex
           },
@@ -261,10 +267,10 @@ const GymMembers = () => {
 
       console.log("Delete response:", response.data);
       toast.success('PDF deleted successfully');
-      
+
       // Refresh members data
       await fetchMembers();
-      
+
       // Update viewMember if modal is open - with a small delay to ensure backend is updated
       if (isViewModalOpen && viewMember._id === memberId) {
         setTimeout(async () => {
@@ -277,7 +283,7 @@ const GymMembers = () => {
       console.error('Error details:', error);
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
-      
+
       if (error.response?.status === 400) {
         toast.error(error.response.data.message || 'Invalid request.');
       } else if (error.response?.status === 403) {
@@ -399,16 +405,16 @@ const GymMembers = () => {
                       <td className={styles.tableCell}>
                         <div className={styles.actionButtons}>
                           {/* WhatsApp Message Button */}
-                          <button 
+                          <button
                             className={`${styles.actionButton} ${styles.actionButtonMessage}`}
                             onClick={() => openWhatsApp(member.whatsAppNumber, member.name)}
                             title={`Message ${member.name} on WhatsApp`}
                           >
                             <MessageCircle color='green' className="w-4 h-4" />
                           </button>
-                          
+
                           {/* Upload Diet Plan Button */}
-                          <button 
+                          <button
                             className={`${styles.actionButton} ${styles.actionButtonUpload}`}
                             onClick={() => handleDietUploadClick(member._id)}
                             title={`Upload diet plan for ${member.name}`}
@@ -420,9 +426,9 @@ const GymMembers = () => {
                               <Upload color='blue' className="w-4 h-4" />
                             )}
                           </button>
-                          
+
                           {/* View Member Details Button */}
-                          <button 
+                          <button
                             className={`${styles.actionButton} ${styles.actionButtonView}`}
                             onClick={() => viewModal(member._id)}
                             title={`View details and PDFs for ${member.name}`}
@@ -527,13 +533,13 @@ const GymMembers = () => {
               </p>
             )}
           </div>
-            
+
           {/* Diet PDFs Section - Only show uploaded PDFs */}
           <div className={styles.pdfSection}>
             {/* Header with refresh button */}
             <div className={styles.pdfSectionHeader}>
               <h3 className={styles.pdfSectionTitle}>Uploaded Diet Plans:</h3>
-              <button 
+              <button
                 onClick={refreshModalData}
                 disabled={refreshingModal}
                 className={styles.refreshButton}
@@ -548,11 +554,11 @@ const GymMembers = () => {
             </div>
 
             {/* Debug info - you can remove this after fixing */}
-            <div style={{fontSize: '12px', color: '#666', marginBottom: '10px'}}>
-              Debug: {viewMember.dietPdfs ? `${viewMember.dietPdfs.length} PDFs found` : 'No PDFs array'} 
+            <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
+              Debug: {viewMember.dietPdfs ? `${viewMember.dietPdfs.length} PDFs found` : 'No PDFs array'}
               {viewMember.dietPdf ? ', Single PDF exists' : ', No single PDF'}
             </div>
-            
+
             {/* Show dietPdfs array if it exists */}
             {viewMember.dietPdfs && viewMember.dietPdfs.length > 0 ? (
               <div className={styles.pdfList}>
