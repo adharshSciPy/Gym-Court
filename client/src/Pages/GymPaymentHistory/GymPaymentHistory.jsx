@@ -3,6 +3,9 @@ import { Search, MessageCircle, File, Eye, ChevronLeft, ChevronRight } from "luc
 import styles from "./GymPaymentHistory.module.css";
 import baseUrl from "../../baseUrl";
 import axios from "axios";
+import { Modal } from "antd"
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 function GymPaymentHistory() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -16,6 +19,9 @@ function GymPaymentHistory() {
   const [itemsPerPage] = useState(10);
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
+
 
   // Debounce function for search
   const debounce = (func, wait) => {
@@ -41,57 +47,56 @@ function GymPaymentHistory() {
     }
   };
 
-// 1. Make getPaymentHistory stable
-const getPaymentHistory = useCallback(async () => {
-  try {
-    setLoading(true);
+  // 1. Make getPaymentHistory stable
+  const getPaymentHistory = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    const params = new URLSearchParams();
+      const params = new URLSearchParams();
 
-    if (searchTerm.trim()) params.append("search", searchTerm.trim());
-    if (startDate) params.append("startDate", startDate);
-    if (endDate) params.append("endDate", endDate);
-    if (selectedCourt) params.append("courtId", selectedCourt);
+      if (searchTerm.trim()) params.append("search", searchTerm.trim());
+      if (startDate) params.append("startDate", startDate);
+      if (endDate) params.append("endDate", endDate);
+      if (selectedCourt) params.append("courtId", selectedCourt);
 
-    params.append("page", currentPage.toString());
-    params.append("limit", itemsPerPage.toString());
+      params.append("page", currentPage.toString());
+      params.append("limit", itemsPerPage.toString());
 
-    const url = `${baseUrl}/api/v1/gym/payment-history${
-      params.toString() ? `?${params.toString()}` : ""
-    }`;
+      const url = `${baseUrl}/api/v1/gym/payment-history${params.toString() ? `?${params.toString()}` : ""
+        }`;
 
-    const res = await axios.get(url);
-    console.log(res);
-    
-    if (res.status === 200) {
-      setBillData(res.data.data || []);
-      setTotalPages(res.data.totalPages || 1);
-      setTotalRecords(res.data.totalRecords || 0);
+      const res = await axios.get(url);
+      console.log(res);
+
+      if (res.status === 200) {
+        setBillData(res.data.data || []);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalRecords(res.data.totalRecords || 0);
+      }
+    } catch (error) {
+      console.log("Error fetching payment history:", error);
+      setBillData([]);
+      setTotalPages(1);
+      setTotalRecords(0);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.log("Error fetching payment history:", error);
-    setBillData([]);
-    setTotalPages(1);
-    setTotalRecords(0);
-  } finally {
-    setLoading(false);
-  }
-}, [searchTerm, startDate, endDate, selectedCourt, currentPage, itemsPerPage]);
+  }, [searchTerm, startDate, endDate, selectedCourt, currentPage, itemsPerPage]);
 
-// 2. Memoize the debounced function
-const debouncedGetPaymentHistory = useMemo(
-  () => debounce(getPaymentHistory, 500),
-  [getPaymentHistory]
-);
+  // 2. Memoize the debounced function
+  const debouncedGetPaymentHistory = useMemo(
+    () => debounce(getPaymentHistory, 500),
+    [getPaymentHistory]
+  );
 
-// 3. Call inside useEffect
-useEffect(() => {
-  debouncedGetPaymentHistory();
+  // 3. Call inside useEffect
+  useEffect(() => {
+    debouncedGetPaymentHistory();
 
-  return () => {
-    debouncedGetPaymentHistory.cancel?.();
-  };
-}, [debouncedGetPaymentHistory]);
+    return () => {
+      debouncedGetPaymentHistory.cancel?.();
+    };
+  }, [debouncedGetPaymentHistory]);
 
 
   const handlePageChange = (newPage) => {
@@ -147,7 +152,7 @@ useEffect(() => {
     setCurrentPage(1); // Reset to first page when filtering
   };
 
- 
+
 
   // Action handlers
   const handleDelete = (memberId) => {
@@ -158,8 +163,9 @@ useEffect(() => {
     alert(`Open WhatsApp for ${memberName}`);
   };
 
-  const handleView = (memberId) => {
-    alert(`View details for member with ID: ${memberId}`);
+  const handleView = (member) => {
+    setSelectedMember(member);
+    setIsViewModalOpen(true);
   };
 
   // Load courts on component mount
@@ -168,13 +174,82 @@ useEffect(() => {
   }, []);
 
   // Fetch payment history when filters change
-useEffect(() => {
-  debouncedGetPaymentHistory();
+  useEffect(() => {
+    debouncedGetPaymentHistory();
 
-  return () => {
-    debouncedGetPaymentHistory.cancel?.();
+    return () => {
+      debouncedGetPaymentHistory.cancel?.();
+    };
+  }, [debouncedGetPaymentHistory]);
+
+  const handleDownload = (member) => {
+    const doc = new jsPDF();
+
+    const fullName = member.userId?.name.charAt(0).toUpperCase() + member.userId?.name.slice(1).toLowerCase() || "";
+    const phoneNumber = member.userId?.phoneNumber || "";
+    const whatsAppNumber = member.userId?.whatsAppNumber || "";
+    const subscriptionMonths = member.subscriptionMonths || "";
+    const paymentMethod = member.modeOfPayment.charAt(0).toUpperCase() + member.modeOfPayment.slice(1).toLowerCase() || "";
+    const amount = member.amount || "";
+    const paymentDate = member.createdAt
+      ? new Date(member.createdAt).toLocaleDateString()
+      : "";
+
+    // Title
+    doc.setFontSize(18);
+    doc.text("Gym Payment Bill", 105, 20, { align: "center" });
+
+    // User Details
+    doc.setFontSize(12);
+    doc.text(`Name: ${fullName}`, 20, 40);
+    doc.text(`Phone: ${phoneNumber}`, 20, 50);
+    doc.text(`WhatsApp: ${whatsAppNumber}`, 20, 60);
+    doc.text(`Subscription Months: ${subscriptionMonths}`, 20, 70);
+    doc.text(`Payment Method: ${paymentMethod}`, 20, 80);
+    doc.text(`Amount Paid: ₹${amount}`, 20, 90);
+    doc.text(`Payment Date: ${paymentDate}`, 20, 100);
+
+    // Save PDF
+    doc.save(`${fullName.replace(" ", "_")}_Gym_Bill.pdf`);
   };
-}, [debouncedGetPaymentHistory]);
+
+  // helper (put near top of file or in utils)
+  const normalizeWhatsApp = (raw) => {
+    if (raw === undefined || raw === null) return null;
+
+    // If it's an object like { number: '...' } try to get the number field
+    if (typeof raw === "object") {
+      if (raw.number) raw = raw.number;
+      else return null;
+    }
+
+    // convert to string and strip non-digits
+    const digits = String(raw).trim().replace(/\D/g, "");
+
+    if (!digits) return null;
+
+    // If number looks local (10 digits) assume India (91) — change as needed
+    if (digits.length === 10) return "91" + digits;
+
+    // otherwise return as-is (already contains country code)
+    return digits;
+  };
+
+  // open whatsapp with optional pre-filled message
+  const openWhatsApp = (rawNumber, name = "") => {
+    const phone = normalizeWhatsApp(rawNumber);
+    if (!phone) {
+      alert("No valid WhatsApp number provided.");
+      return;
+    }
+
+    const message = `Hi ${name || "there"}, I wanted to check in about your membership.`;
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
+
+
+
   return (
     <div className={styles.container}>
       <div className={styles.searchContainer}>
@@ -225,7 +300,7 @@ useEffect(() => {
           </select>
 
           {/* Clear Filters Button */}
-          
+
         </div>
       </div>
 
@@ -255,8 +330,8 @@ useEffect(() => {
                     {member.userId?.name || ""} {member.userId?.lastName || ""}
                   </td>
                   <td className={styles.td}>
-                    {member.createdAt ? 
-                      new Date(member.createdAt).toLocaleDateString() : 
+                    {member.createdAt ?
+                      new Date(member.createdAt).toLocaleDateString() :
                       ""
                     }
                   </td>
@@ -264,27 +339,27 @@ useEffect(() => {
                     {member.subscriptionMonths}
                   </td>
                   <td className={styles.td}>{member.modeOfPayment || ""}</td>
-                  
+
                   <td className={styles.td}>{member.amount}</td>
                   <td className={styles.td}>
                     <div className={styles.actionButtons}>
                       <button
                         className={`${styles.actionButton} ${styles.whatsappButton}`}
-                        onClick={() => handleWhatsApp(member.userId?.firstName)}
+                        onClick={() => openWhatsApp(member.userId.whatsAppNumber, member.userId?.name)}
                         title="WhatsApp"
                       >
                         <MessageCircle size={16} />
                       </button>
                       <button
                         className={styles.actionButton}
-                        onClick={() => handleView(member._id)}
+                        onClick={() => handleView(member)}
                         title="View Details"
                       >
                         <Eye size={16} />
                       </button>
                       <button
                         className={`${styles.actionButton} ${styles.deleteButton}`}
-                        onClick={() => handleDelete(member._id)}
+                        onClick={() => handleDownload(member)}
                         title="Download Bill"
                       >
                         <File size={16} />
@@ -313,9 +388,8 @@ useEffect(() => {
           </div>
           <div className={styles.paginationControls}>
             <button
-              className={`${styles.paginationButton} ${
-                currentPage === 1 ? styles.disabled : ""
-              }`}
+              className={`${styles.paginationButton} ${currentPage === 1 ? styles.disabled : ""
+                }`}
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
             >
@@ -325,9 +399,8 @@ useEffect(() => {
               {generatePageNumbers().map((page, index) => (
                 <button
                   key={index}
-                  className={`${styles.pageButton} ${
-                    page === currentPage ? styles.activePage : ""
-                  } ${page === "..." ? styles.ellipsis : ""}`}
+                  className={`${styles.pageButton} ${page === currentPage ? styles.activePage : ""
+                    } ${page === "..." ? styles.ellipsis : ""}`}
                   onClick={() => page !== "..." && handlePageChange(page)}
                   disabled={page === "..."}
                 >
@@ -336,9 +409,8 @@ useEffect(() => {
               ))}
             </div>
             <button
-              className={`${styles.paginationButton} ${
-                currentPage === totalPages ? styles.disabled : ""
-              }`}
+              className={`${styles.paginationButton} ${currentPage === totalPages ? styles.disabled : ""
+                }`}
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
             >
@@ -347,6 +419,29 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {isViewModalOpen && selectedMember && (
+        <Modal
+          title="Payment Details"
+          open={isViewModalOpen}
+          onCancel={() => setIsViewModalOpen(false)}
+          footer={null}
+          centered
+          width={500}
+        >
+          <div className="flex flex-col gap-2">
+            <p><strong>Name:</strong> {selectedMember.userId?.name.charAt(0).toUpperCase() + selectedMember.userId?.name.slice(1).toLowerCase() || ""}</p>
+            <p><strong>Phone:</strong> {selectedMember.userId?.phoneNumber || ""}</p>
+            <p><strong>WhatsApp:</strong> {selectedMember.userId?.whatsAppNumber || ""}</p>
+            <p><strong>Subscription Months:</strong> {selectedMember.subscriptionMonths || ""}</p>
+            <p><strong>Payment Method:</strong> {selectedMember.modeOfPayment.charAt(0).toUpperCase() + selectedMember.modeOfPayment.slice(1).toLowerCase() || ""}</p>
+            <p><strong>Amount Paid:</strong> ₹{selectedMember.amount || ""}</p>
+            <p><strong>Payment Date:</strong> {selectedMember.createdAt ? new Date(selectedMember.createdAt).toLocaleDateString() : ""}</p>
+          </div>
+        </Modal>
+      )}
+
+
     </div>
   );
 }
