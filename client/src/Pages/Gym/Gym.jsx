@@ -414,8 +414,8 @@ const Gym = () => {
                                         >
                                             <option className={styles.selectoption} value="">Select</option>
                                             <option className={styles.selectoption} value="athlete">Athlete</option>
-                                            <option className={styles.selectoption} value="personal-trainer"></option>
                                             <option className={styles.selectoption} value="non-athlete">Non Athlete</option>
+                                            <option className={styles.selectoption} value="personal-trainer">Personal Trainer</option>
                                             <option className={styles.selectoption} value="active">Active Members</option>
                                             <option className={styles.selectoption} value="expired">Inactive Members</option>
                                         </select>
@@ -1087,6 +1087,42 @@ const Gym = () => {
                                 </span>
                             </p>
                         )}
+                        <div className="mt-3">
+                            <strong>Upload Diet : </strong>
+                            <input
+                                type="file"
+                                accept="application/pdf"
+                                className={styles.fileupload}
+                                onChange={async (e) => {
+                                    const file = e.target.files[0];
+                                    if (!file) return;
+
+                                    const formData = new FormData();
+                                    formData.append("userId", viewMember._id);
+                                    formData.append("dietPdf", file);
+
+                                    try {
+                                        const res = await axios.post(
+                                            `${baseUrl}/api/v1/trainer/assign-diet-plan`,
+                                            formData,
+                                            {
+                                                headers: {
+                                                    "Content-Type": "multipart/form-data",
+                                                },
+                                            }
+                                        );
+
+                                        toast.success(res.data.message);
+                                        setIsViewModalOpen(false)
+                                    } catch (error) {
+                                        toast.error(
+                                            error.response?.data?.message ||
+                                            "Failed to upload"
+                                        );
+                                    }
+                                }}
+                            />
+                        </div>
                         {viewMember.dietPdfs && viewMember.dietPdfs.length > 0 && (
                             <div>
                                 <strong>Diet PDFs:</strong>
