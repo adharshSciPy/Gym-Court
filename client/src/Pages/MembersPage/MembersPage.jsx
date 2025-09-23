@@ -36,7 +36,7 @@ function MembersPage() {
     endTime: "",
     amount: "",
     isGst: false,
-    gstValue: "",
+    gst: "",
     gstNumber: "",
     modeOfPayment: "cash",
   });
@@ -108,7 +108,7 @@ function MembersPage() {
 
     if (
       renewalData.isGst &&
-      (!renewalData.gstValue || !renewalData.gstNumber)
+      (!renewalData.gst || !renewalData.gstNumber)
     ) {
       setError("GST value and number are required when GST is enabled.");
       return;
@@ -123,7 +123,7 @@ function MembersPage() {
 
       // Remove GST fields if GST is not applicable
       if (!renewalData.isGst) {
-        delete renewalPayload.gstValue;
+        delete renewalPayload.gst;
         delete renewalPayload.gstNumber;
       }
 
@@ -155,7 +155,7 @@ function MembersPage() {
       endTime: "",
       amount: "",
       isGst: false,
-      gstValue: "",
+      gst: "",
       gstNumber: "",
       modeOfPayment: "cash",
     });
@@ -180,7 +180,7 @@ function MembersPage() {
       endTime: member.endTime || "",
       amount: member.amount || "",
       isGst: member.isGst || false,
-      gstValue: member.gstValue || "",
+      gst: member.gst || "",
       gstNumber: member.gstNumber || "",
       modeOfPayment: member.modeOfPayment || "cash",
     });
@@ -550,7 +550,7 @@ function MembersPage() {
                       <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>GST Value:</span>
                         <span className={styles.detailValue}>
-                          {selectedMember.gstValue || "N/A"}%
+                          {selectedMember.gst || "N/A"}%
                         </span>
                       </div>
                       <div className={styles.detailItem}>
@@ -737,12 +737,12 @@ function MembersPage() {
                 {/* GST Value */}
                 {renewalData.isGst && (
                   <div className={styles.formGroup}>
-                    <label htmlFor="gstValue">GST Value (%)</label>
+                    <label htmlFor="gst">GST Value (%)</label>
                     <input
                       type="number"
-                      id="gstValue"
-                      name="gstValue"
-                      value={renewalData.gstValue}
+                      id="gst"
+                      name="gst"
+                      value={renewalData.gst}
                       onChange={handleRenewalInputChange}
                       className={styles.formInput}
                       min="0"
