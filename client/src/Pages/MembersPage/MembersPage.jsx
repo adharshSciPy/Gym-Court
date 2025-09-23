@@ -269,12 +269,15 @@ function MembersPage() {
   console.log(selectedMember);
 
   // Filter members based on search term
-  const filteredMembers = members.filter(
-    (member) =>
-      member.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phoneNumber?.includes(searchTerm) ||
-      member.whatsAppNumber?.includes(searchTerm)
+ const filteredMembers = members.filter((member) => {
+  const phone = member.phoneNumber?.toString() || "";
+  const whatsapp = member.whatsAppNumber?.toString() || "";
+  return (
+    member.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    phone.includes(searchTerm) ||
+    whatsapp.includes(searchTerm)
   );
+});
 
   // Format date for display
   const formatDate = (dateString) => {
