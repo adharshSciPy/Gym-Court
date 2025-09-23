@@ -197,7 +197,7 @@ const getFullPaymentHistory = async (req, res) => {
     // -----------------------------
     const billings = await Billing.find(query)
       .populate("userId", "firstName lastName phoneNumber whatsAppNumber")
-      .populate("courtId", "name")
+      .populate("courtId", "courtName")
       .populate("bookingId", "startDate endDate startTime endTime")
       .sort({ createdAt: -1 })
       .skip(skip)
