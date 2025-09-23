@@ -36,7 +36,7 @@ function MembersPage() {
     endTime: "",
     amount: "",
     isGst: false,
-    gstValue: "",
+    gst: "",
     gstNumber: "",
     modeOfPayment: "cash",
   });
@@ -118,7 +118,7 @@ function MembersPage() {
 
     if (
       renewalData.isGst &&
-      (!renewalData.gstValue || !renewalData.gstNumber)
+      (!renewalData.gst || !renewalData.gstNumber)
     ) {
       setError("GST value and number are required when GST is enabled.");
       return;
@@ -133,7 +133,7 @@ function MembersPage() {
 
       // Remove GST fields if GST is not applicable
       if (!renewalData.isGst) {
-        delete renewalPayload.gstValue;
+        delete renewalPayload.gst;
         delete renewalPayload.gstNumber;
       }
 
@@ -143,7 +143,7 @@ function MembersPage() {
       );
       console.log(response);
 
-      alert("Renewal successful!");
+      toast.success("Renewal successful!");
       setShowRenewalPopup(false);
       getMembers(); // Refresh member list
     } catch (error) {
@@ -165,7 +165,7 @@ function MembersPage() {
       endTime: "",
       amount: "",
       isGst: false,
-      gstValue: "",
+      gst: "",
       gstNumber: "",
       modeOfPayment: "cash",
     });
@@ -190,7 +190,7 @@ function MembersPage() {
       endTime: member.endTime || "",
       amount: member.amount || "",
       isGst: member.isGst || false,
-      gstValue: member.gstValue || "",
+      gst: member.gst || "",
       gstNumber: member.gstNumber || "",
       modeOfPayment: member.modeOfPayment || "cash",
     });
@@ -257,7 +257,7 @@ function MembersPage() {
       const encodedMessage = encodeURIComponent(message);
       window.open(`https://wa.me/${phone}?text=${encodedMessage}`, "_blank");
     } else {
-      alert("No WhatsApp number available.");
+      toast.error("No WhatsApp number available.");
     }
   };
 
@@ -270,12 +270,15 @@ function MembersPage() {
   console.log(selectedMember);
 
   // Filter members based on search term
-  const filteredMembers = members.filter(
-    (member) =>
-      member.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      member.phoneNumber?.includes(searchTerm) ||
-      member.whatsAppNumber?.includes(searchTerm)
+ const filteredMembers = members.filter((member) => {
+  const phone = member.phoneNumber?.toString() || "";
+  const whatsapp = member.whatsAppNumber?.toString() || "";
+  return (
+    member.firstName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    phone.includes(searchTerm) ||
+    whatsapp.includes(searchTerm)
   );
+});
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -546,7 +549,7 @@ function MembersPage() {
                       <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>GST Value:</span>
                         <span className={styles.detailValue}>
-                          {selectedMember.gstValue || "N/A"}%
+                          {selectedMember.gst || "N/A"}%
                         </span>
                       </div>
                       <div className={styles.detailItem}>
@@ -733,12 +736,12 @@ function MembersPage() {
                 {/* GST Value */}
                 {renewalData.isGst && (
                   <div className={styles.formGroup}>
-                    <label htmlFor="gstValue">GST Value (%)</label>
+                    <label htmlFor="gst">GST Value (%)</label>
                     <input
                       type="number"
-                      id="gstValue"
-                      name="gstValue"
-                      value={renewalData.gstValue}
+                      id="gst"
+                      name="gst"
+                      value={renewalData.gst}
                       onChange={handleRenewalInputChange}
                       className={styles.formInput}
                       min="0"
