@@ -215,7 +215,7 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                   <label className={styles.formLabel}>Enter Phone Number</label>
                   <input
                     type="number"
-                    placeholder="Eg: +91XXXXXXXXX"
+                    placeholder="Eg:9847634XXX"
                     value={formData.phoneNumber}
                     onChange={(e) =>
                       handleInputChange("phoneNumber", e.target.value)
@@ -235,7 +235,7 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
                   </label>
                   <input
                     type="number"
-                    placeholder="Eg: +91XXXXXXXXX"
+                    placeholder="Eg:"
                     value={formData.whatsAppNumber}
                     onChange={(e) =>
                       handleInputChange("whatsAppNumber", e.target.value)

@@ -159,7 +159,7 @@ const Gym = () => {
             });
             console.log("user register gym", res)
             if (res.status === 201) {
-                toast.success("Form Submitted Successfully")
+                toast.success("Member added succesfully")
             }
 
             setFormData({
@@ -571,7 +571,7 @@ const Gym = () => {
                                                         name="phoneNumber"
                                                         value={formData.phoneNumber}
                                                         onChange={handleInputChange}
-                                                        placeholder="eg: +91 9847634893"
+                                                        placeholder="eg:9847634XXX"
                                                         required
                                                     />
                                                 </div>
@@ -583,7 +583,7 @@ const Gym = () => {
                                                         name="whatsAppNumber"
                                                         value={formData.whatsAppNumber}
                                                         onChange={handleInputChange}
-                                                        placeholder="eg: +91 9847634893"
+                                                        placeholder="eg:9847634XXX"
                                                         required
                                                     />
                                                 </div>
@@ -836,7 +836,7 @@ const Gym = () => {
                         name="phoneNumber"
                         value={formData.phoneNumber}
                         onChange={handleInputChange}
-                        placeholder="eg: +91 9847634893"
+                        placeholder="eg:9847634XXX"
                         required
                     />
 
@@ -938,7 +938,7 @@ const Gym = () => {
                         <input
                             type="tel"
                             className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
+                            placeholder="eg: 9847634XXX"
                         />
                     </div>
                 </div>
@@ -949,7 +949,7 @@ const Gym = () => {
                         <input
                             type="tel"
                             className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
+                            placeholder="eg: 9847634XXX"
                         />
                     </div>
                     <div>
@@ -957,26 +957,7 @@ const Gym = () => {
                         <input
                             type="tel"
                             className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
-                        />
-                    </div>
-                </div>
-
-                <div className={styles.editModal}>
-                    <div>
-                        <label className={styles.sectionLabel}>Enter Phone Number</label>
-                        <input
-                            type="tel"
-                            className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
-                        />
-                    </div>
-                    <div>
-                        <label className={styles.sectionLabel}>Enter Phone Number</label>
-                        <input
-                            type="tel"
-                            className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
+                            placeholder="eg: 9847634XXX"
                         />
                     </div>
                 </div>
@@ -987,7 +968,7 @@ const Gym = () => {
                         <input
                             type="tel"
                             className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
+                            placeholder="eg:9847634XXX"
                         />
                     </div>
                     <div>
@@ -995,7 +976,26 @@ const Gym = () => {
                         <input
                             type="tel"
                             className={styles.formInput}
-                            placeholder="eg: +91 9847634893"
+                            placeholder="eg:9847634XXX"
+                        />
+                    </div>
+                </div>
+
+                <div className={styles.editModal}>
+                    <div>
+                        <label className={styles.sectionLabel}>Enter Phone Number</label>
+                        <input
+                            type="tel"
+                            className={styles.formInput}
+                            placeholder="eg:9847634XXX"
+                        />
+                    </div>
+                    <div>
+                        <label className={styles.sectionLabel}>Enter Phone Number</label>
+                        <input
+                            type="tel"
+                            className={styles.formInput}
+                            placeholder="eg:9847634XXX"
                         />
                     </div>
                 </div>
