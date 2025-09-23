@@ -275,7 +275,7 @@ const Gym = () => {
   const openWhatsApp = (rawNumber, name = "") => {
     const phone = normalizeWhatsApp(rawNumber);
     if (!phone) {
-      alert("No valid WhatsApp number provided.");
+      toast.error("No valid WhatsApp number provided.");
       return;
     }
 

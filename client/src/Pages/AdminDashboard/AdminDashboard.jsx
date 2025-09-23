@@ -59,7 +59,7 @@ function AdminDashboard() {
             className={styles.toggleButton} 
             onClick={handleToggleView}
           >
-            Switch to Admin View
+            Switch to Court View
           </button>
         </div>
         <GymSideBarSwitching 
@@ -83,7 +83,7 @@ function AdminDashboard() {
             className={styles.toggleButton} 
             onClick={handleToggleView}
           >
-            Switch to Trainer View
+            Switch to Gym View
           </button>
         </div>
       </div>

@@ -102,7 +102,7 @@
 .statValue {
   font-size: 28px;
   font-weight: 700;
-  color: #1e293b;
+  color: white;
   margin: 0;
 }
 .pageContainer {
@@ -196,7 +196,7 @@
 }
 
 .statValue {
-  color: #1f2937;
+  color: white;
   font-size: 1.875rem;
   font-weight: bold;
   margin: 0;
