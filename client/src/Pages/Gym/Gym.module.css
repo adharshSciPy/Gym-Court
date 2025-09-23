@@ -613,6 +613,15 @@ select option {
   color: red;
 }
 
+.fileupload {
+  background-color: #10b981;
+  margin-bottom: 15px;
+}
+
+.deletediet {
+  color: red;
+}
+
 /* Responsive Design */
 @media (min-width: 768px) {
   .formRow {

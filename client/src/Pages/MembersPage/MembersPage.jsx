@@ -185,8 +185,8 @@ function MembersPage() {
 
   const onDelete = async () => {
     try {
-      const res=await axios.delete(`${baseUrl}/api/v1/user/delete/${selectedMember._id}`);
-      if(res.status===200){
+      const res = await axios.delete(`${baseUrl}/api/v1/user/delete/${selectedMember._id}`);
+      if (res.status === 200) {
         toast.success("Member deleted successfully");
       }
     } catch (error) {
@@ -210,7 +210,7 @@ function MembersPage() {
     const phone = member.whatsAppNumber || member.phoneNumber;
     if (phone) {
       let message = "";
-      
+
       if (member.status === "expired") {
         // Expired subscription message
         message = `Hello ${member.firstName || 'Member'},\n\nYour subscription has expired on ${member.endDate || 'N/A'}.\n\nTo continue enjoying our services, please renew your subscription at your earliest convenience.\n\nCourt: ${member.courtName || 'N/A'}\nLast booking period: ${member.startDate || 'N/A'} to ${member.endDate || 'N/A'}\n\nFor renewal, please contact us or visit our facility.\n\nThank you!`;
@@ -221,7 +221,7 @@ function MembersPage() {
         // General message
         message = `Hello ${member.firstName || 'Member'},\n\nThank you for being a valued member. If you have any questions or need assistance, please feel free to contact us.\n\nThank you!`;
       }
-      
+
       const encodedMessage = encodeURIComponent(message);
       window.open(`https://wa.me/${phone}?text=${encodedMessage}`, "_blank");
     } else {
@@ -262,16 +262,21 @@ function MembersPage() {
   // Format time for display
   const formatTime = (timeString) => {
     if (!timeString) return "N/A";
-    try {
-      return new Date(`2000-01-01T${timeString}`).toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return timeString;
-    }
+
+
+    const [hourStr, minuteStr] = timeString.split(":");
+    if (!hourStr || !minuteStr) return timeString;
+
+    let hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12;
+
+    return `${hour.toString().padStart(2, "0")}:${minute
+      .toString()
+      .padStart(2, "0")} ${ampm}`;
   };
+
 
   return (
     <div className={styles.container}>
@@ -316,7 +321,7 @@ function MembersPage() {
             <tbody>
               {filteredMembers.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
-                  <td className={styles.td}>{member.firstName || "N/A"}</td>
+                  <td className={styles.td}>{member.firstName || "N/A"}{" "}{member.lastName}</td>
                   <td className={styles.td}>{member.phoneNumber || "N/A"}</td>
                   <td className={styles.td}>
                     {member.whatsAppNumber || "N/A"}
@@ -326,11 +331,10 @@ function MembersPage() {
                   <td className={styles.td}>{member.courtName || "N/A"}</td>
                   <td className={styles.td}>
                     <span
-                      className={`${styles.status} ${
-                        member.status === "upcoming"
-                          ? styles.statusActive
-                          : styles.statusExpired
-                      }`}
+                      className={`${styles.status} ${member.status === "upcoming"
+                        ? styles.statusActive
+                        : styles.statusExpired
+                        }`}
                     >
                       {member.status || "N/A"}
                     </span>
@@ -401,7 +405,8 @@ function MembersPage() {
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Name:</span>
                     <span className={styles.detailValue}>
-                      {selectedMember.firstName || "N/A"}
+                      {selectedMember.firstName || "N/A"}{" "}
+                      {selectedMember.lastName}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
@@ -467,11 +472,10 @@ function MembersPage() {
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Subscription Status:</span>
-                    <span className={`${styles.detailValue} ${styles.statusBadge} ${
-                      selectedMember.status === "upcoming"
-                        ? styles.statusActive
-                        : styles.statusExpired
-                    }`}>
+                    <span className={`${styles.detailValue} ${styles.statusBadge} ${selectedMember.status === "upcoming"
+                      ? styles.statusActive
+                      : styles.statusExpired
+                      }`}>
                       {selectedMember.status || "N/A"}
                     </span>
                   </div>
@@ -554,7 +558,7 @@ function MembersPage() {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h2>
-                Renew Booking for {selectedMember?.firstName || "Member"}
+                Renew Booking for {selectedMember?.firstName + selectedMember?.lastName || "Member"}
               </h2>
               <button
                 className={styles.closeButton}
@@ -740,7 +744,7 @@ function MembersPage() {
                     <option value="cash">Cash</option>
                     {/* <option value="card">Card</option> */}
                     <option value="upi">UPI</option>
-                    
+
                   </select>
                 </div>
               </div>
