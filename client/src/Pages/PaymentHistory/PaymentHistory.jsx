@@ -382,6 +382,7 @@ function PaymentHistory() {
               <th className={styles.th}>Booking Date</th>
               <th className={styles.th}>Ended Date</th>
               <th className={styles.th}>Payment Method</th>
+              <th className={styles.th}>Court</th>
               <th className={styles.th}>Amount</th>
               <th className={styles.th}>Actions</th>
             </tr>
@@ -405,7 +406,9 @@ function PaymentHistory() {
                       ""
                     }
                   </td>
+
                   <td className={styles.td}>{member.modeOfPayment || ""}</td>
+                  <td className={styles.td}>{member.courtId?.courtName || ""}</td>
 
                   <td className={styles.td}>{member.amount}</td>
                   <td className={styles.td}>
