@@ -10,6 +10,9 @@ const formatTime = (date) => {
   return d.toISOString().substring(11, 16);
 };
 const bookSlot = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const {
       courtId,
@@ -33,39 +36,58 @@ const bookSlot = async (req, res) => {
     // --- Validations ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
 
-// --- Date Validations ---
-if (!startDate || !endDate) {
-  return res.status(400).json({ message: "Start and end date are required" });
-}
+    // --- Date Validations ---
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: "Start and end date are required" });
+    }
 
-const start = new Date(startDate);
-const end = new Date(endDate);
-const today = new Date();
-// Reset time to 00:00:00 for today comparison
-today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-if (isNaN(start) || isNaN(end)) {
-  return res.status(400).json({ message: "Invalid start or end date" });
-}
-if (start > end) {
-  return res.status(400).json({ message: "Start date must be before end date" });
-}
-
-if (start < today) {
-  return res.status(400).json({ message: "Start date cannot be in the past" });
-}
+    if (isNaN(start) || isNaN(end)) return res.status(400).json({ message: "Invalid start or end date" });
+    if (start > end) return res.status(400).json({ message: "Start date must be before end date" });
+    if (start < today) return res.status(400).json({ message: "Start date cannot be in the past" });
 
     const maxRangeDays = 365;
     const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     if (diffDays > maxRangeDays) return res.status(400).json({ message: `Booking cannot exceed ${maxRangeDays} days` });
 
-    if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
-    const [startH, startM = 0] = startTime.split(":").map(Number);
-    const [endH, endM = 0] = endTime.split(":").map(Number);
-    if (isNaN(startH) || isNaN(endH)) return res.status(400).json({ message: "Invalid time format, expected HH:mm" });
+    // --- Time Validations ---
+// --- Time Validations ---
+if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
 
+const [startH, startM = 0] = startTime.split(":").map(Number);
+const [endH, endM = 0] = endTime.split(":").map(Number);
+
+if (isNaN(startH) || isNaN(endH)) return res.status(400).json({ message: "Invalid time format, expected HH:mm" });
+
+// --- Combine date and time for start and end ---
+const startDateTime = new Date(start);
+startDateTime.setHours(startH, startM, 0, 0);
+
+const endDateTime = new Date(end);
+endDateTime.setHours(endH, endM, 0, 0);
+
+// --- Check if start time is in the past ---
+const now = new Date();
+now.setSeconds(0, 0);
+if (startDateTime < now) {
+  return res.status(400).json({ message: "Start time cannot be in the past" });
+}
+
+// --- Check if end time is after start time ---
+if (endDateTime <= startDateTime) {
+  return res.status(400).json({ message: "End time must be after start time" });
+}
+
+
+    // --- Phone Validation (India) ---
     if (!phoneNumber) return res.status(400).json({ message: "Phone number is required" });
-    if (!/^[0-9]{10}$/.test(phoneNumber)) return res.status(400).json({ message: "Phone number must be 10 digits" });
+    if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
+      return res.status(400).json({ message: "Invalid phone number. Must be 10 digits and start with 6, 7, 8, or 9" });
+    }
 
     if (notes && notes.length > 300) return res.status(400).json({ message: "Notes too long (max 300 chars)" });
 
@@ -88,26 +110,31 @@ if (start < today) {
     if (!court) return res.status(404).json({ message: "Court not found" });
 
     // --- User Handling ---
-    let user = await User.findOne({ phoneNumber });
+    let user = await User.findOne({ phoneNumber }).session(session);
 
     if (!user) {
       if (!firstName || firstName.length > 50) return res.status(400).json({ message: "First name is required (max 50 chars)" });
       if (!lastName || lastName.length > 50) return res.status(400).json({ message: "Last name is required (max 50 chars)" });
-      if (!whatsAppNumber || !/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
+      if (!whatsAppNumber || !/^[6-9]\d{9}$/.test(whatsAppNumber)) {
+        return res.status(400).json({ message: "WhatsApp number must be 10 digits and start with 6, 7, 8, or 9" });
+      }
       if (!address || address.length > 200) return res.status(400).json({ message: "Address is required (max 200 chars)" });
 
-      user = await User.create({ firstName, lastName, phoneNumber, whatsAppNumber, address });
+      user = await User.create([{ firstName, lastName, phoneNumber, whatsAppNumber, address }], { session });
+      user = user[0];
     } else {
       if (firstName && firstName.length > 50) return res.status(400).json({ message: "First name too long" });
       if (lastName && lastName.length > 50) return res.status(400).json({ message: "Last name too long" });
-      if (whatsAppNumber && !/^[0-9]{10}$/.test(whatsAppNumber)) return res.status(400).json({ message: "WhatsApp number must be 10 digits" });
+      if (whatsAppNumber && !/^[6-9]\d{9}$/.test(whatsAppNumber)) {
+        return res.status(400).json({ message: "WhatsApp number must be 10 digits and start with 6, 7, 8, or 9" });
+      }
       if (address && address.length > 200) return res.status(400).json({ message: "Address too long" });
 
       user.firstName = firstName || user.firstName;
       user.lastName = lastName || user.lastName;
       user.whatsAppNumber = whatsAppNumber || user.whatsAppNumber;
       user.address = address || user.address;
-      await user.save();
+      await user.save({ session });
     }
 
     // --- Prepare slots ---
@@ -121,18 +148,24 @@ if (start < today) {
       const slotEnd = new Date(currentDate);
       slotEnd.setHours(endH, endM, 0, 0);
 
-      if (slotStart >= slotEnd) {
-        return res.status(400).json({ message: "Start time must be before end time" });
-      }
+    if (slotStart >= slotEnd) {
+    await session.abortTransaction();
+    session.endSession();
+    return res.status(400).json({ 
+      message: "Start time must be before end time" 
+    });
+  }
 
-      // Check overlap
+      // Overlap check
       const overlap = await Slot.findOne({
         courtId,
         isBooked: true,
         $or: [{ startTime: { $lt: slotEnd }, endTime: { $gt: slotStart } }],
-      }).populate("userId");
+      }).session(session).populate("userId");
 
       if (overlap) {
+        await session.abortTransaction();
+        session.endSession();
         return res.status(400).json({
           message: "Overlap found with existing booking",
           details: {
@@ -168,8 +201,7 @@ if (start < today) {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // --- Create slots ---
-    const createdSlots = await Slot.insertMany(slotsToCreate);
+    const createdSlots = await Slot.insertMany(slotsToCreate, { session });
 
     // Booking
     const bookingStartTime = new Date(start);
@@ -178,7 +210,7 @@ if (start < today) {
     const bookingEndTime = new Date(end);
     bookingEndTime.setHours(endH, endM, 0, 0);
 
-    const booking = await Booking.create({
+    const booking = await Booking.create([{
       courtId,
       userId: user._id,
       slotIds: createdSlots.map((s) => s._id),
@@ -193,11 +225,10 @@ if (start < today) {
       gst,
       gstNumber,
       modeOfPayment,
-    });
+    }], { session });
 
-    // Billing
-    await Billing.create({
-      bookingId: booking._id,
+    await Billing.create([{
+      bookingId: booking[0]._id,
       userId: user._id,
       courtId,
       amount,
@@ -205,7 +236,10 @@ if (start < today) {
       gst,
       gstNumber,
       modeOfPayment,
-    });
+    }], { session });
+
+    await session.commitTransaction();
+    session.endSession();
 
     // --- Format response ---
     const formatTime = (date) =>
@@ -226,18 +260,21 @@ if (start < today) {
       });
 
     const formattedBooking = {
-      ...booking.toObject(),
-      startDate: formatDate(booking.startDate),
-      endDate: formatDate(booking.endDate),
-      startTime: formatTime(booking.startTime),
-      endTime: formatTime(booking.endTime),
+      ...booking[0].toObject(),
+      startDate: formatDate(booking[0].startDate),
+      endDate: formatDate(booking[0].endDate),
+      startTime: formatTime(booking[0].startTime),
+      endTime: formatTime(booking[0].endTime),
     };
 
     return res.status(201).json({
       message: "Slots booked successfully",
       booking: formattedBooking,
     });
+
   } catch (err) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error in bookSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
