@@ -68,7 +68,7 @@ function ReceptionLogin() {
   const handleForgotEmailChange = (e) => {
     const value = e.target.value;
     setForgotEmail(value);
-    
+
     if (!value) {
       setForgotEmailError("Email is required.");
     } else if (!emailRegex.test(value)) {
@@ -90,6 +90,8 @@ function ReceptionLogin() {
         `${baseUrl}/api/v1/receptionist/login`,
         form
       );
+      console.log("recep login", res)
+      localStorage.setItem("reception-role", res.data.role)
       if (res.status === 200) {
         toast.success("Login successful! Redirecting to dashboard...");
         setTimeout(() => {
@@ -117,7 +119,7 @@ function ReceptionLogin() {
   const handleOtpChange = (e) => {
     const value = e.target.value;
     setOtp(value);
-    
+
     if (!value) {
       setOtpError("OTP is required.");
     } else if (value.length !== 6) {
@@ -132,7 +134,7 @@ function ReceptionLogin() {
   const handleNewPasswordChange = (e) => {
     const value = e.target.value;
     setNewPassword(value);
-    
+
     if (!value) {
       setNewPasswordError("New password is required.");
     } else if (value.length < 6) {
@@ -149,7 +151,7 @@ function ReceptionLogin() {
   const handleConfirmPasswordChange = (e) => {
     const value = e.target.value;
     setConfirmPassword(value);
-    
+
     if (!value) {
       setConfirmPasswordError("Please confirm your password.");
     } else if (value !== newPassword) {
@@ -171,7 +173,7 @@ function ReceptionLogin() {
       const res = await axios.post(`${baseUrl}/api/v1/receptionist/sent-otp`, {
         receptionistEmail: forgotEmail
       });
-      
+
       if (res.status === 200) {
         toast.success("OTP sent successfully! Please check your email.");
         setShowOtpVerification(true);
@@ -206,7 +208,7 @@ function ReceptionLogin() {
         otp: otp,
         newPassword: newPassword
       });
-      
+
       if (res.status === 200) {
         toast.success("Password reset successful! You can now login with your new password.");
         setTimeout(() => {
@@ -423,7 +425,7 @@ function ReceptionLogin() {
             )}
           </div>
 
-         
+
 
           <button
             onClick={receptionLogin}
@@ -431,7 +433,7 @@ function ReceptionLogin() {
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>
-           <div className={styles.forgotPasswordContainer}>
+          <div className={styles.forgotPasswordContainer}>
             <button
               type="button"
               onClick={() => {

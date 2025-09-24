@@ -11,6 +11,7 @@ import Gym from "../Gym/Gym"
 const TrainerSidebarSwitching = ({ activeNav, setActiveNav }) => {
   const navigate = useNavigate()
   const handleLogout = () => {
+    localStorage.clear();
     navigate("/")
   }
   const styles = {

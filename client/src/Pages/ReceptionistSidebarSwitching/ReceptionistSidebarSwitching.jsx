@@ -6,11 +6,12 @@ import BookingsPage from "../BookingPage/BookingPage";
 import SettingsPage from "../SettingsPage/SettingsPage";
 import PaymentHistory from "../PaymentHistory/PaymentHistory";
 import Sidebar from "../ReceptionistSidebar/ReceptionistSidebar";
-import {useNavigate} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
 const SidebarSwitching = ({ activeNav, setActiveNav }) => {
-  const navigate=useNavigate()
-  const handleLogout=()=>{
+  const navigate = useNavigate()
+  const handleLogout = () => {
+    localStorage.clear();
     navigate("/")
     setActiveNav("Dashboard")
   }
@@ -22,27 +23,27 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
     },
   };
 
- const renderPage = () => {
-  switch (activeNav) {
-    case "Dashboard":
-      return <DashboardPage />;
-    case "Members":
-      return <MembersPage />;
-    case "Bookings":
-      return <BookingsPage />;
-    case "Payments":
-      return <PaymentHistory />;
-    case "Reports":
-      return <ReportsPage />;
-    case "Settings":
-      return <SettingsPage />;
-    case "Logout":
-      handleLogout();
-      return;
-    default:
-      return <DashboardPage />;
-  }
-};
+  const renderPage = () => {
+    switch (activeNav) {
+      case "Dashboard":
+        return <DashboardPage />;
+      case "Members":
+        return <MembersPage />;
+      case "Bookings":
+        return <BookingsPage />;
+      case "Payments":
+        return <PaymentHistory />;
+      case "Reports":
+        return <ReportsPage />;
+      case "Settings":
+        return <SettingsPage />;
+      case "Logout":
+        handleLogout();
+        return;
+      default:
+        return <DashboardPage />;
+    }
+  };
 
 
   return (
