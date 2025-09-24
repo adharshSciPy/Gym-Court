@@ -7,9 +7,12 @@ import baseUrl from "../../baseUrl";
 import axios from "axios";
 import BookingOverView from "./BookingOverview";
 import { toast } from "react-toastify";
+
 const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
   const [activeTab, setActiveTab] = useState("details");
   const [errors, setErrors] = useState({});
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [phoneVerificationStatus, setPhoneVerificationStatus] = useState(null); // null, 'verified', 'exists'
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -41,7 +44,89 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
       ...prev,
       [field]: field === "isGst" ? value === "yes" : value,
     }));
+
+    // Reset phone verification when phone number changes
+    if (field === "phoneNumber") {
+      setPhoneVerificationStatus(null);
+    }
   };
+
+  const checkPhoneNumber = async () => {
+    if (!formData.phoneNumber) {
+      toast.error("Please enter a phone number first");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(formData.phoneNumber)) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
+    }
+
+    setIsCheckingPhone(true);
+
+    try {
+      // Use the existing latest-booking endpoint to search for the phone number
+      const response = await axios.get(`${baseUrl}/api/v1/bookings/latest-booking`, {
+        params: {
+          search: formData.phoneNumber,
+          limit: 1 // We only need to check if any booking exists
+        }
+      });
+      
+      // Check if any booking data exists with this phone number
+      if (response.data.data && response.data.data.length > 0) {
+        // Found a user with this phone number - auto-fill the form
+        const existingUser = response.data.data[0];
+        
+        // Auto-fill user data from existing booking
+        setFormData(prev => ({
+          ...prev,
+          firstName: existingUser.firstName || "",
+          lastName: existingUser.lastName || "",
+          phoneNumber: existingUser.phoneNumber?.toString() || formData.phoneNumber,
+          whatsAppNumber: existingUser.whatsAppNumber?.toString() || "",
+          address: existingUser.address || "",
+          // Note: We don't auto-fill address as it might be sensitive/outdated
+          // Keep the booking-specific fields empty for new booking
+          startDate: "",
+          endDate: "",
+          startTime: "",
+          endTime: "",
+          amount: 0,
+          isGst: existingUser.isGst || false,
+          gst: existingUser.gst || 0,
+          gstNumber: existingUser.gstNumber || "",
+          modeOfPayment: existingUser.modeOfPayment || "cash",
+          courtId: selectedCourtNumber,
+        }));
+
+        setPhoneVerificationStatus('verified');
+        toast.success(`User found! Auto-filled details for ${existingUser.firstName} ${existingUser.lastName}`);
+      } else {
+        // No user found with this phone number
+        setPhoneVerificationStatus('verified');
+        toast.success("Phone number verified. New user - you can proceed with booking.");
+      }
+    } catch (error) {
+      console.error("Error checking phone number:", error);
+      
+      // If there's an error, we'll assume it's a server issue
+      if (error.response && error.response.status === 404) {
+        // No data found - phone number is available
+        setPhoneVerificationStatus('verified');
+        toast.success("Phone number verified. New user - you can proceed with booking.");
+      } else if (error.response && error.response.data && error.response.data.message) {
+        toast.error(`Error: ${error.response.data.message}`);
+        setPhoneVerificationStatus(null);
+      } else {
+        toast.error("Error checking phone number. Please try again.");
+        setPhoneVerificationStatus(null);
+      }
+    } finally {
+      setIsCheckingPhone(false);
+    }
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -86,30 +171,58 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
       }
     }
 
+    // Phone verification check
+    if (phoneVerificationStatus !== 'verified') {
+      newErrors.phoneVerification = "Please verify the phone number first";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0; // ✅ true if no errors
   };
 
   const handleSubmit = async () => {
-  console.log(formData);
+    console.log(formData);
 
-  try {
-    if (validateForm()) {
-      // convert phone numbers to Number
-      const payload = {
-        ...formData,
-        phoneNumber: Number(formData.phoneNumber),
-        whatsAppNumber: Number(formData.whatsAppNumber),
-      };
+    try {
+      if (validateForm()) {
+        // convert phone numbers to Number
+        const payload = {
+          ...formData,
+          phoneNumber: Number(formData.phoneNumber),
+          whatsAppNumber: Number(formData.whatsAppNumber),
+        };
 
-      const res = await axios.post(`${baseUrl}/api/v1/slot/book`, payload);
-      console.log(res);
-      console.log("Form submitted successfully", payload);
+        const res = await axios.post(`${baseUrl}/api/v1/slot/book`, payload);
+        console.log(res);
+        console.log("Form submitted successfully", payload);
 
-      if (res.status === 201) {
-        toast.success("Booking Successful");
+        if (res.status === 201) {
+          toast.success("Booking Successful");
+        }
+
+        setFormData({
+          firstName: "",
+          lastName: "",
+          phoneNumber: "",
+          whatsAppNumber: "",
+          address: "",
+          startDate: "",
+          endDate: "",
+          startTime: "",
+          endTime: "",
+          amount: 0,
+          isGst: false,
+          gst: 0,
+          gstNumber: "",
+          modeOfPayment: "cash",
+          courtId: selectedCourtNumber,
+        });
+        setPhoneVerificationStatus(null);
+      } else {
+        console.log("Validation failed");
       }
-
+    } catch (error) {
+      console.log(error);
       setFormData({
         firstName: "",
         lastName: "",
@@ -127,35 +240,16 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
         modeOfPayment: "cash",
         courtId: selectedCourtNumber,
       });
-    } else {
-      console.log("Validation failed");
+      setPhoneVerificationStatus(null);
+      toast.error(
+        "Booking Failed. Please try again. " +
+          (error?.response?.data?.message || error.message)
+      );
     }
-  } catch (error) {
-    console.log(error);
-    setFormData({
-      firstName: "",
-      lastName: "",
-      phoneNumber: "",
-      whatsAppNumber: "",
-      address: "",
-      startDate: "",
-      endDate: "",
-      startTime: "",
-      endTime: "",
-      amount: 0,
-      isGst: false,
-      gst: 0,
-      gstNumber: "",
-      modeOfPayment: "cash",
-      courtId: selectedCourtNumber,
-    });
-    toast.error(
-      "Booking Failed. Please try again. " +
-        (error?.response?.data?.message || error.message)
-    );
-  }
-};
+  };
 
+  // Check if submit should be disabled
+  const isSubmitDisabled = phoneVerificationStatus !== 'verified' || isCheckingPhone;
 
   return (
     <div className={styles.bookingContainer}>
@@ -167,9 +261,6 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
             </button>
             <h1 className={styles.formTitle}>Details - {selectedCourt}</h1>
           </div>
-          {/* <button onClick={handleSubmit} className={styles.updateButton}>
-            Update
-          </button> */}
         </div>
 
         <Tabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -227,18 +318,42 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
               <div className={styles.nameInputs}>
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>Enter Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="Eg:9847634XXX"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      handleInputChange("phoneNumber", e.target.value)
-                    }
-                    className={styles.formInput}
-                  />
-                  {errors.phoneNumber && (
-                    <span id="phoneNumberError" className={styles.errorMessage}>
-                      {errors.phoneNumber}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <input
+                        type="tel"
+                        placeholder="Eg:9847634XXX"
+                        value={formData.phoneNumber}
+                        onChange={(e) =>
+                          handleInputChange("phoneNumber", e.target.value)
+                        }
+                        className={styles.formInput}
+                      />
+                      {errors.phoneNumber && (
+                        <span id="phoneNumberError" className={styles.errorMessage}>
+                          {errors.phoneNumber}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={checkPhoneNumber}
+                      disabled={isCheckingPhone || !formData.phoneNumber}
+                      className={`${styles.button} ${isCheckingPhone ? styles.buttonDisabled : ''}`}
+                      style={{ 
+                        minWidth: '80px', 
+                        height: '40px', 
+                        fontSize: '14px',
+                        backgroundColor: phoneVerificationStatus === 'verified' ? '#28a745' : '#007bff'
+                      }}
+                    >
+                      {isCheckingPhone ? 'Checking...' : 
+                       phoneVerificationStatus === 'verified' ? '✓ Verified' : 'Check'}
+                    </button>
+                  </div>
+                  {errors.phoneVerification && (
+                    <span className={styles.errorMessage}>
+                      {errors.phoneVerification}
                     </span>
                   )}
                 </div>
@@ -473,8 +588,16 @@ const BookingForm = ({ selectedCourt, onBack, selectedCourtNumber }) => {
               </div>
               <div className={styles.formGroup}>
                 <div className={styles.buttonContainer}>
-                  <button className={styles.button} onClick={handleSubmit}>
-                    Submit
+                  <button 
+                    className={`${styles.button} ${isSubmitDisabled ? styles.buttonDisabled : ''}`} 
+                    onClick={handleSubmit}
+                    disabled={isSubmitDisabled}
+                    style={{
+                      opacity: isSubmitDisabled ? 0.6 : 1,
+                      cursor: isSubmitDisabled ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {isSubmitDisabled ? 'Verify Phone First' : 'Submit'}
                   </button>
                 </div>
               </div>
