@@ -5,13 +5,15 @@ import ReportsPage from "../ReportPage/ReportPage";
 import BookingsPage from "../BookingPage/BookingPage";
 import SettingsPage from "../SettingsPage/SettingsPage";
 import PaymentHistory from "../PaymentHistory/PaymentHistory";
+import CourtDeleteUsers from "../CourtDeleteUsers/CourtDeleteUsers";
 import Sidebar from "../SideBar/Sidebar";
 import { useNavigate } from "react-router-dom";
 
 const SidebarSwitching = ({ activeNav, setActiveNav }) => {
   const navigate = useNavigate();
-  
+
   const handleLogout = () => {
+    localStorage.clear();
     navigate("/");
     setActiveNav("Dashboard");
   };
@@ -36,6 +38,8 @@ const SidebarSwitching = ({ activeNav, setActiveNav }) => {
         return <PaymentHistory />;
       case "Reports":
         return <ReportsPage />;
+      case "Deleted Users":
+        return <CourtDeleteUsers />;
       case "Settings":
         return <SettingsPage />;
       case "Logout":

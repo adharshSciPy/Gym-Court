@@ -12,6 +12,20 @@ function SettingsPage() {
   const [deleteId, setDeleteId] = useState(null);
   const [deleteType, setDeleteType] = useState("");
 
+  const role = localStorage.getItem("reception-role");
+  console.log("roleeee", role)
+
+  useEffect(() => {
+    if (role === "400") {
+      setActiveTab("trainer");
+    }
+    if (role !== "400") {
+      fetchReceptionist();
+    }
+    fetchTrainers();
+  }, [role]);
+
+
   const fetchTrainers = async () => {
     try {
       const trainerdetails = await axios.get(`${baseUrl}/api/v1/trainer/all-trainers`);
@@ -209,13 +223,15 @@ function SettingsPage() {
         <h2 className={styles.heading}>Settings</h2>
 
         <div className={styles.tabs}>
-          <button
-            type="button"
-            className={`${styles.tabBtn} ${activeTab === "receptionist" ? styles.active : ""}`}
-            onClick={() => setActiveTab("receptionist")}
-          >
-            Receptionist
-          </button>
+          {role !== "400" && (
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === "receptionist" ? styles.active : ""}`}
+              onClick={() => setActiveTab("receptionist")}
+            >
+              Receptionist
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.tabBtn} ${activeTab === "trainer" ? styles.active : ""}`}
@@ -226,7 +242,7 @@ function SettingsPage() {
         </div>
 
         <form className={styles.form} onSubmit={handleSubmit} noValidate>
-          {activeTab === "receptionist" ? (
+          {activeTab === "receptionist" && role !== "400" ? (
             <>
               <h3 className={styles.subheading}>Add Receptionist</h3>
               <div className={styles.spacer}>
@@ -286,7 +302,9 @@ function SettingsPage() {
                 )}
               </div>
             </>
-          ) : (
+          ) : null}
+
+          {activeTab === "trainer" && (
             <>
               <h3 className={styles.subheading}>Add Trainer</h3>
               <div className={styles.spacer}>
@@ -362,6 +380,7 @@ function SettingsPage() {
             </>
           )}
 
+
           <button className={styles.button} type="submit" disabled={isDisabled}>
             Submit
           </button>
@@ -369,7 +388,7 @@ function SettingsPage() {
       </div>
 
       <div className={styles.listItems}>
-        {activeTab === "receptionist" ? (
+        {activeTab === "receptionist" && role !== "400" ? (
           <>
             <h3>Added Receptionists</h3>
             <div className={styles.table}>
@@ -410,7 +429,8 @@ function SettingsPage() {
               </div>
             </div>
           </>
-        ) : (
+        ) : null}
+        {activeTab === "trainer" && (
           <>
             <h3>Added Trainers</h3>
             <div className={styles.table}>
