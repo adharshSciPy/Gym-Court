@@ -60,7 +60,7 @@ const createGym = async (req, res) => {
     });
   }
 };
-const isValidPhone = (num) => /^[0-9]{10}$/.test(num);
+const isValidPhone = (num) => /^[6-9]\d{9}$/.test(num);
 
 const registerToGym = async (req, res) => {
   const session = await mongoose.startSession();

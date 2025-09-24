@@ -464,7 +464,7 @@ const cancelBooking = async (req, res) => {
 };
 const renewSlot = async (req, res) => {
   try {
-    const {id: bookingId } = req.params;
+    const { id: bookingId } = req.params;
     const {
       courtId,
       startDate,
@@ -479,40 +479,60 @@ const renewSlot = async (req, res) => {
       notes,
     } = req.body || {};
 
-    // Validate courtId
-    if (!courtId) {
-      return res.status(400).json({ message: "Court ID is required" });
-    }
-    if (!mongoose.isValidObjectId(courtId)) {
-      return res.status(400).json({ message: "Invalid Court ID format" });
-    }
+    // --- Court Validation ---
+    if (!courtId) return res.status(400).json({ message: "Court ID is required" });
+    if (!mongoose.isValidObjectId(courtId)) return res.status(400).json({ message: "Invalid Court ID format" });
 
     const court = await Court.findById(courtId);
-    if (!court) {
-      return res.status(404).json({ message: `Court not found for ID: ${courtId}` });
-    }
-    // --- Validation ---
+    if (!court) return res.status(404).json({ message: `Court not found for ID: ${courtId}` });
+
+    // --- Booking Validation ---
     if (!bookingId) return res.status(400).json({ message: "Booking ID is required" });
-    if (!mongoose.isValidObjectId(bookingId)) {
-      return res.status(400).json({ message: "Invalid Booking ID format" });
-    }
+    if (!mongoose.isValidObjectId(bookingId)) return res.status(400).json({ message: "Invalid Booking ID format" });
 
-    if (!courtId) return res.status(400).json({ message: "Court ID is required" });
-    if (!mongoose.isValidObjectId(courtId)) {
-      return res.status(400).json({ message: "Invalid Court ID format" });
-    }
-
+    // --- Date Validation ---
     if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
+
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     if (isNaN(start) || isNaN(end)) return res.status(400).json({ message: "Invalid dates" });
     if (start > end) return res.status(400).json({ message: "Start date must be before end date" });
+    if (start < today) return res.status(400).json({ message: "Start date cannot be in the past" });
 
+    const maxRangeDays = 365;
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    if (diffDays > maxRangeDays) {
+      return res.status(400).json({ message: `Booking cannot exceed ${maxRangeDays} days` });
+    }
+
+    // --- Time Validation ---
     if (!startTime || !endTime) return res.status(400).json({ message: "Start and end time are required" });
+
     const [startH, startM = 0] = startTime.split(":").map(Number);
     const [endH, endM = 0] = endTime.split(":").map(Number);
+
     if (isNaN(startH) || isNaN(endH)) return res.status(400).json({ message: "Invalid time format, expected HH:mm" });
 
+    const startDateTime = new Date(start);
+    startDateTime.setHours(startH, startM, 0, 0);
+
+    const endDateTime = new Date(end);
+    endDateTime.setHours(endH, endM, 0, 0);
+
+    const now = new Date();
+    now.setSeconds(0, 0);
+
+    if (startDateTime < now) {
+      return res.status(400).json({ message: "Start time cannot be in the past" });
+    }
+    if (endDateTime <= startDateTime) {
+      return res.status(400).json({ message: "End time must be after start time" });
+    }
+
+    // --- Amount Validation ---
     if (amount == null || isNaN(amount) || amount < 0) {
       return res.status(400).json({ message: "Amount must be a positive number" });
     }
@@ -535,13 +555,10 @@ const renewSlot = async (req, res) => {
     const originalBooking = await Booking.findById(bookingId).populate("userId");
     if (!originalBooking) return res.status(404).json({ message: "Original booking not found" });
 
-    const userId = originalBooking.userId._id;
+    const user = originalBooking.userId;
+    const userId = user._id;
 
-    // --- Check court exists ---
-    // const court = await Court.findById(courtId);
-    // if (!court) return res.status(404).json({ message: "Court not found" });
-
-    // --- Prepare slots ---
+    // --- Prepare Slots ---
     const slotsToCreate = [];
     let currentDate = new Date(start);
 
@@ -556,7 +573,7 @@ const renewSlot = async (req, res) => {
         return res.status(400).json({ message: "Start time must be before end time" });
       }
 
-      // Check overlap
+      // Overlap check
       const overlap = await Slot.findOne({
         courtId,
         isBooked: true,
@@ -588,17 +605,16 @@ const renewSlot = async (req, res) => {
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // --- Save slots ---
+    // --- Save Slots ---
     const createdSlots = await Slot.insertMany(slotsToCreate);
 
-    // --- Fix start/end mutation issue ---
+    // --- Booking ---
     const bookingStartTime = new Date(start);
     bookingStartTime.setHours(startH, startM, 0, 0);
 
     const bookingEndTime = new Date(end);
     bookingEndTime.setHours(endH, endM, 0, 0);
 
-    // --- Create new booking ---
     const newBooking = await Booking.create({
       courtId,
       userId,
@@ -618,7 +634,7 @@ const renewSlot = async (req, res) => {
       parentBooking: bookingId,
     });
 
-    // --- Create billing record ---
+    // --- Billing with user info ---
     await Billing.create({
       bookingId: newBooking._id,
       userId,
@@ -628,6 +644,14 @@ const renewSlot = async (req, res) => {
       gst,
       gstNumber,
       modeOfPayment,
+      userInfo: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phoneNumber: user.phoneNumber,
+        whatsAppNumber: user.whatsAppNumber,
+        email: user.email || null,
+        address: user.address || null,
+      },
     });
 
     // --- Response ---
@@ -658,11 +682,13 @@ const renewSlot = async (req, res) => {
         endTime: formatTime(newBooking.endTime),
       },
     });
+
   } catch (err) {
     console.error("Error in renewSlot:", err);
     return res.status(500).json({ message: "Unexpected error", error: err.message });
   }
 };
+
 const getAvailableSlots = async (req, res) => {
   try {
     const { courtId } = req.params;

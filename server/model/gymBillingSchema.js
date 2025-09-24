@@ -3,6 +3,21 @@ import mongoose, { Schema } from "mongoose";
 const gymBillingSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "GymUsers", required: true },
+     userInfo: {
+      name: { type: String, required: true },
+      address: { type: String },
+      phoneNumber: { type: String },
+      whatsAppNumber: { type: String },
+      notes: { type: String },
+      trainer: { type: Schema.Types.ObjectId, ref: "Trainer" },
+      userType: { type: String, enum: ["athlete", "non-athlete", "personal-trainer"] },
+      subscription: {
+        startDate: { type: Date },
+        endDate: { type: Date },
+        months: { type: Number },
+        status: { type: String, enum: ["active", "expired"] },
+      },
+    },
 
     amount: { type: Number, required: true },
     isGst: { type: Boolean, default: false },
