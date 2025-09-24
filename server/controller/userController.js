@@ -175,5 +175,27 @@ const getUserById = async (req, res) => {
   }
 };
 
+const getDeletedUsers = async (req, res) => {
+  try {
+    // Fetch all deleted users with their billings
+    const deletedUsersData = await DeletedUser.find().sort({ deletedAt: -1 }); // latest first
 
-export{getAllUsers,updateUser,deleteUser,getUserById}
+    // Count totals
+    const deletedUsersCount = deletedUsersData.length;
+    const deletedBookingsCount = deletedUsersData.reduce(
+      (acc, user) => acc + (user.billings?.length || 0),
+      0
+    );
+
+    res.status(200).json({
+      deletedUsersCount,
+      deletedBookingsCount,
+      deletedUsers: deletedUsersData, // full data with user info and billings
+    });
+  } catch (error) {
+    console.error("Error fetching deleted users:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export{getAllUsers,updateUser,deleteUser,getUserById,getDeletedUsers}

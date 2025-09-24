@@ -1,7 +1,7 @@
 import Court from "../model/courtSchema.js";
 import Billing from "../model/billingSchema.js";
 import Booking from "../model/bookingSchema.js";
-import DeletedUser from "../models/DeletedUser.js";
+import DeletedUser from "../model/deletedUserSchema.js";
 
 const createCourt = async (req, res) => {
     const { courtName, surface } = req.body;
@@ -58,14 +58,23 @@ const getCourtStatistics = async (req, res) => {
     const totalRevenuePromise = Billing.aggregate([
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
-
-    const [totalBookings, cancelledBookings, totalRevenueAgg] = await Promise.all([
-      totalBookingsPromise,
-      cancelledBookingsPromise,
-      totalRevenuePromise,
+    const deletedUsersPromise = DeletedUser.countDocuments({});
+    const deletedBookingsPromise = DeletedUser.aggregate([
+      { $unwind: "$billings" },       // Each billing represents a booking
+      { $count: "deletedBookings" }
     ]);
 
+    const [totalBookings, cancelledBookings, totalRevenueAgg, deletedUsers, deletedBookingsAgg] =
+      await Promise.all([
+        totalBookingsPromise,
+        cancelledBookingsPromise,
+        totalRevenuePromise,
+        deletedUsersPromise,
+        deletedBookingsPromise
+      ]);
+
     const totalRevenue = totalRevenueAgg[0]?.total || 0;
+    const deletedBookings = deletedBookingsAgg[0]?.deletedBookings || 0;
 
     // --- Monthly bookings for last 12 months ---
     const monthlyBookingsAgg = await Booking.aggregate([
@@ -110,6 +119,8 @@ const getCourtStatistics = async (req, res) => {
       totalBookings,
       cancelledBookings,
       totalRevenue,
+      deletedUsers,
+      deletedBookings,
       monthlyBookings,
       monthlyRevenue,
     });
@@ -118,6 +129,7 @@ const getCourtStatistics = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 
 export {

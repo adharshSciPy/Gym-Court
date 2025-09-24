@@ -47,18 +47,27 @@ const ReportPage = () => {
 
       {/* Booking Overview */}
       <div className="reportsOverviewSection">
-        <h3>Booking Overview</h3>
-        <div className="reportsOverviewCards">
-          <div className="reportsCard">
-            <p>Total Bookings</p>
-            <h2>{fullData.totalBookings || ""}</h2>
-          </div>
-          <div className="reportsCard">
-            <p>Total Revenue</p>
-            <h2>{fullData.totalRevenue || ""}</h2>
-          </div>
-        </div>
-      </div>
+  <h3>Booking Overview</h3>
+  <div className="reportsOverviewCards">
+    <div className="reportsCard">
+      <p>Total Bookings</p>
+      <h2>{fullData.totalBookings || 0}</h2>
+    </div>
+    <div className="reportsCard">
+      <p>Total Revenue</p>
+      <h2>{fullData.totalRevenue || 0}</h2>
+    </div>
+    <div className="reportsCard">
+      <p>Deleted Users</p>
+      <h2>{fullData.deletedUsers || 0}</h2>
+    </div>
+    <div className="reportsCard">
+      <p>Deleted Bookings</p>
+      <h2>{fullData.deletedBookings || 0}</h2>
+    </div>
+  </div>
+</div>
+
 
       {/* Booking Trends */}
       <div className="reportsTrendsSection">

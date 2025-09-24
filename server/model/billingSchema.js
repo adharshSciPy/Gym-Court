@@ -11,10 +11,7 @@ const billingSchema = new Schema(
       phoneNumber: Number,
       email: String,
     },
-      bookingInfo: {
-      startDate: Date,
-      endDate: Date,
-    },
+    
     amount: { type: Number, required: true },     
     isGst: { type: Boolean, default: false }, 
     gst: { type: Number, default: 0 },  
