@@ -5,7 +5,12 @@ const billingSchema = new Schema(
     bookingId: { type: Schema.Types.ObjectId, ref: "Booking", required: true },
  courtId: { type: Schema.Types.ObjectId, ref: "Court", required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-
+ userInfo: {
+      firstName: String,
+      lastName: String,
+      phoneNumber: Number,
+      email: String,
+    },
     amount: { type: Number, required: true },     
     isGst: { type: Boolean, default: false }, 
     gst: { type: Number, default: 0 },  

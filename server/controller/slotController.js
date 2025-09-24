@@ -236,6 +236,14 @@ if (endDateTime <= startDateTime) {
       gst,
       gstNumber,
       modeOfPayment,
+      userInfo: {      
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phoneNumber: user.phoneNumber,
+    whatsAppNumber: user.whatsAppNumber,
+    email: user.email || null,
+    address: user.address || null,
+  },
     }], { session });
 
     await session.commitTransaction();

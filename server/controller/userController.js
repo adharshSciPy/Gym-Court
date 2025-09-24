@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Booking from "../model/bookingSchema.js";
 import Slot from "../model/slotSchema.js";
 import Billing from "../model/billingSchema.js";
+import DeletedUser from "../model/deletedUserSchema.js";
 const getAllUsers = async (req, res) => {
   try {
     const { phoneNumber, page = 1, limit = 10 } = req.query;
@@ -82,6 +83,7 @@ const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Find the user
     const user = await User.findById(id).session(session);
     if (!user) {
       await session.abortTransaction();
@@ -89,33 +91,66 @@ const deleteUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Find all billings of this user
+    const billings = await Billing.find({ userId: id }).session(session);
+
     // Find all bookings of this user
     const bookings = await Booking.find({ userId: id }).session(session);
     const bookingIds = bookings.map(b => b._id);
     const slotIds = bookings.flatMap(b => b.slotIds);
 
-    // Delete all related data in parallel
+    // Check for active bookings
+    const activeBookings = bookings.filter(b => b.status === "active");
+
+    // Archive user + billing into DeletedUser collection
+    await DeletedUser.create(
+      [
+        {
+          user: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phoneNumber: user.phoneNumber,
+            email: user.email,
+            // include other relevant user fields
+          },
+          billings: billings.map(b => ({
+            amount: b.amount,
+            paymentDate: b.createdAt,
+            modeOfPayment: b.modeOfPayment,
+            bookingId: b.bookingId,
+            courtId: b.courtId,
+            // include any other relevant billing fields
+          })),
+        },
+      ],
+      { session }
+    );
+
+    // Delete user + bookings/slots but NOT billing
     await Promise.all([
       User.deleteOne({ _id: id }).session(session),
       Booking.deleteMany({ userId: id }).session(session),
       Slot.deleteMany({ $or: [{ userId: id }, { _id: { $in: slotIds } }] }).session(session),
-      Billing.deleteMany({ $or: [{ userId: id }, { bookingId: { $in: bookingIds } }] }).session(session),
     ]);
 
     await session.commitTransaction();
     session.endSession();
 
     return res.status(200).json({
-      message: "User, bookings, slots, and all related billing deleted successfully",
+      message: "User soft deleted successfully (archived user + billing, deleted bookings/slots)",
       deleted: {
         bookings: bookingIds.length,
         slots: slotIds.length,
-      }
+        billings: billings.length,
+      },
+      notification: activeBookings.length > 0
+        ? `⚠️ User had ${activeBookings.length} active booking(s) which were cancelled and deleted.`
+        : "No active bookings at the time of deletion.",
     });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error("Error deleting user:", error);
+    console.error("Error soft deleting user:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
