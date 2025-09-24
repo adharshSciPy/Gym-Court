@@ -72,7 +72,7 @@ function PaymentHistory() {
       if (res.status === 200) {
         setBillData(res.data.billings || []);
         setTotalPages(res.data.totalPages || 1);
-        setTotalRecords(res.data.totalRecords || 0);
+        setTotalRecords(res.data.total || 0);
       }
     } catch (error) {
       console.log("Error fetching payment history:", error);
