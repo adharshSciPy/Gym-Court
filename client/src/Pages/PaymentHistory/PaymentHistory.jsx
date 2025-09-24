@@ -379,8 +379,8 @@ function PaymentHistory() {
           <thead>
             <tr className={styles.headerRow}>
               <th className={styles.th}>Name</th>
-              <th className={styles.th}>Booking Date</th>
-              <th className={styles.th}>Ended Date</th>
+              <th className={styles.th}>Payment Date</th>
+              {/* <th className={styles.th}>Ended Date</th> */}
               <th className={styles.th}>Payment Method</th>
               <th className={styles.th}>Court</th>
               <th className={styles.th}>Amount</th>
@@ -391,53 +391,62 @@ function PaymentHistory() {
             {billData?.length > 0 ? (
               billData.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
-                  <td className={styles.td}>
-                    {member.userId?.firstName || ""} {member.userId?.lastName || ""}
-                  </td>
-                  <td className={styles.td}>
-                    {member.bookingId?.startDate ?
-                      new Date(member.bookingId.startDate).toLocaleDateString() :
-                      ""
-                    }
-                  </td>
-                  <td className={styles.td}>
+                   <td className={styles.td}>
+          {member.userDetails?.firstName || ""} {member.userDetails?.lastName || ""}
+        </td>
+  <td className={styles.td}>
+  {(() => {
+    const d = new Date(member.createdAt);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  })()}
+</td>
+
+                  {/* <td className={styles.td}>
                     {member.bookingId?.endDate ?
                       new Date(member.bookingId.endDate).toLocaleDateString() :
                       ""
                     }
-                  </td>
+                  </td> */}
 
                   <td className={styles.td}>{member.modeOfPayment || ""}</td>
                   <td className={styles.td}>{member.courtId?.courtName || ""}</td>
 
                   <td className={styles.td}>{member.amount}</td>
-                  <td className={styles.td}>
-                    <div className={styles.actionButtons}>
-                      <button
-                        className={`${styles.actionButton} ${styles.whatsappButton}`}
-                        onClick={() => openWhatsApp(member.userId.whatsAppNumber, member.name)}
-                        title="WhatsApp"
-                      >
-                        <MessageCircle size={16} />
-                      </button>
-                      <button
-                        className={styles.actionButton}
-                        onClick={() => handleView(member)}
-                        title="View Details"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        className={`${styles.actionButton} ${styles.deleteButton}`}
-                        onClick={() => handleDownload(member)}
-                        title="Download Bill"
-                      >
-                        <File size={16} />
-                      </button>
+                 <td className={styles.td}>
+  {member.userId && member.bookingId ? (
+    <div className={styles.actionButtons}>
+      <button
+        className={`${styles.actionButton} ${styles.whatsappButton}`}
+        onClick={() =>
+          openWhatsApp(member.userId.whatsAppNumber, member.name)
+        }
+        title="WhatsApp"
+      >
+        <MessageCircle size={16} />
+      </button>
+      <button
+        className={styles.actionButton}
+        onClick={() => handleView(member)}
+        title="View Details"
+      >
+        <Eye size={16} />
+      </button>
+      <button
+        className={`${styles.actionButton} ${styles.deleteButton}`}
+        onClick={() => handleDownload(member)}
+        title="Download Bill"
+      >
+        <File size={16} />
+      </button>
+    </div>
+  ) : (
+    <span className={styles.deletedUser}>Deleted User</span>
+  )}
+</td>
 
-
-                    </div>
-                  </td>
                 </tr>
               ))
             ) : (

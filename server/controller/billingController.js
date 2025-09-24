@@ -108,58 +108,46 @@ const getFullPaymentHistory = async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     // -----------------------------
-    // 1️⃣ User search filter
+    // 1️⃣ Build filters
     // -----------------------------
-    let userFilter = {};
+    const query = {};
+
+    // 🔍 Search in both User + userInfo
     if (search) {
-      const orConditions = [
-        { firstName: new RegExp(search, "i") },
-        { lastName: new RegExp(search, "i") },
-      ];
+      const searchRegex = new RegExp(search, "i");
 
+      // Numeric? Check phone number
       if (/^\d+$/.test(search)) {
-        orConditions.push({ phoneNumber: Number(search) });
+        query.$or = [
+          { "userInfo.phoneNumber": Number(search) },
+          { phoneNumber: Number(search) }, // in populated User
+        ];
+      } else {
+        query.$or = [
+          { "userInfo.firstName": searchRegex },
+          { "userInfo.lastName": searchRegex },
+          { "userId.firstName": searchRegex },
+          { "userId.lastName": searchRegex },
+        ];
       }
-
-      const users = await User.find({ $or: orConditions }).select("_id");
-      const userIds = users.map(u => u._id);
-
-      if (userIds.length === 0) {
-        return res.json({
-          message: "Payment history fetched successfully",
-          count: 0,
-          total: 0,
-          page: pageNum,
-          totalPages: 0,
-          billings: [],
-        });
-      }
-
-      userFilter.userId = { $in: userIds };
     }
 
-    // -----------------------------
-    // 2️⃣ Booking date filter
-    // -----------------------------
+    // 📅 Date filter (check Booking)
     let bookingIds = [];
     if (startDate || endDate) {
       const bookingFilter = {};
-
       if (startDate) {
         const startOfDay = new Date(startDate);
         startOfDay.setHours(0, 0, 0, 0);
         bookingFilter.startDate = { ...bookingFilter.startDate, $gte: startOfDay };
       }
-
       if (endDate) {
         const endOfDay = new Date(endDate);
         endOfDay.setHours(23, 59, 59, 999);
         bookingFilter.startDate = { ...bookingFilter.startDate, $lte: endOfDay };
       }
-
       const bookings = await Booking.find(bookingFilter).select("_id");
       bookingIds = bookings.map(b => b._id);
-
       if (bookingIds.length === 0) {
         return res.json({
           message: "Payment history fetched successfully",
@@ -170,30 +158,16 @@ const getFullPaymentHistory = async (req, res) => {
           billings: [],
         });
       }
+      query.bookingId = { $in: bookingIds };
     }
 
-    // -----------------------------
-    // 3️⃣ Court filter
-    // -----------------------------
-    let courtFilter = {};
+    // 🏟 Court filter
     if (courtId) {
-      courtFilter.courtId = courtId;
+      query.courtId = courtId;
     }
 
     // -----------------------------
-    // 4️⃣ BookingId filter (from date filter)
-    // -----------------------------
-    if (bookingIds.length > 0) {
-      courtFilter.bookingId = { $in: bookingIds };
-    }
-
-    // -----------------------------
-    // 5️⃣ Combine all filters
-    // -----------------------------
-    const query = { ...userFilter, ...courtFilter };
-
-    // -----------------------------
-    // 6️⃣ Fetch Billing with population
+    // 2️⃣ Fetch data
     // -----------------------------
     const billings = await Billing.find(query)
       .populate("userId", "firstName lastName phoneNumber whatsAppNumber")
@@ -201,23 +175,40 @@ const getFullPaymentHistory = async (req, res) => {
       .populate("bookingId", "startDate endDate startTime endTime")
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limitNum);
+      .limit(limitNum)
+      .lean(); // ⚡ lean() returns plain JS objects (faster than Mongoose docs)
+
+    // -----------------------------
+    // 3️⃣ Merge user details
+    // -----------------------------
+    const formattedBillings = billings.map(b => ({
+      ...b,
+      userDetails: b.userId
+        ? {
+            firstName: b.userId.firstName,
+            lastName: b.userId.lastName,
+            phoneNumber: b.userId.phoneNumber,
+            whatsAppNumber: b.userId.whatsAppNumber,
+          }
+        : b.userInfo || {}, // fallback if user deleted
+    }));
 
     const total = await Billing.countDocuments(query);
 
     res.json({
       message: "Payment history fetched successfully",
-      count: billings.length,
+      count: formattedBillings.length,
       total,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
-      billings,
+      billings: formattedBillings,
     });
   } catch (error) {
     console.error("Error fetching payment history:", error);
     res.status(500).json({ message: "Server error", error });
   }
 };
+
 
 
 

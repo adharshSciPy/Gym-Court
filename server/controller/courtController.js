@@ -1,6 +1,7 @@
 import Court from "../model/courtSchema.js";
 import Billing from "../model/billingSchema.js";
 import Booking from "../model/bookingSchema.js";
+import DeletedUser from "../models/DeletedUser.js";
 
 const createCourt = async (req, res) => {
     const { courtName, surface } = req.body;
@@ -51,34 +52,23 @@ const getCourtStatistics = async (req, res) => {
     const lastYear = new Date(now);
     lastYear.setFullYear(lastYear.getFullYear() - 1);
 
-    // --- Overview: total bookings, cancelled, total revenue ---
-    const [overview] = await Booking.aggregate([
-      {
-        $facet: {
-          totalBookings: [{ $count: "count" }],
-          cancelledBookings: [{ $match: { status: "cancelled" } }, { $count: "count" }],
-          totalRevenue: [
-            {
-              $lookup: {
-                from: "billings",
-                localField: "_id",
-                foreignField: "bookingId",
-                as: "billing",
-              },
-            },
-            { $unwind: "$billing" },
-            { $group: { _id: null, total: { $sum: "$billing.amount" } } },
-          ],
-        },
-      },
+    // --- Overview ---
+    const totalBookingsPromise = Booking.countDocuments({});
+    const cancelledBookingsPromise = Booking.countDocuments({ status: "cancelled" });
+    const totalRevenuePromise = Billing.aggregate([
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
-    const totalBookings = overview.totalBookings[0]?.count || 0;
-    const cancelledBookings = overview.cancelledBookings[0]?.count || 0;
-    const totalRevenue = overview.totalRevenue[0]?.total || 0;
+    const [totalBookings, cancelledBookings, totalRevenueAgg] = await Promise.all([
+      totalBookingsPromise,
+      cancelledBookingsPromise,
+      totalRevenuePromise,
+    ]);
+
+    const totalRevenue = totalRevenueAgg[0]?.total || 0;
 
     // --- Monthly bookings for last 12 months ---
-    const monthlyBookings = await Booking.aggregate([
+    const monthlyBookingsAgg = await Booking.aggregate([
       { $match: { createdAt: { $gte: lastYear } } },
       {
         $group: {
@@ -89,38 +79,29 @@ const getCourtStatistics = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]);
 
-    const monthNames = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-
-    const monthlyData = monthlyBookings.map(m => ({
-      month: monthNames[m._id.month - 1],
-      bookings: m.bookings,
-    }));
-
-    // --- Monthly revenue for last 12 months ---
-    const monthlyRevenue = await Booking.aggregate([
+    // --- Monthly revenue from Billing ---
+    const monthlyRevenueAgg = await Billing.aggregate([
       { $match: { createdAt: { $gte: lastYear } } },
-      {
-        $lookup: {
-          from: "billings",
-          localField: "_id",
-          foreignField: "bookingId",
-          as: "billing",
-        },
-      },
-      { $unwind: "$billing" },
       {
         $group: {
           _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
-          revenue: { $sum: "$billing.amount" },
+          revenue: { $sum: "$amount" },
         },
       },
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]);
 
-    const revenueData = monthlyRevenue.map(r => ({
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+
+    const monthlyBookings = monthlyBookingsAgg.map(m => ({
+      month: monthNames[m._id.month - 1],
+      bookings: m.bookings,
+    }));
+
+    const monthlyRevenue = monthlyRevenueAgg.map(r => ({
       month: monthNames[r._id.month - 1],
       revenue: r.revenue,
     }));
@@ -129,14 +110,15 @@ const getCourtStatistics = async (req, res) => {
       totalBookings,
       cancelledBookings,
       totalRevenue,
-      monthlyBookings: monthlyData,
-      monthlyRevenue: revenueData,
+      monthlyBookings,
+      monthlyRevenue,
     });
   } catch (error) {
     console.error("Error fetching court statistics:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
 
 export {
     createCourt, getCourt, editCourt, deleteCourt,getCourtStatistics
