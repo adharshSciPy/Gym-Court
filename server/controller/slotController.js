@@ -33,11 +33,28 @@ const bookSlot = async (req, res) => {
     // --- Validations ---
     if (!courtId) return res.status(400).json({ message: "Court ID is required" });
 
-    if (!startDate || !endDate) return res.status(400).json({ message: "Start and end date are required" });
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start) || isNaN(end)) return res.status(400).json({ message: "Invalid start or end date" });
-    if (start > end) return res.status(400).json({ message: "Start date must be before end date" });
+// --- Date Validations ---
+if (!startDate || !endDate) {
+  return res.status(400).json({ message: "Start and end date are required" });
+}
+
+const start = new Date(startDate);
+const end = new Date(endDate);
+const today = new Date();
+// Reset time to 00:00:00 for today comparison
+today.setHours(0, 0, 0, 0);
+
+if (isNaN(start) || isNaN(end)) {
+  return res.status(400).json({ message: "Invalid start or end date" });
+}
+if (start > end) {
+  return res.status(400).json({ message: "Start date must be before end date" });
+}
+
+if (start < today) {
+  return res.status(400).json({ message: "Start date cannot be in the past" });
+}
+
     const maxRangeDays = 365;
     const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     if (diffDays > maxRangeDays) return res.status(400).json({ message: `Booking cannot exceed ${maxRangeDays} days` });
