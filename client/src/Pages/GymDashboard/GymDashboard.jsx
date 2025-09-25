@@ -21,29 +21,29 @@ function GymDashboard() {
         try {
             setLoading(true);
             setError(null);
-            
+
             // Try different possible API endpoints with correct v1 path
             const possibleEndpoints = [
-                `${baseUrl}api/v1/gym/full-statistics`
+                `${baseUrl}/api/v1/gym/full-statistics`
                 // 'http://localhost:8000/api/v1/gym/statistics',
                 // 'http://localhost:8000/api/gym/full-statistics',
                 // 'http://localhost:8000/gym/full-statistics'
             ];
-            
+
             let response;
             let lastError;
-            
+
             for (const endpoint of possibleEndpoints) {
                 try {
                     console.log(`Trying endpoint: ${endpoint}`);
                     response = await fetch(endpoint);
-                    
+
                     // Check if response is HTML (404 page)
                     const contentType = response.headers.get('content-type');
                     if (contentType && contentType.includes('text/html')) {
                         throw new Error(`Endpoint returned HTML instead of JSON: ${endpoint}`);
                     }
-                    
+
                     if (response.ok) {
                         break; // Found working endpoint
                     } else {
@@ -55,18 +55,18 @@ function GymDashboard() {
                     continue;
                 }
             }
-            
+
             if (!response || !response.ok) {
                 throw new Error(`All API endpoints failed. Last error: ${lastError?.message || 'Unknown error'}`);
             }
-            
+
             const data = await response.json();
             setGymStats({
-                totalBookings: data.totalBookings || 0,
-                activeSubscriptions: data.activeSubscriptions || 0,
-                expiredSubscriptions: data.expiredSubscriptions || 0,
-                trainerCount: data.trainerCount || 0,
-                totalRevenue: data.totalRevenue || 0
+                totalBookings: data.totalBookings || "0",
+                activeSubscriptions: data.activeSubscriptions || "0",
+                expiredSubscriptions: data.expiredSubscriptions || "0",
+                trainerCount: data.trainerCount || "0",
+                totalRevenue: data.totalRevenue || "0"
             });
         } catch (err) {
             console.error('Error fetching gym statistics:', err);
@@ -86,41 +86,41 @@ function GymDashboard() {
     };
 
     const courts = [
-        { 
-            name: "Total Members", 
+        {
+            name: "Total Members",
             value: loading ? "..." : gymStats.totalBookings,
             action: "view",
         },
-        { 
-            name: "Active Members", 
+        {
+            name: "Active Members",
             value: loading ? "..." : gymStats.activeSubscriptions,
             action: "manage",
-           
+
         },
-        { 
-            name: "Inactive Members", 
+        {
+            name: "Inactive Members",
             value: loading ? "..." : gymStats.expiredSubscriptions,
             action: "reactivate",
-           
+
         },
-        { 
-            name: "Trainers", 
+        {
+            name: "Trainers",
             value: loading ? "..." : gymStats.trainerCount,
             action: "schedule",
-            
+
         },
-        { 
-            name: "Total Revenue", 
+        {
+            name: "Total Revenue",
             value: loading ? "..." : formatCurrency(gymStats.totalRevenue),
             action: "billing",
-            
+
         }
     ];
 
     const handleCardClick = (action, cardName) => {
         console.log(`Clicked ${action} for ${cardName}`);
         // Add your navigation logic here based on the action
-        switch(action) {
+        switch (action) {
             case 'add':
                 // Navigate to add member page
                 break;
@@ -148,7 +148,7 @@ function GymDashboard() {
         return (
             <div className={styles.pageContainer}>
                 <div className={styles.header}>
-                    <h1 className={styles.headerTitle}>Dashboard</h1>
+                    <h1 className={styles.headerTitle}>Gym Dashboard</h1>
                 </div>
                 <div className={styles.errorMessage}>
                     <h3>Unable to load dashboard data</h3>
@@ -157,7 +157,7 @@ function GymDashboard() {
                         <button onClick={fetchGymStatistics} className={styles.retryButton}>
                             Retry Connection
                         </button>
-                        <button 
+                        <button
                             onClick={() => {
                                 setError(null);
                                 // Load with dummy data for development
@@ -169,7 +169,7 @@ function GymDashboard() {
                                     totalRevenue: 125000
                                 });
                                 setLoading(false);
-                            }} 
+                            }}
                             className={styles.demoButton}
                         >
                             Load Demo Data
@@ -184,7 +184,7 @@ function GymDashboard() {
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <h1 className={styles.headerTitle}>Gym Dashboard</h1>
-               
+
             </div>
 
             <div className={styles.courtsGrid}>
@@ -201,13 +201,13 @@ function GymDashboard() {
                             {court.name}
                             {court.icon && <span className={styles.icon}>{court.icon}</span>}
                         </div>
-                        
+
                         {court.value && (
                             <div className={styles.statValue}>
                                 {court.value}
                             </div>
                         )}
-                        
+
                     </div>
                 ))}
             </div>
