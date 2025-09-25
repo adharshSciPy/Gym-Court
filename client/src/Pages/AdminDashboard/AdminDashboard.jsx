@@ -13,7 +13,7 @@ function AdminDashboard() {
   const [isTrainerView, setIsTrainerView] = useState(false);
   const [trainerActiveNav, setTrainerActiveNav] = useState("Dashboard");
 
-  
+
 
   const handleBookNow = (court) => {
     setSelectedCourt(court.courtName);
@@ -37,7 +37,7 @@ function AdminDashboard() {
   useEffect(() => {
     getCourts();
   }, []);
-  
+
 
   const getCourts = async () => {
     try {
@@ -55,15 +55,15 @@ function AdminDashboard() {
     return (
       <div>
         <div className={styles.toggleContainer}>
-          <button 
-            className={styles.toggleButton} 
+          <button
+            className={styles.toggleButton}
             onClick={handleToggleView}
           >
             Switch to Court View
           </button>
         </div>
-        <GymSideBarSwitching 
-          activeNav={trainerActiveNav} 
+        <GymSideBarSwitching
+          activeNav={trainerActiveNav}
           setActiveNav={setTrainerActiveNav}
         />
       </div>
@@ -74,13 +74,15 @@ function AdminDashboard() {
     return <BookingForm selectedCourt={selectedCourt} selectedCourtNumber={selectedCourtNumber} onBack={handleBackToDashboard} />;
   }
 
+  const role = localStorage.getItem("reception-role")
+  
   return (
     <div className={styles.pageContainer}>
       <div className={styles.header}>
         <div className={styles.headerContent}>
-          <h1 className={styles.headerTitle}>Admin Dashboard</h1>
-          <button 
-            className={styles.toggleButton} 
+          <h1 className={styles.headerTitle}>{role === "400" ? "Reception Dashboard" : "Admin Dashboard"}</h1>
+          <button
+            className={styles.toggleButton}
             onClick={handleToggleView}
           >
             Switch to Gym View
