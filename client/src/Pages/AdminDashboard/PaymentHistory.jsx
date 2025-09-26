@@ -157,7 +157,7 @@ Thank you for your booking!`;
     doc.setTextColor(40, 167, 69); // Green color for amount
     doc.text("Total Amount:", 25, yPosition + 5);
     doc.setFontSize(14);
-    doc.text(`₹${amount}`, 160, yPosition + 5, { align: "right" });
+    doc.text(`INR ${amount}`, 160, yPosition + 5, { align: "right" });
 
     yPosition += 25;
 
@@ -269,7 +269,7 @@ Thank you for your booking!`;
         </div>
       ) : (
         <div className={styles.noDataContainer}>
-           <div className={styles.noBookingsMessage}>
+          <div className={styles.noBookingsMessage}>
             <div className={styles.noBookingsIcon}>📅</div>
             <h3>No Payment History</h3>
           </div>
@@ -362,7 +362,7 @@ Thank you for your booking!`;
                   <div className={styles.detailItem}>
                     <span className={styles.label}>Amount:</span>
                     <span className={styles.value}>
-                      ₹{selectedMember.amount || 0}
+                      {"INR"}{selectedMember.amount || 0}
                     </span>
                   </div>
                   <div className={styles.detailItem}>
