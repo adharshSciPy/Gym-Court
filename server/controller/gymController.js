@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import { GymUsers } from "../model/gymUserSchema.js";
 import { Trainer } from "../model/trainerSchema.js";
 import GymBilling from "../model/gymBillingSchema.js";
+import DeletedGymUser from "../model/deletedGymUserSchema.js";
 
 const getFileUrl = (req, folder, filename) => {
   if (!filename) return null;
@@ -437,7 +438,8 @@ const deleteGymUser = async (req, res) => {
 
   try {
     const { id } = req.params;
-    
+
+    // Find the gym user
     const user = await GymUsers.findById(id).session(session);
     if (!user) {
       await session.abortTransaction();
@@ -445,34 +447,67 @@ const deleteGymUser = async (req, res) => {
       return res.status(404).json({ success: false, message: "Gym user not found" });
     }
 
-    // Delete billing info
-    await GymBilling.deleteMany({ userId: user._id }).session(session);
+    // Find all billings of this gym user (we will NOT delete them)
+    const billings = await GymBilling.find({ userId: user._id }).session(session);
 
-    // Delete the user
-    await GymUsers.findByIdAndDelete(user._id).session(session);
+    // Check if subscription is active
+    const hasActiveSubscription = user.subscription?.status === "active";
 
-    // Remove from trainer.users array
-    await Trainer.updateOne(
-      { _id: user.trainer },
-      { $pull: { users: user._id } }
-    ).session(session);
+    // Archive user + billing details (snapshot for reference)
+    await DeletedGymUser.create(
+      [
+        {
+          user: {
+            name: user.name,
+            address: user.address,
+            phoneNumber: user.phoneNumber,
+            whatsAppNumber: user.whatsAppNumber,
+            notes: user.notes,
+            trainer: user.trainer,
+            userType: user.userType,
+            subscription: user.subscription,
+          },
+          billings: billings.map(b => ({
+            amount: b.amount,
+            modeOfPayment: b.modeOfPayment,
+            isGst: b.isGst,
+            gst: b.gst,
+            gstNumber: b.gstNumber,
+            subscriptionMonths: b.subscriptionMonths,
+            createdAt: b.createdAt,
+          })),
+        },
+      ],
+      { session }
+    );
+
+    // Delete user but keep billings (userId in GymBilling will turn null after populate fail)
+    await Promise.all([
+      GymUsers.deleteOne({ _id: user._id }).session(session),
+      Trainer.updateOne(
+        { _id: user.trainer },
+        { $pull: { users: user._id } }
+      ).session(session),
+    ]);
 
     await session.commitTransaction();
     session.endSession();
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Gym user deleted successfully",
-      data: user,
+      message: "Gym user soft deleted successfully (archived + kept billing history)",
+      archivedBillings: billings.length,
+      notification: hasActiveSubscription
+        ? "⚠️ User had an active subscription at the time of deletion."
+        : "No active subscription.",
     });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
-    console.error("Error deleting gym user:", error);
-    res.status(500).json({ success: false, message: "Internal server error", error: error.message });
+    console.error("Error soft deleting gym user:", error);
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
-
 
 const getGymPaymentHistory = async (req, res) => {
   try {
@@ -640,65 +675,65 @@ const getGymStatistics = async (req, res) => {
     const lastYear = new Date(now);
     lastYear.setFullYear(lastYear.getFullYear() - 1);
 
-    // --- Overview: total users with subscriptions + status counts ---
-    const [overview] = await GymUsers.aggregate([
-      {
-        $facet: {
-          totalBookings: [{ $count: "count" }],
-          activeSubscriptions: [
-            { $match: { "subscription.status": "active" } },
-            { $count: "count" },
-          ],
-          expiredSubscriptions: [
-            { $match: { "subscription.status": "expired" } },
-            { $count: "count" },
-          ],
-        },
-      },
+    // --- Overview promises ---
+    const totalUsersPromise = GymUsers.countDocuments({});
+    const activeSubscriptionsPromise = GymUsers.countDocuments({ "subscription.status": "active" });
+    const expiredSubscriptionsPromise = GymUsers.countDocuments({ "subscription.status": "expired" });
+
+    const totalRevenuePromise = GymBilling.aggregate([
+      { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
 
-    // Revenue overview (from GymBilling)
-    const [revenueOverview] = await GymBilling.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: "$amount" },
-        },
-      },
+    const trainerCountPromise = Trainer.countDocuments({});
+
+    const deletedUsersPromise = DeletedGymUser.countDocuments({});
+   const deletedRevenuePromise = DeletedGymUser.aggregate([
+  { $unwind: "$billings" },
+  {
+    $group: {
+      _id: null,
+      total: { $sum: "$billings.amount" }
+    }
+  }
+]);
+
+    // Run all queries in parallel
+    const [
+      totalUsers,
+      activeSubscriptions,
+      expiredSubscriptions,
+      totalRevenueAgg,
+      trainerCount,
+      deletedUsers,
+      deletedRevenueAgg
+    ] = await Promise.all([
+      totalUsersPromise,
+      activeSubscriptionsPromise,
+      expiredSubscriptionsPromise,
+      totalRevenuePromise,
+      trainerCountPromise,
+      deletedUsersPromise,
+      deletedRevenuePromise
     ]);
 
-    // ✅ Trainer count
-    const trainerCount = await Trainer.countDocuments();
+    const totalRevenue = totalRevenueAgg[0]?.total || 0;
+ const deletedRevenues = deletedRevenueAgg[0]?.total || 0;
 
-    const totalBookings = overview.totalBookings[0]?.count || 0;
-    const activeSubscriptions = overview.activeSubscriptions[0]?.count || 0;
-    const expiredSubscriptions = overview.expiredSubscriptions[0]?.count || 0;
-    const totalRevenue = revenueOverview?.total || 0;
 
-    // --- Monthly subscriptions (last 12 months) ---
-    const monthlyBookings = await GymUsers.aggregate([
+    // --- Monthly new users (last 12 months) ---
+    const monthlyUsersAgg = await GymUsers.aggregate([
       { $match: { createdAt: { $gte: lastYear } } },
       {
         $group: {
           _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
-          bookings: { $sum: 1 },
+          users: { $count: {} },
         },
       },
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]);
 
-    const monthNames = [
-      "Jan","Feb","Mar","Apr","May","Jun",
-      "Jul","Aug","Sep","Oct","Nov","Dec"
-    ];
-
-    const monthlyData = monthlyBookings.map(m => ({
-      month: monthNames[m._id.month - 1],
-      bookings: m.bookings,
-    }));
-
     // --- Monthly revenue (last 12 months) ---
-    const monthlyRevenue = await GymBilling.aggregate([
+    const monthlyRevenueAgg = await GymBilling.aggregate([
       { $match: { createdAt: { $gte: lastYear } } },
       {
         $group: {
@@ -709,25 +744,37 @@ const getGymStatistics = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1 } },
     ]);
 
-    const revenueData = monthlyRevenue.map(r => ({
+    const monthNames = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    ];
+
+    const monthlyUsers = monthlyUsersAgg.map(m => ({
+      month: monthNames[m._id.month - 1],
+      users: m.users,
+    }));
+
+    const monthlyRevenue = monthlyRevenueAgg.map(r => ({
       month: monthNames[r._id.month - 1],
       revenue: r.revenue,
     }));
 
+    // --- Response ---
     res.json({
-      totalBookings,
+      totalUsers,
       activeSubscriptions,
       expiredSubscriptions,
       totalRevenue,
-      trainerCount, // ✅ Added trainers count
-      monthlyBookings: monthlyData,
-      monthlyRevenue: revenueData,
+      trainerCount,
+      deletedUsers,
+      deletedRevenues,
+      monthlyUsers,
+      monthlyRevenue,
     });
   } catch (error) {
     console.error("Error fetching gym statistics:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 
 export{createGym,registerToGym,getAllGymUsers,getGymUserById,updateGymUser,deleteGymUser,getGymPaymentHistory,getGymStatistics}

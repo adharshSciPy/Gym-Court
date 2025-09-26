@@ -406,60 +406,81 @@ function GymPaymentHistory() {
               <th className={styles.th}>Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {billData?.length > 0 ? (
-              billData.map((member, index) => (
-                <tr key={member._id || index} className={styles.bodyRow}>
-                  <td className={styles.td}>
-                    {member.userId?.name || ""} {member.userId?.lastName || ""}
-                  </td>
-                  <td className={styles.td}>
-                    {member.createdAt ?
-                      new Date(member.createdAt).toLocaleDateString() :
-                      ""
-                    }
-                  </td>
-                  <td className={styles.td}>
-                    {member.subscriptionMonths}
-                  </td>
-                  <td className={styles.td}>{member.modeOfPayment || ""}</td>
+        <tbody>
+  {billData?.length > 0 ? (
+    billData.map((member, index) => {
+      const user = member.userId || member.userInfo; // ✅ fallback
+      const isDeleted = !member.userId;
 
-                  <td className={styles.td}>{member.amount}</td>
-                  <td className={styles.td}>
-                    <div className={styles.actionButtons}>
-                      <button
-                        className={`${styles.actionButton} ${styles.whatsappButton}`}
-                        onClick={() => openWhatsApp(member.userId.whatsAppNumber, member.userId?.name)}
-                        title="WhatsApp"
-                      >
-                        <MessageCircle size={16} />
-                      </button>
-                      <button
-                        className={styles.actionButton}
-                        onClick={() => handleView(member)}
-                        title="View Details"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        className={`${styles.actionButton} ${styles.deleteButton}`}
-                        onClick={() => handleDownload(member)}
-                        title="Download Bill"
-                      >
-                        <File size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+      return (
+        <tr key={member._id || index} className={styles.bodyRow}>
+          {/* Name */}
+          <td className={styles.td}>
+            {isDeleted
+              ? `${user?.name || ""}`
+              : `${user?.name || ""} ${user?.lastName || ""}`}
+          </td>
+
+          {/* Booking Date */}
+          <td className={styles.td}>
+            {member.createdAt
+              ? new Date(member.createdAt).toLocaleDateString()
+              : ""}
+          </td>
+
+          {/* Subscription Months */}
+          <td className={styles.td}>{member.subscriptionMonths}</td>
+
+          {/* Payment Method */}
+          <td className={styles.td}>{member.modeOfPayment || ""}</td>
+
+          {/* Amount */}
+          <td className={styles.td}>{member.amount}</td>
+
+          {/* Actions */}
+          <td className={styles.td}>
+            {isDeleted ? (
+              <span className={styles.deletedUser}>Deleted User</span>
             ) : (
-              <tr>
-                <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
-                  {loading ? "Loading..." : "No records found"}
-                </td>
-              </tr>
+              <div className={styles.actionButtons}>
+                <button
+                  className={`${styles.actionButton} ${styles.whatsappButton}`}
+                  onClick={() =>
+                    openWhatsApp(user.whatsAppNumber, user.name)
+                  }
+                  title="WhatsApp"
+                >
+                  <MessageCircle size={16} />
+                </button>
+                <button
+                  className={styles.actionButton}
+                  onClick={() => handleView(member)}
+                  title="View Details"
+                >
+                  <Eye size={16} />
+                </button>
+                <button
+                  className={`${styles.actionButton} ${styles.deleteButton}`}
+                  onClick={() => handleDownload(member)}
+                  title="Download Bill"
+                >
+                  <File size={16} />
+                </button>
+              </div>
             )}
-          </tbody>
+          </td>
+        </tr>
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
+        {loading ? "Loading..." : "No records found"}
+      </td>
+    </tr>
+  )}
+</tbody>
+
         </table>
       </div>
 

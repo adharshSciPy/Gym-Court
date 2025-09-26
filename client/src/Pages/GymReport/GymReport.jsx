@@ -50,12 +50,20 @@ function GymReport() {
         <h3>Booking Overview</h3>
         <div className="reportsOverviewCards">
           <div className="reportsCard">
-            <p>Total Bookings</p>
-            <h2>{fullData.totalBookings || ""}</h2>
+            <p>Total Users</p>
+            <h2>{fullData.totalUsers || ""}</h2>
           </div>
           <div className="reportsCard">
             <p>Total Revenue</p>
             <h2>{fullData.totalRevenue || ""}</h2>
+          </div>
+           <div className="reportsCard">
+            <p>Deleted Users</p>
+            <h2>{fullData.deletedUsers || ""}</h2>
+          </div>
+           <div className="reportsCard">
+            <p>Deleted Users Revenue</p>
+            <h2>{fullData.deletedRevenues || ""}</h2>
           </div>
         </div>
       </div>
