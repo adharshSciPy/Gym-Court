@@ -220,22 +220,31 @@ if (profilePicture) user.profilePicture = profilePicture;
     }
 
     // --- Save billing info ---
-    await GymBilling.create(
-      [
-        {
-          userId: user._id,
-          amount,
-          isGst,
-          gst,
-          gstNumber,
-          modeOfPayment,
-          subscriptionMonths,
-          startDate: subscriptionStart,
-          endDate: subscriptionEnd,
-        },
-      ],
-      { session }
-    );
+  await GymBilling.create(
+  [
+    {
+      userId: user._id,
+      userInfo: {
+        name: user.name,
+        address: user.address,
+        phoneNumber: user.phoneNumber,
+        whatsAppNumber: user.whatsAppNumber,
+        notes: user.notes,
+        trainer: user.trainer,
+        userType: user.userType,
+        subscription: user.subscription,
+      },
+      amount,
+      isGst,
+      gst,
+      gstNumber,
+      modeOfPayment,
+      subscriptionMonths,
+    },
+  ],
+  { session }
+);
+
 
     await session.commitTransaction();
     session.endSession();
