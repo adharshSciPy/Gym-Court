@@ -79,8 +79,8 @@ const GymMembers = () => {
 
   // Refetch when page, searchTerm, or userTypeFilter changes
   useEffect(() => {
+    fetchMembers();
     const interval = setInterval(() => {
-    
       fetchMembers();
     }, 120000);
 
