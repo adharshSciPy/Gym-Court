@@ -411,7 +411,7 @@ function CourtDeleteUsers() {
               billData.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
                   <td className={styles.td}>
-                    {member.userId?.name || ""} {member.userId?.lastName || ""}
+                    {member.userInfo?.name || ""} {member.lastName || ""}
                   </td>
                   <td className={styles.td}>
                     {member.createdAt ?
@@ -426,30 +426,35 @@ function CourtDeleteUsers() {
 
                   <td className={styles.td}>{member.amount}</td>
                   <td className={styles.td}>
-                    <div className={styles.actionButtons}>
-                      <button
-                        className={`${styles.actionButton} ${styles.whatsappButton}`}
-                        onClick={() => openWhatsApp(member.userId.whatsAppNumber, member.userId?.name)}
-                        title="WhatsApp"
-                      >
-                        <MessageCircle size={16} />
-                      </button>
-                      <button
-                        className={styles.actionButton}
-                        onClick={() => handleView(member)}
-                        title="View Details"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        className={`${styles.actionButton} ${styles.deleteButton}`}
-                        onClick={() => handleDownload(member)}
-                        title="Download Bill"
-                      >
-                        <File size={16} />
-                      </button>
-                    </div>
+                    {member.userId ? (
+                      <div className={styles.actionButtons}>
+                        <button
+                          className={`${styles.actionButton} ${styles.whatsappButton}`}
+                          onClick={() => openWhatsApp(member.userId.whatsAppNumber, member.userId?.name)}
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                        <button
+                          className={styles.actionButton}
+                          onClick={() => handleView(member)}
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          className={`${styles.actionButton} ${styles.deleteButton}`}
+                          onClick={() => handleDownload(member)}
+                          title="Download Bill"
+                        >
+                          <File size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: "red", fontWeight: "600" }}>Deleted User</span>
+                    )}
                   </td>
+
                 </tr>
               ))
             ) : (

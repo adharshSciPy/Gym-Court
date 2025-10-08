@@ -148,7 +148,7 @@ function MembersPage() {
       getMembers(); // Refresh member list
     } catch (error) {
       console.error("Renewal error:", error);
-      setError("Renewal failed. Please try again.");
+      setError(error.response.data.message);
     }
   };
 
