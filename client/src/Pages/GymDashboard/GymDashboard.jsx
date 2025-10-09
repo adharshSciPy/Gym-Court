@@ -6,9 +6,7 @@ function GymDashboard() {
     const [gymStats, setGymStats] = useState({
         totalBookings: 0,
         activeSubscriptions: 0,
-        expiredSubscriptions: 0,
-        trainerCount: 0,
-        totalRevenue: 0
+        expiredSubscriptions: 0
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -64,9 +62,7 @@ function GymDashboard() {
             setGymStats({
                 totalBookings: data.totalBookings || "0",
                 activeSubscriptions: data.activeSubscriptions || "0",
-                expiredSubscriptions: data.expiredSubscriptions || "0",
-                trainerCount: data.trainerCount || "0",
-                totalRevenue: data.totalRevenue || "0"
+                expiredSubscriptions: data.expiredSubscriptions || "0"
             });
         } catch (err) {
             console.error('Error fetching gym statistics:', err);
@@ -101,18 +97,6 @@ function GymDashboard() {
             name: "Inactive Members",
             value: loading ? "..." : gymStats.expiredSubscriptions,
             action: "reactivate",
-
-        },
-        {
-            name: "Trainers",
-            value: loading ? "..." : gymStats.trainerCount,
-            action: "schedule",
-
-        },
-        {
-            name: "Total Revenue",
-            value: loading ? "..." : formatCurrency(gymStats.totalRevenue),
-            action: "billing",
 
         }
     ];
@@ -164,9 +148,7 @@ function GymDashboard() {
                                 setGymStats({
                                     totalBookings: 250,
                                     activeSubscriptions: 215,
-                                    expiredSubscriptions: 35,
-                                    trainerCount: 12,
-                                    totalRevenue: 125000
+                                    expiredSubscriptions: 35
                                 });
                                 setLoading(false);
                             }}

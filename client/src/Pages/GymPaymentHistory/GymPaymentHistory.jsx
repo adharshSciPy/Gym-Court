@@ -213,8 +213,21 @@ function GymPaymentHistory() {
 
     // ====== PDF Styles ======
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const startY = 40;
     const lineHeight = 10;
+
+    // ===== Add Watermark =====
+    doc.saveGraphicsState(); // Save current state
+    doc.setGState(new doc.GState({ opacity: 0.08 })); // Soft transparent
+    doc.setFontSize(50);
+    doc.setTextColor(0, 123, 255); // Soft blue
+    doc.setFont("helvetica", "bold");
+
+    // Diagonal watermark
+    doc.text("Base", pageWidth / 2, pageHeight / 2 - 10, { align: "center", angle: 45 });
+    doc.text("Performance", pageWidth / 2 + 25, pageHeight / 2 + 30, { align: "center", angle: 45 });
+    doc.restoreGraphicsState(); // Restore normal state
 
     // Title
     doc.setFontSize(16);
@@ -227,17 +240,7 @@ function GymPaymentHistory() {
     doc.setLineWidth(0.5);
     doc.line(20, 25, pageWidth - 20, 25);
 
-    // Detail box background
-    doc.setFillColor("#f8f9fa");
-    doc.roundedRect(
-      15,
-      startY - 5,
-      pageWidth - 30,
-      lineHeight * (isGst ? 9 : 7) + 10,
-      6,
-      6,
-      "F"
-    );
+    
 
     // Function to draw label and value with spacing
     const drawItem = (
@@ -406,80 +409,80 @@ function GymPaymentHistory() {
               <th className={styles.th}>Actions</th>
             </tr>
           </thead>
-        <tbody>
-  {billData?.length > 0 ? (
-    billData.map((member, index) => {
-      const user = member.userId || member.userInfo; // ✅ fallback
-      const isDeleted = !member.userId;
+          <tbody>
+            {billData?.length > 0 ? (
+              billData.map((member, index) => {
+                const user = member.userId || member.userInfo; // ✅ fallback
+                const isDeleted = !member.userId;
 
-      return (
-        <tr key={member._id || index} className={styles.bodyRow}>
-          {/* Name */}
-          <td className={styles.td}>
-            {isDeleted
-              ? `${user?.name || ""}`
-              : `${user?.name || ""} ${user?.lastName || ""}`}
-          </td>
+                return (
+                  <tr key={member._id || index} className={styles.bodyRow}>
+                    {/* Name */}
+                    <td className={styles.td}>
+                      {isDeleted
+                        ? `${user?.name || ""}`
+                        : `${user?.name || ""} ${user?.lastName || ""}`}
+                    </td>
 
-          {/* Booking Date */}
-          <td className={styles.td}>
-            {member.createdAt
-              ? new Date(member.createdAt).toLocaleDateString()
-              : ""}
-          </td>
+                    {/* Booking Date */}
+                    <td className={styles.td}>
+                      {member.createdAt
+                        ? new Date(member.createdAt).toLocaleDateString()
+                        : ""}
+                    </td>
 
-          {/* Subscription Months */}
-          <td className={styles.td}>{member.subscriptionMonths}</td>
+                    {/* Subscription Months */}
+                    <td className={styles.td}>{member.subscriptionMonths}</td>
 
-          {/* Payment Method */}
-          <td className={styles.td}>{member.modeOfPayment || ""}</td>
+                    {/* Payment Method */}
+                    <td className={styles.td}>{member.modeOfPayment || ""}</td>
 
-          {/* Amount */}
-          <td className={styles.td}>{member.amount}</td>
+                    {/* Amount */}
+                    <td className={styles.td}>{member.amount}</td>
 
-          {/* Actions */}
-          <td className={styles.td}>
-            {isDeleted ? (
-              <span className={styles.deletedUser}>Deleted User</span>
+                    {/* Actions */}
+                    <td className={styles.td}>
+                      {isDeleted ? (
+                        <span className={styles.deletedUser}>Deleted User</span>
+                      ) : (
+                        <div className={styles.actionButtons}>
+                          <button
+                            className={`${styles.actionButton} ${styles.whatsappButton}`}
+                            onClick={() =>
+                              openWhatsApp(user.whatsAppNumber, user.name)
+                            }
+                            title="WhatsApp"
+                          >
+                            <MessageCircle size={16} />
+                          </button>
+                          <button
+                            className={styles.actionButton}
+                            onClick={() => handleView(member)}
+                            title="View Details"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            className={`${styles.actionButton} ${styles.deleteButton}`}
+                            onClick={() => handleDownload(member)}
+                            title="Download Bill"
+                          >
+                            <File size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
-              <div className={styles.actionButtons}>
-                <button
-                  className={`${styles.actionButton} ${styles.whatsappButton}`}
-                  onClick={() =>
-                    openWhatsApp(user.whatsAppNumber, user.name)
-                  }
-                  title="WhatsApp"
-                >
-                  <MessageCircle size={16} />
-                </button>
-                <button
-                  className={styles.actionButton}
-                  onClick={() => handleView(member)}
-                  title="View Details"
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  className={`${styles.actionButton} ${styles.deleteButton}`}
-                  onClick={() => handleDownload(member)}
-                  title="Download Bill"
-                >
-                  <File size={16} />
-                </button>
-              </div>
+              <tr>
+                <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
+                  {loading ? "Loading..." : "No records found"}
+                </td>
+              </tr>
             )}
-          </td>
-        </tr>
-      );
-    })
-  ) : (
-    <tr>
-      <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
-        {loading ? "Loading..." : "No records found"}
-      </td>
-    </tr>
-  )}
-</tbody>
+          </tbody>
 
         </table>
       </div>

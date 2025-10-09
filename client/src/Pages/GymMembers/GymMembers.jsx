@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Search, Edit, Trash2, MessageCircle, Eye, Upload, X, RefreshCw } from 'lucide-react';
+import { Search, Trash2, MessageCircle, Eye, Upload, RefreshCw } from 'lucide-react';
 import styles from './GymMembers.module.css';
 import axios from "axios"
 import baseUrl from "../../baseUrl"
@@ -555,8 +555,8 @@ const GymMembers = () => {
 
             {/* Debug info - you can remove this after fixing */}
             <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
-              Debug: {viewMember.dietPdfs ? `${viewMember.dietPdfs.length} PDFs found` : 'No PDFs array'}
-              {viewMember.dietPdf ? ', Single PDF exists' : ', No single PDF'}
+              PDF: {viewMember.dietPdfs ? `${viewMember.dietPdfs.length} PDFs found` : 'No PDFs array'}
+              {viewMember.dietPdf ? ', Single PDF exists' : ''}
             </div>
 
             {/* Show dietPdfs array if it exists */}

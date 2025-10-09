@@ -245,6 +245,20 @@ function PaymentHistory() {
 
     // ====== PDF Styles ======
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // ===== Add Watermark =====
+    doc.saveGraphicsState(); // Save current state
+    doc.setGState(new doc.GState({ opacity: 0.08 })); // Soft transparent
+    doc.setFontSize(50);
+    doc.setTextColor(0, 123, 255); // Soft blue
+    doc.setFont("helvetica", "bold");
+
+    // Diagonal watermark
+    doc.text("Base", pageWidth / 2, pageHeight / 2 - 10, { align: "center", angle: 45 });
+    doc.text("Performance", pageWidth / 2 + 25, pageHeight / 2 + 30, { align: "center", angle: 45 });
+    doc.restoreGraphicsState(); // Restore normal state
+
 
     // Title
     doc.setFontSize(20);
@@ -265,9 +279,6 @@ function PaymentHistory() {
     let startY = 40;
     const lineHeight = 10;
 
-    // Background box
-    doc.setFillColor("#f8f9fa");
-    doc.roundedRect(15, startY - 5, pageWidth - 30, lineHeight * 9 + 10, 6, 6, "F");
 
     const addField = (label, value) => {
       doc.setFont("helvetica", "bold");
@@ -391,18 +402,18 @@ function PaymentHistory() {
             {billData?.length > 0 ? (
               billData.map((member, index) => (
                 <tr key={member._id || index} className={styles.bodyRow}>
-                   <td className={styles.td}>
-          {member.userDetails?.firstName || ""} {member.userDetails?.lastName || ""}
-        </td>
-  <td className={styles.td}>
-  {(() => {
-    const d = new Date(member.createdAt);
-    const day = String(d.getDate()).padStart(2, "0");
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
-  })()}
-</td>
+                  <td className={styles.td}>
+                    {member.userDetails?.firstName || ""} {member.userDetails?.lastName || ""}
+                  </td>
+                  <td className={styles.td}>
+                    {(() => {
+                      const d = new Date(member.createdAt);
+                      const day = String(d.getDate()).padStart(2, "0");
+                      const month = String(d.getMonth() + 1).padStart(2, "0");
+                      const year = d.getFullYear();
+                      return `${day}-${month}-${year}`;
+                    })()}
+                  </td>
 
                   {/* <td className={styles.td}>
                     {member.bookingId?.endDate ?
@@ -415,37 +426,37 @@ function PaymentHistory() {
                   <td className={styles.td}>{member.courtId?.courtName || ""}</td>
 
                   <td className={styles.td}>{member.amount}</td>
-                 <td className={styles.td}>
-  {member.userId && member.bookingId ? (
-    <div className={styles.actionButtons}>
-      <button
-        className={`${styles.actionButton} ${styles.whatsappButton}`}
-        onClick={() =>
-          openWhatsApp(member.userId.whatsAppNumber, member.name)
-        }
-        title="WhatsApp"
-      >
-        <MessageCircle size={16} />
-      </button>
-      <button
-        className={styles.actionButton}
-        onClick={() => handleView(member)}
-        title="View Details"
-      >
-        <Eye size={16} />
-      </button>
-      <button
-        className={`${styles.actionButton} ${styles.deleteButton}`}
-        onClick={() => handleDownload(member)}
-        title="Download Bill"
-      >
-        <File size={16} />
-      </button>
-    </div>
-  ) : (
-    <span className={styles.deletedUser}>Deleted User</span>
-  )}
-</td>
+                  <td className={styles.td}>
+                    {member.userId && member.bookingId ? (
+                      <div className={styles.actionButtons}>
+                        <button
+                          className={`${styles.actionButton} ${styles.whatsappButton}`}
+                          onClick={() =>
+                            openWhatsApp(member.userId.whatsAppNumber, member.name)
+                          }
+                          title="WhatsApp"
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                        <button
+                          className={styles.actionButton}
+                          onClick={() => handleView(member)}
+                          title="View Details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          className={`${styles.actionButton} ${styles.deleteButton}`}
+                          onClick={() => handleDownload(member)}
+                          title="Download Bill"
+                        >
+                          <File size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={styles.deletedUser}>Deleted User</span>
+                    )}
+                  </td>
 
                 </tr>
               ))
