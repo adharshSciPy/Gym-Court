@@ -180,6 +180,32 @@ Thank you for your booking!`;
     doc.setLineWidth(0.5);
     doc.rect(15, 15, 180, 267);
 
+    // 🔹 ADD TWO-LINE WATERMARK (soft blue, realistic style)
+    doc.saveGraphicsState();
+    doc.setGState(new doc.GState({ opacity: 0.08 })); // light transparency
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0, 102, 204); // soft blue
+    doc.setFontSize(70);
+
+    // 🔹 Center of page (auto)
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+
+    // 🔹 Adjust position for visual balance
+    const baseX = pageWidth / 2 - 10; // Base a little left
+    const performanceX = pageWidth / 2 + 25; // Performance a little right
+    const baseY = pageHeight / 2 - 10;
+    const performanceY = pageHeight / 2 + 60;
+
+    // 🔹 Add watermark text diagonally
+    doc.text("Base", baseX, baseY, { align: "center", angle: 45 });
+    doc.text("Performance", performanceX, performanceY, { align: "center", angle: 45 });
+
+    doc.restoreGraphicsState();
+
+
+
+
     // Save the PDF
     const fileName = `Booking_Receipt_${firstName}_${lastName}_${Date.now()}.pdf`;
     doc.save(fileName);
