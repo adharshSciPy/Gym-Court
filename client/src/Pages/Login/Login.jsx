@@ -1,9 +1,7 @@
 import React from "react";
 import styles from "./Login.module.css";
-import { FaDumbbell } from "react-icons/fa";
-import { GiShuttlecock } from "react-icons/gi";
-import { FaFlag } from "react-icons/fa6"; // Flag icon for logo
 import { useNavigate } from "react-router-dom";
+import Baselogo from "../../assets/BaseLogo.png"
 
 function Login() {
   const navigate = useNavigate()
@@ -25,18 +23,19 @@ function Login() {
       {/* Center card */}
       <div className={styles.card}>
         <div className={styles.logo}>
-          <FaFlag className={styles.logoIcon} />
-          <span className={styles.logoText}>Courtly</span>
+          {/* <FaFlag className={styles.logoIcon} />
+          <span className={styles.logoText}>Courtly</span> */}
+          <img src={Baselogo} />
         </div>
         <p className={styles.subtitle}>Please select your role to proceed</p>
-        <h2 className={styles.title}>Welcome to Courtly</h2>
+        <h2 className={styles.title}>Welcome to Base Center</h2>
 
-        <button className={styles.roleBtn} onClick={()=>{navigate('/Adminlogin')}}>Admin</button>
-        <button className={styles.roleBtn} onClick={()=>{navigate('/ReceptionLogin')}}>Reception</button>
-        <button className={styles.roleBtn} onClick={()=>{navigate('/TrainerLogin')}}>Trainer</button>
+        <button className={styles.roleBtn} onClick={() => { navigate('/Adminlogin') }}>Admin</button>
+        <button className={styles.roleBtn} onClick={() => { navigate('/ReceptionLogin') }}>Reception</button>
+        <button className={styles.roleBtn} onClick={() => { navigate('/TrainerLogin') }}>Trainer</button>
 
 
-        
+
       </div>
     </div>
   );

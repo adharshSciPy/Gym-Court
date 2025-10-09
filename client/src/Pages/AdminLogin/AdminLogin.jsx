@@ -6,6 +6,7 @@ import baseUrl from "../../baseUrl";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
+import BaseLogo from "../../assets/BaseLogo.png"
 
 function AdminLogin() {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ function AdminLogin() {
   const handleOtpChange = (e) => {
     const value = e.target.value;
     setOtp(value);
-    
+
     if (!value) {
       setOtpError("OTP is required.");
     } else if (value.length !== 6) {
@@ -85,7 +86,7 @@ function AdminLogin() {
   const handleNewPasswordChange = (e) => {
     const value = e.target.value;
     setNewPassword(value);
-    
+
     if (!value) {
       setNewPasswordError("New password is required.");
     } else if (value.length < 6) {
@@ -102,7 +103,7 @@ function AdminLogin() {
   const handleConfirmPasswordChange = (e) => {
     const value = e.target.value;
     setConfirmPassword(value);
-    
+
     if (!value) {
       setConfirmPasswordError("Please confirm your password.");
     } else if (value !== newPassword) {
@@ -148,7 +149,7 @@ function AdminLogin() {
   const handleForgotEmailChange = (e) => {
     const value = e.target.value;
     setForgotEmail(value);
-    
+
     if (!value) {
       setForgotEmailError("Email is required.");
     } else if (!emailRegex.test(value)) {
@@ -170,7 +171,7 @@ function AdminLogin() {
       const res = await axios.post(`${baseUrl}/api/v1/admin/sent-otp`, {
         adminEmail: forgotEmail
       });
-      
+
       if (res.status === 200) {
         toast.success("OTP sent successfully! Please check your email.");
         setShowOtpVerification(true);
@@ -205,7 +206,7 @@ function AdminLogin() {
         otp: otp,
         newPassword: newPassword
       });
-      
+
       if (res.status === 200) {
         toast.success("Password reset successful! You can now login with your new password.");
         setTimeout(() => {
@@ -253,8 +254,7 @@ function AdminLogin() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.logo}>
-            <FaFlag className={styles.logoIcon} />
-            <span className={styles.logoText}>Courtly</span>
+            <img src={BaseLogo} />
           </div>
           <p className={styles.subtitle}>Verify OTP</p>
           <h2 className={styles.title}>Reset Admin Password</h2>
@@ -328,8 +328,7 @@ function AdminLogin() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.logo}>
-            <FaFlag className={styles.logoIcon} />
-            <span className={styles.logoText}>Courtly</span>
+            <img src={BaseLogo} />
           </div>
           <p className={styles.subtitle}>Reset Password</p>
           <h2 className={styles.title}>Admin Password Recovery</h2>
@@ -373,11 +372,10 @@ function AdminLogin() {
     <div className={styles.container}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <FaFlag className={styles.logoIcon} />
-          <span className={styles.logoText}>Courtly</span>
+          <img src={BaseLogo} />
         </div>
         <p className={styles.subtitle}>Hello Admin</p>
-        <h2 className={styles.title}>Welcome to Courtly</h2>
+        <h2 className={styles.title}>Welcome to Base Center</h2>
 
         <div className={styles.inputDatas}>
           <div className={styles.inputContainer}>
@@ -423,7 +421,7 @@ function AdminLogin() {
             )}
           </div>
 
-        
+
 
           <button
             onClick={adminLogin}
@@ -431,7 +429,7 @@ function AdminLogin() {
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>
-            <div className={styles.forgotPasswordContainer}>
+          <div className={styles.forgotPasswordContainer}>
             <button
               type="button"
               onClick={() => {

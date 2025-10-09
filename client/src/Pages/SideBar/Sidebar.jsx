@@ -10,6 +10,7 @@ import {
   DollarSign,
   UserMinus
 } from "lucide-react";
+import BaseLogo from "../../assets/BaseLogo.png"
 
 function Sidebar({ activeNav, setActiveNav }) {
   const [hoveredNav, setHoveredNav] = useState(null);
@@ -29,8 +30,7 @@ function Sidebar({ activeNav, setActiveNav }) {
   return (
     <div className={styles.sidebar}>
       <div className={styles.logo}>
-        <h1 className={styles.logoText}>Courtly</h1>
-        <p className={styles.logoSubtext}>Admin</p>
+       <img src={BaseLogo}/>
       </div>
 
       <nav className={styles.nav}>

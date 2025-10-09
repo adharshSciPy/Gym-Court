@@ -6,9 +6,10 @@ import {
     // UserRound,
     // BarChart3,
     // Settings,
-    LogOut, 
+    LogOut,
     // Dumbbell
 } from "lucide-react";
+import BaseLogo from "../../assets/BaseLogo.png"
 
 function TrainerSidebar({ activeNav, setActiveNav }) {
     const [hoveredNav, setHoveredNav] = useState(null);
@@ -25,8 +26,7 @@ function TrainerSidebar({ activeNav, setActiveNav }) {
     return (
         <div className={styles.sidebar}>
             <div className={styles.logo}>
-                <h1 className={styles.logoText}>Courtly</h1>
-                <p className={styles.logoSubtext}>Trainer</p>
+                <img src={BaseLogo} />
             </div>
 
             <nav className={styles.nav}>

@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import styles from "./ReceptionLogin.module.css";
-import { FaFlag } from "react-icons/fa6";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import baseUrl from "../../baseUrl";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
+import BaseLogo from "../../assets/BaseLogo.png"
 
 function ReceptionLogin() {
   const navigate = useNavigate();
@@ -255,8 +255,7 @@ function ReceptionLogin() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.logo}>
-            <FaFlag className={styles.logoIcon} />
-            <span className={styles.logoText}>Courtly</span>
+            <img src={BaseLogo}/>
           </div>
           <p className={styles.subtitle}>Verify OTP</p>
           <h2 className={styles.title}>Reset Receptionist Password</h2>
@@ -330,8 +329,7 @@ function ReceptionLogin() {
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.logo}>
-            <FaFlag className={styles.logoIcon} />
-            <span className={styles.logoText}>Courtly</span>
+           <img src={BaseLogo}/>
           </div>
           <p className={styles.subtitle}>Reset Password</p>
           <h2 className={styles.title}>Receptionist Password Recovery</h2>
@@ -375,11 +373,10 @@ function ReceptionLogin() {
     <div className={styles.container}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <FaFlag className={styles.logoIcon} />
-          <span className={styles.logoText}>Courtly</span>
+         <img src={BaseLogo}/>
         </div>
         <p className={styles.subtitle}>Hello Receptionist</p>
-        <h2 className={styles.title}>Welcome to Courtly</h2>
+        <h2 className={styles.title}>Welcome to Base Center</h2>
 
         <div className={styles.inputDatas}>
           <div className={styles.inputContainer}>

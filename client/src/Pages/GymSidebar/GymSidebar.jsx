@@ -3,10 +3,11 @@ import styles from "./GymSideBar.module.css";
 import {
     LayoutDashboard,
     BarChart3,
-    LogOut, 
+    LogOut,
     DollarSign,
     Dumbbell
 } from "lucide-react";
+import BaseLogo from "../../assets/BaseLogo.png"
 function GymSidebar({ activeNav, setActiveNav }) {
     const [hoveredNav, setHoveredNav] = useState(null);
 
@@ -15,7 +16,7 @@ function GymSidebar({ activeNav, setActiveNav }) {
         // { name: "Members", icon: Users },
         { name: "Gym", icon: Dumbbell },
         { name: "Reports", icon: BarChart3 },
-    { name: "Payments", icon: DollarSign },
+        { name: "Payments", icon: DollarSign },
         // { name: "Settings", icon: Settings },
         { name: "Logout", icon: LogOut },
 
@@ -23,8 +24,7 @@ function GymSidebar({ activeNav, setActiveNav }) {
     return (
         <div className={styles.sidebar}>
             <div className={styles.logo}>
-                <h1 className={styles.logoText}>Courtly</h1>
-                <p className={styles.logoSubtext}>Admin</p>
+                <img src={BaseLogo}/>
             </div>
 
             <nav className={styles.nav}>

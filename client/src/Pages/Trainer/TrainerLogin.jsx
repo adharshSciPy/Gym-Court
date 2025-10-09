@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import styles from "./TrainerLogin.module.css";
-import { FaFlag } from "react-icons/fa6";
 import axios from "axios";
 import baseUrl from "../../baseUrl";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
+import BaseLogo from "../../assets/BaseLogo.png"
 
 function TrainerLogin() {
     const navigate = useNavigate();
@@ -254,8 +254,7 @@ function TrainerLogin() {
             <div className={styles.container}>
                 <div className={styles.card}>
                     <div className={styles.logo}>
-                        <FaFlag className={styles.logoIcon} />
-                        <span className={styles.logoText}>Courtly</span>
+                       <img src={BaseLogo}/>
                     </div>
                     <p className={styles.subtitle}>Verify OTP</p>
                     <h2 className={styles.title}>Reset Trainer Password</h2>
@@ -330,8 +329,7 @@ function TrainerLogin() {
             <div className={styles.container}>
                 <div className={styles.card}>
                     <div className={styles.logo}>
-                        <FaFlag className={styles.logoIcon} />
-                        <span className={styles.logoText}>Courtly</span>
+                       <img src={BaseLogo}/>
                     </div>
                     <p className={styles.subtitle}>Reset Password</p>
                     <h2 className={styles.title}>Trainer Password Recovery</h2>
@@ -376,11 +374,10 @@ function TrainerLogin() {
         <div className={styles.container}>
             <div className={styles.card}>
                 <div className={styles.logo}>
-                    <FaFlag className={styles.logoIcon} />
-                    <span className={styles.logoText}>Courtly</span>
+                    <img src={BaseLogo}/>
                 </div>
                 <p className={styles.subtitle}>Hello Trainer</p>
-                <h2 className={styles.title}>Welcome to Courtly</h2>
+                <h2 className={styles.title}>Welcome to Base Center</h2>
 
                 <div className={styles.inputDatas}>
                     <div className={styles.inputContainer}>
