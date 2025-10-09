@@ -1,7 +1,7 @@
 import React from "react";
 import styles from "./Login.module.css";
 import { useNavigate } from "react-router-dom";
-import Baselogo from "../../assets/BaseLogo.png"
+import Baselogo from "../../assets/BaseLogo1.png"
 
 function Login() {
   const navigate = useNavigate()

@@ -5,7 +5,7 @@ import axios from "axios";
 import baseUrl from "../../baseUrl";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
-import BaseLogo from "../../assets/BaseLogo.png"
+import BaseLogo from "../../assets/BaseLogo1.png"
 
 function ReceptionLogin() {
   const navigate = useNavigate();

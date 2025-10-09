@@ -5,7 +5,7 @@ import baseUrl from "../../baseUrl";
 import { useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { toast } from "react-toastify";
-import BaseLogo from "../../assets/BaseLogo.png"
+import BaseLogo from "../../assets/BaseLogo1.png"
 
 function TrainerLogin() {
     const navigate = useNavigate();
