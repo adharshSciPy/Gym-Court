@@ -16,6 +16,8 @@ import TrainerSidebarSwitching from "./Pages/TrainerSidebarSwitching/TrainerSide
 // Reception
 import ReceptionistSidebarSwitching from "./Pages/ReceptionistSidebarSwitching/ReceptionistSidebarSwitching.jsx";
 
+import Website from "./Pages/Website/Website.jsx";
+
 function App() {
   const [activeNav, setActiveNav] = useState("Dashboard");
 
@@ -30,11 +32,11 @@ function App() {
         pauseOnFocusLoss
         draggable
         pauseOnHover
-        theme="colored" 
+        theme="colored"
       />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/Baseperformance" element={<Login />} />
           <Route path="/Adminlogin" element={<AdminLogin />} />
           <Route path="/Trainerlogin" element={<TrainerLogin />} />
 
@@ -70,6 +72,13 @@ function App() {
               />
             }
           />
+          <Route
+            path="/"
+            element={
+              <Website />
+            }
+          />
+
         </Routes>
       </BrowserRouter>
     </div>
