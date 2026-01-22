@@ -16,8 +16,6 @@ import TrainerSidebarSwitching from "./Pages/TrainerSidebarSwitching/TrainerSide
 // Reception
 import ReceptionistSidebarSwitching from "./Pages/ReceptionistSidebarSwitching/ReceptionistSidebarSwitching.jsx";
 
-import Website from "./Pages/Website/Website.jsx";
-
 function App() {
   const [activeNav, setActiveNav] = useState("Dashboard");
 
@@ -36,7 +34,7 @@ function App() {
       />
       <BrowserRouter>
         <Routes>
-          <Route path="/Baseperformance" element={<Login />} />
+          <Route path="/" element={<Login />} />
           <Route path="/Adminlogin" element={<AdminLogin />} />
           <Route path="/Trainerlogin" element={<TrainerLogin />} />
 
@@ -70,12 +68,6 @@ function App() {
                 activeNav={activeNav}
                 setActiveNav={setActiveNav}
               />
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <Website />
             }
           />
 
