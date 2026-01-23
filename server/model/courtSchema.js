@@ -6,11 +6,11 @@ const courtSchema = new Schema({
     },
     surface: {
         type: String,
-        default: "grass"
+        default: "wood"
     },
     totalSlots: {
         type: Number,
-        required: true
+        // required: true
     },
     createdAt: {
         type: Date,

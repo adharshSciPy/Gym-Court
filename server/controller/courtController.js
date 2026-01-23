@@ -4,10 +4,10 @@ import Booking from "../model/bookingSchema.js";
 import DeletedUser from "../model/deletedUserSchema.js";
 
 const createCourt = async (req, res) => {
-    const { courtName, surface } = req.body;
+    const { courtName, surface, totalSlots } = req.body;
     try {
         const response = await Court.create({
-            courtName, surface
+            courtName, surface, totalSlots
         })
         res.status(200).json({ message: `Court Created Successfully`, data: response })
     } catch (error) {
